@@ -1,47 +1,20 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  CheckCircle2, AlertTriangle, Bug, Filter,
-  ArrowRight, Code2, X, Zap, TrendingUp, Circle
+  CheckCircle2, AlertTriangle, Bug, Code2, Zap, Circle,
+  ChevronRight, MessageSquare, Plus, Bell, Folder, Star, Activity, ArrowUpRight
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Topbar from '../../components/Topbar';
 import { subscribeToBugs } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
 
-const statusClass = {
-  Open: 'badge-open',
-  'In Progress': 'badge-inprogress',
-  Done: 'badge-done',
-  Resolved: 'badge-resolved',
-  Reopened: 'badge-reopened',
-};
-const priorityClass = {
-  Low: 'badge-low', Medium: 'badge-medium', High: 'badge-high', Critical: 'badge-critical',
-};
-
-const PRIORITY_COLOR = {
-  Critical: '#ef4444',
-  High: '#f97316',
-  Medium: '#f59e0b',
-  Low: '#94a3b8',
-};
-
-const STATUS_FILTERS = ['All', 'Open', 'In Progress', 'Done', 'Reopened'];
-const PRIORITY_FILTERS = ['All', 'Critical', 'High', 'Medium', 'Low'];
-
 export default function DevDashboardPage() {
   const [allBugs, setAllBugs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [priorityFilter, setPriorityFilter] = useState('All');
 
   const navigate = useNavigate();
-  const location = useLocation();
   const { currentUser, userProfile } = useAuth();
-
-  const queryParams = new URLSearchParams(location.search);
-  const projectFilter = queryParams.get('project');
 
   useEffect(() => {
     const unsub = subscribeToBugs((bugs) => {
@@ -52,347 +25,407 @@ export default function DevDashboardPage() {
   }, []);
 
   const baseBugs = useMemo(() => {
-    if (projectFilter) return allBugs.filter(b => b.projectName === projectFilter);
     return allBugs.filter((b) => b.assigneeId === currentUser?.uid);
-  }, [allBugs, currentUser, projectFilter]);
+  }, [allBugs, currentUser]);
 
-  const filtered = useMemo(() => {
-    return baseBugs.filter((bug) => {
-      if (statusFilter !== 'All' && bug.status !== statusFilter) return false;
-      if (priorityFilter !== 'All' && bug.priority !== priorityFilter) return false;
-      return true;
+  // Calculations for developer analytics
+  const stats = useMemo(() => {
+    const active = baseBugs.filter((b) => ['Open', 'In Progress', 'Reopen', 'Reproduced'].includes(b.status)).length;
+    const resolved = baseBugs.filter((b) => ['Done', 'Resolved'].includes(b.status)).length;
+    const critical = baseBugs.filter((b) => b.priority === 'Critical' && !['Done', 'Resolved'].includes(b.status)).length;
+    
+    // Quality rating = 100 - (reopen rate)
+    const reopenedCount = baseBugs.filter((b) => b.status === 'Reopen').length;
+    const totalDoneAndResolved = baseBugs.filter((b) => ['Done', 'Resolved', 'Reopen'].includes(b.status)).length;
+    const qualityRate = totalDoneAndResolved > 0 
+      ? Math.round(100 - (reopenedCount / totalDoneAndResolved * 100)) 
+      : 100;
+
+    return {
+      active,
+      resolved,
+      critical,
+      qualityRate
+    };
+  }, [baseBugs]);
+
+  // Find the single highest priority active bug to display in "Focus Mode"
+  const focusBug = useMemo(() => {
+    const active = baseBugs.filter(b => ['In Progress', 'Open', 'Reopen', 'Reproduced'].includes(b.status));
+    if (active.length === 0) return null;
+
+    const priorityWeight = { Critical: 4, High: 3, Medium: 2, Low: 1 };
+    return [...active].sort((a, b) => {
+      const weightA = priorityWeight[a.priority] || 2;
+      const weightB = priorityWeight[b.priority] || 2;
+      if (weightA !== weightB) return weightB - weightA;
+      if (a.status === 'In Progress' && b.status !== 'In Progress') return -1;
+      if (b.status === 'In Progress' && a.status !== 'In Progress') return 1;
+      return 0;
+    })[0];
+  }, [baseBugs]);
+
+  // Group active bugs by Project for a clean breakdown list
+  const projectBreakdown = useMemo(() => {
+    const projects = {};
+    baseBugs.forEach((bug) => {
+      if (!bug.projectName) return;
+      if (!projects[bug.projectName]) {
+        projects[bug.projectName] = { name: bug.projectName, active: 0, resolved: 0 };
+      }
+      if (['Done', 'Resolved'].includes(bug.status)) {
+        projects[bug.projectName].resolved += 1;
+      } else {
+        projects[bug.projectName].active += 1;
+      }
     });
-  }, [baseBugs, statusFilter, priorityFilter]);
+    return Object.values(projects).slice(0, 3);
+  }, [baseBugs]);
 
-  const stats = useMemo(() => ({
-    total: baseBugs.length,
-    open: baseBugs.filter((b) => b.status === 'Open').length,
-    inProgress: baseBugs.filter((b) => b.status === 'In Progress').length,
-    done: baseBugs.filter((b) => ['Done', 'Resolved'].includes(b.status)).length,
-    critical: baseBugs.filter((b) => b.priority === 'Critical' && !['Done', 'Resolved'].includes(b.status)).length,
-  }), [baseBugs]);
-
-  const timeAgo = useCallback((bug) => bug.createdAt?.seconds
-    ? formatDistanceToNow(new Date(bug.createdAt.seconds * 1000), { addSuffix: true })
-    : 'Recently', []);
+  // Compile a live feed of recent comments on developer's assigned bugs
+  const recentActivities = useMemo(() => {
+    const list = [];
+    baseBugs.forEach((bug) => {
+      if (bug.comments && Array.isArray(bug.comments)) {
+        bug.comments.forEach((c) => {
+          list.push({
+            id: `${bug.id}-comment-${c.createdAt?.seconds || Math.random()}`,
+            bugId: bug.id,
+            bugTitle: bug.title,
+            bugKey: bug.bugKey || bug.id.slice(-6).toUpperCase(),
+            author: c.authorName || 'QA Member',
+            text: c.text,
+            createdAt: c.createdAt,
+            date: c.createdAt?.seconds ? new Date(c.createdAt.seconds * 1000) : new Date(),
+          });
+        });
+      }
+    });
+    return list.sort((a, b) => b.date - a.date).slice(0, 4);
+  }, [baseBugs]);
 
   const firstName = userProfile?.displayName?.split(' ')[0] || 'Developer';
 
-  const statCards = useMemo(() => [
-    {
-      label: projectFilter ? 'Total Bugs' : 'Assigned to Me',
-      value: stats.total,
-      icon: Bug,
-      color: 'var(--dev-accent)',
-      bg: 'var(--dev-accent-light)',
-      border: 'rgba(16,185,129,0.2)',
-    },
-    {
-      label: 'Open',
-      value: stats.open,
-      icon: Circle,
-      color: '#3b82f6',
-      bg: 'rgba(59,130,246,0.08)',
-      border: 'rgba(59,130,246,0.15)',
-    },
-    {
-      label: 'In Progress',
-      value: stats.inProgress,
-      icon: Zap,
-      color: '#f59e0b',
-      bg: 'rgba(245,158,11,0.08)',
-      border: 'rgba(245,158,11,0.15)',
-    },
-    {
-      label: 'Resolved',
-      value: stats.done,
-      icon: CheckCircle2,
-      color: '#22c55e',
-      bg: 'rgba(34,197,94,0.08)',
-      border: 'rgba(34,197,94,0.15)',
-    },
-  ], [stats, projectFilter]);
-
   return (
     <>
-      <Topbar title={projectFilter ? `Project: ${projectFilter}` : 'My Dashboard'} />
-      <div className="page-container">
-
-        {/* Project Filter Banner */}
-        {projectFilter && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
-            padding: '10px 16px', background: 'rgba(16,185,129,0.06)',
-            borderRadius: 12, border: '1px solid rgba(16,185,129,0.2)',
-          }}>
-            <Filter size={14} style={{ color: 'var(--dev-accent)' }} />
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-              Filtering by project: <span style={{ color: 'var(--dev-accent)' }}>{projectFilter}</span>
-            </span>
-            <button
-              onClick={() => navigate('/dev')}
-              style={{
-                marginLeft: 'auto', background: 'transparent', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)',
-                transition: 'all 0.2s',
-              }}
-            >
-              <X size={12} /> Clear
-            </button>
-          </div>
-        )}
+      <Topbar title="My Dashboard" />
+      <div className="page-container" style={{ paddingBottom: 40 }}>
 
         {/* Welcome Banner */}
-        <div className="dev-welcome-banner" style={{ marginBottom: 28 }}>
+        <div className="dev-welcome-banner" style={{ marginBottom: 24 }}>
           <div className="dev-welcome-icon">
             <Code2 size={22} style={{ color: 'var(--dev-accent)' }} />
           </div>
           <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 4 }}>
-              {projectFilter
-                ? <>Project Overview · <span style={{ color: 'var(--dev-accent)' }}>{projectFilter}</span></>
-                : <>Hey, <span style={{ color: 'var(--dev-accent)' }}>{firstName}</span> 👋</>
-              }
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 4 }}>
+              Welcome back, <span style={{ color: 'var(--dev-accent)' }}>{firstName}</span> 👋
             </h2>
-            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              {projectFilter
-                ? `Showing all bugs tracked under this project.`
-                : stats.total === 0
-                  ? "No bugs assigned yet — you're all clear!"
-                  : <>You have <strong style={{ color: stats.open > 0 ? '#3b82f6' : 'var(--text-primary)' }}>{stats.open} open</strong> and <strong style={{ color: stats.inProgress > 0 ? '#f59e0b' : 'var(--text-primary)' }}>{stats.inProgress} in‑progress</strong> bugs.</>
-              }
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Here is your engineering overview for today. You have <span style={{ color: 'var(--dev-accent)', fontWeight: 700 }}>{stats.active} active tickets</span> assigned.
             </p>
           </div>
-          {stats.critical > 0 && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-              background: 'rgba(239,68,68,0.08)', borderRadius: 10,
-              border: '1px solid rgba(239,68,68,0.2)', fontSize: '0.8rem',
-              color: '#ef4444', fontWeight: 700, flexShrink: 0,
-            }}>
-              <AlertTriangle size={13} /> {stats.critical} Critical
-            </div>
-          )}
-          {!projectFilter && stats.inProgress > 0 && stats.critical === 0 && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-              background: 'rgba(245,158,11,0.08)', borderRadius: 10,
-              border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.8rem',
-              color: '#f59e0b', fontWeight: 700, flexShrink: 0,
-            }}>
-              <Zap size={13} /> {stats.inProgress} Active
-            </div>
-          )}
         </div>
 
-        {/* Stat Cards */}
+        {/* Metrics Grid */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 16,
-          marginBottom: 28,
+          marginBottom: 28
         }}>
-          {statCards.map((s) => (
-            <div
-              key={s.label}
-              style={{
-                background: 'var(--bg-card)',
-                border: `1px solid ${s.border}`,
-                borderRadius: 16,
-                padding: '20px 20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
-            >
-              <div style={{
-                width: 46, height: 46, borderRadius: 12,
-                background: s.bg, display: 'flex',
-                alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <s.icon size={20} style={{ color: s.color }} />
-              </div>
-              <div>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: s.color, lineHeight: 1, letterSpacing: '-0.03em' }}>
-                  {s.value}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {s.label}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div style={{
-          display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 20,
-          padding: '16px 20px', background: 'var(--bg-card)',
-          borderRadius: 14, border: '1px solid var(--border)',
-        }}>
-          <div>
-            <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-              Status
-            </p>
-            <div className="filter-bar">
-              {STATUS_FILTERS.map((s) => (
-                <button
-                  key={s}
-                  className={`filter-chip ${statusFilter === s ? 'active' : ''}`}
-                  style={statusFilter === s ? { background: 'var(--dev-accent-light)', borderColor: 'rgba(16,185,129,0.35)', color: 'var(--dev-accent)', fontWeight: 700 } : {}}
-                  onClick={() => setStatusFilter(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{ width: 1, background: 'var(--border)', alignSelf: 'stretch' }} />
-          <div>
-            <p style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-              Priority
-            </p>
-            <div className="filter-bar">
-              {PRIORITY_FILTERS.map((p) => (
-                <button
-                  key={p}
-                  className={`filter-chip ${priorityFilter === p ? 'active' : ''}`}
-                  style={priorityFilter === p ? { background: 'var(--dev-accent-light)', borderColor: 'rgba(16,185,129,0.35)', color: 'var(--dev-accent)', fontWeight: 700 } : {}}
-                  onClick={() => setPriorityFilter(p)}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          {(statusFilter !== 'All' || priorityFilter !== 'All') && (
-            <button
-              onClick={() => { setStatusFilter('All'); setPriorityFilter('All'); }}
-              style={{
-                marginLeft: 'auto', alignSelf: 'flex-end',
-                background: 'transparent', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '6px 12px', fontSize: '0.75rem',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-                gap: 5, color: 'var(--text-muted)', transition: 'all 0.2s',
-              }}
-            >
-              <X size={12} /> Reset
-            </button>
-          )}
-        </div>
-
-        {/* Bug List */}
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: 72, borderRadius: 12 }} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', gap: 16, padding: '64px 32px',
-            background: 'var(--bg-card)', borderRadius: 16, border: '1px dashed var(--border)',
-            textAlign: 'center',
-          }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: '50%',
-              background: 'var(--dev-accent-light)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <CheckCircle2 size={32} style={{ color: 'var(--dev-accent)' }} />
+          {/* Active Bugs */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(245,158,11,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Zap size={18} style={{ color: '#f59e0b' }} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 8 }}>
-                {baseBugs.length === 0 ? 'All clear!' : 'No matches'}
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: 340, lineHeight: 1.6 }}>
-                {baseBugs.length === 0
-                  ? 'No bugs have been assigned to you yet. You\'ll be notified when a QA assigns one.'
-                  : 'No bugs match your current filters. Try adjusting the status or priority.'}
-              </p>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{stats.active}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Tickets</div>
             </div>
-            {(statusFilter !== 'All' || priorityFilter !== 'All') && (
-              <button
-                className="btn btn-secondary"
-                onClick={() => { setStatusFilter('All'); setPriorityFilter('All'); }}
-                style={{ borderRadius: 10 }}
-              >
-                Clear Filters
-              </button>
-            )}
           </div>
-        ) : (
-          <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden' }}>
-            {/* Table Header */}
-            <div style={{
-              padding: '12px 20px', borderBottom: '1px solid var(--border)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              background: 'var(--bg-secondary)',
-            }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Showing <strong style={{ color: 'var(--text-primary)' }}>{filtered.length}</strong> of {baseBugs.length} bugs
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                <TrendingUp size={12} />
-                Sorted by newest
-              </div>
+
+          {/* Resolved Bugs */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(34,197,94,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle2 size={18} style={{ color: '#22c55e' }} />
             </div>
+            <div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{stats.resolved}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Resolved All-Time</div>
+            </div>
+          </div>
 
-            {/* Bug Rows */}
-            {filtered.map((bug, idx) => (
-              <div
-                key={bug.id}
-                className="dev-bug-row"
-                onClick={() => navigate(`/dev/bugs/${bug.id}`)}
-                style={{ borderBottom: idx === filtered.length - 1 ? 'none' : '1px solid var(--border)' }}
-              >
-                {/* Priority bar */}
-                <div style={{
-                  width: 4, height: 40, borderRadius: 4, flexShrink: 0,
-                  background: PRIORITY_COLOR[bug.priority] || '#94a3b8',
-                }} />
+          {/* Code Quality Rating */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(99,102,241,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Star size={18} style={{ color: '#6366f1' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{stats.qualityRate}%</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quality Rating</div>
+            </div>
+          </div>
 
-                {/* Title + Meta */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="dev-bug-title" style={{ marginBottom: 4 }}>{bug.title}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>
-                      #{(bug.bugKey || bug.id.slice(-6).toUpperCase())}
+          {/* Critical SLA */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(239,68,68,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertTriangle size={18} style={{ color: '#ef4444' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{stats.critical}</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Critical SLA</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dashboard 2-Column Content Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 24, alignItems: 'start' }}>
+          
+          {/* LEFT SIDE: Focus Mode + Projects breakdown */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            
+            {/* 🎯 Active Focus Task */}
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 20,
+              padding: 24,
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Highlight background glow */}
+              <div style={{
+                position: 'absolute', top: -40, right: -40, width: 140, height: 140,
+                background: 'radial-gradient(circle, var(--dev-accent-light) 0%, transparent 70%)',
+                opacity: 0.5, pointerEvents: 'none'
+              }} />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Zap size={15} style={{ color: 'var(--dev-accent)' }} />
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>
+                    Current Focus Priority
+                  </span>
+                </div>
+                {focusBug && (
+                  <span className={`priority-tag priority-${focusBug.priority.toLowerCase()}`} style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                    {focusBug.priority}
+                  </span>
+                )}
+              </div>
+
+              {loading ? (
+                <div className="skeleton" style={{ height: 110, borderRadius: 12 }} />
+              ) : focusBug ? (
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12, lineHeight: 1.4 }}>
+                    {focusBug.title}
+                  </h3>
+                  
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+                    <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: 4 }}>
+                      #{focusBug.bugKey || focusBug.id.slice(-6).toUpperCase()}
                     </span>
-                    {bug.projectName && (
-                      <>
-                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)', display: 'inline-block' }} />
-                        <span style={{ fontSize: '0.72rem', color: 'var(--dev-accent)', fontWeight: 600 }}>
-                          {bug.projectName}
-                        </span>
-                      </>
+                    {focusBug.projectName && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--dev-accent)', background: 'var(--dev-accent-light)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                        {focusBug.projectName}
+                      </span>
                     )}
-                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)', display: 'inline-block' }} />
+                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)' }} />
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      {timeAgo(bug)}
+                      Assigned {focusBug.createdAt?.seconds ? formatDistanceToNow(new Date(focusBug.createdAt.seconds * 1000), { addSuffix: true }) : 'Recently'}
                     </span>
-                    {bug.comments?.length > 0 && (
-                      <>
-                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)', display: 'inline-block' }} />
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>💬 {bug.comments.length}</span>
-                      </>
-                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => navigate(`/dev/bugs/${focusBug.id}`)}
+                      style={{ fontSize: '0.8rem', padding: '10px 18px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      Inspect Bug <ChevronRight size={14} />
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => navigate(`/dev/bugs`)}
+                      style={{ fontSize: '0.8rem', padding: '10px 18px', borderRadius: 10 }}
+                    >
+                      View All Board
+                    </button>
                   </div>
                 </div>
-
-                {/* Badges */}
-                <div className="dev-bug-meta">
-                  <span className={`badge ${statusClass[bug.status] || 'badge-open'}`}>{bug.status}</span>
-                  <span className={`badge ${priorityClass[bug.priority] || 'badge-medium'}`}>{bug.priority}</span>
-                  <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
+              ) : (
+                <div style={{ textAlign: 'center', padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--dev-accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CheckCircle2 size={24} style={{ color: 'var(--dev-accent)' }} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: 4 }}>All Caught Up! 🎉</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: 280, margin: '0 auto', lineHeight: 1.5 }}>
+                      No active tickets require your focus right now. Go enjoy your clean dashboard!
+                    </p>
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* 📂 My Assigned Projects Grid */}
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 20,
+              padding: 24,
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                <h3 style={{ fontSize: '0.95rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Folder size={16} style={{ color: 'var(--dev-accent)' }} /> My Active Projects
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                  Contributions
+                </span>
               </div>
-            ))}
+
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div className="skeleton" style={{ height: 50, borderRadius: 10 }} />
+                  <div className="skeleton" style={{ height: 50, borderRadius: 10 }} />
+                </div>
+              ) : projectBreakdown.length === 0 ? (
+                <div style={{ padding: '16px 0', textTransform: 'none', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  No projects with active assigned bugs found.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {projectBreakdown.map((proj) => (
+                    <div
+                      key={proj.name}
+                      onClick={() => navigate(`/dev/bugs?project=${encodeURIComponent(proj.name)}`)}
+                      style={{
+                        padding: '12px 16px', background: 'var(--bg-secondary)',
+                        borderRadius: 12, border: '1px solid var(--border)',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        cursor: 'pointer', transition: 'all 0.2s',
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--dev-accent)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateX(0px)'; }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--dev-accent)' }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{proj.name}</span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#f59e0b' }}>{proj.active}</strong> Active
+                        </span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#22c55e' }}>{proj.resolved}</strong> Resolved
+                        </span>
+                        <ArrowUpRight size={14} style={{ opacity: 0.4 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* RIGHT SIDE: Action Center + Recent comments timeline */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            
+            {/* ⚡ Quick Action Shortcuts */}
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 20,
+              padding: 24,
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: 16 }}>
+                ⚡ Workspace Actions
+              </h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/dev/notifications')}
+                  style={{ width: '100%', justifyContent: 'flex-start', padding: '12px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem' }}
+                >
+                  <Bell size={15} style={{ color: 'var(--dev-accent)' }} /> View My Alerts
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/dev/projects')}
+                  style={{ width: '100%', justifyContent: 'flex-start', padding: '12px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.82rem' }}
+                >
+                  <Folder size={15} style={{ color: 'var(--dev-accent)' }} /> All Project Directories
+                </button>
+              </div>
+            </div>
+
+            {/* 💬 Recent Activity Timeline */}
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 20,
+              padding: 24,
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Activity size={16} style={{ color: 'var(--dev-accent)' }} /> Collaborative Feed
+              </h3>
+
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="skeleton" style={{ height: 40, borderRadius: 8 }} />
+                  <div className="skeleton" style={{ height: 40, borderRadius: 8 }} />
+                </div>
+              ) : recentActivities.length === 0 ? (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  No recent comments on your bugs yet.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'relative' }}>
+                  {recentActivities.map((act) => (
+                    <div
+                      key={act.id}
+                      onClick={() => navigate(`/dev/bugs/${act.bugId}`)}
+                      style={{ display: 'flex', gap: 12, cursor: 'pointer', position: 'relative' }}
+                    >
+                      {/* Avatar / Icon wrapper */}
+                      <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <MessageSquare size={12} style={{ color: 'var(--dev-accent)' }} />
+                      </div>
+
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {act.author}
+                          </span>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                            {formatDistanceToNow(act.date, { addSuffix: true })}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          💬 "{act.text}"
+                        </p>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--dev-accent)', fontWeight: 600 }}>
+                          #{act.bugKey} · {act.bugTitle}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
     </>
   );

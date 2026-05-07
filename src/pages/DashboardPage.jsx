@@ -75,7 +75,7 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
   );
 }
 
-const STATUSES = ['All', 'Open', 'In Progress', 'Done', 'Resolved', 'Reopened'];
+const STATUSES = ['All', 'Open', 'In Progress', 'Done', 'Resolved', 'Reopen', 'Reproduced'];
 const PRIORITIES = ['All', 'Critical', 'High', 'Medium', 'Low'];
 
 export default function DashboardPage() {

@@ -40,6 +40,15 @@
   --info:           #3B82F6;
   --info-light:     rgba(59, 130, 246, 0.1);
 
+  /* Status Colours */
+  --status-open:       #3B82F6;
+  --status-inprogress: #F59E0B;
+  --status-done:       #10B981;
+  --status-resolved:   #8AAAD4;
+  --status-reopen:     #EF4444;
+  --status-reopened:   #EF4444;
+  --status-reproduced: #EC4899;
+
   /* Priority (SaaS friendly) */
   --priority-low:      #10B981;
   --priority-medium:   #F59E0B;
@@ -102,8 +111,8 @@ ul { list-style: none; }
 
 .page-container {
   flex: 1;
-  padding: 32px;
-  max-width: 1400px;
+  padding: 24px;
+  max-width: 1650px;
   width: 100%;
   margin: 0 auto;
 }
@@ -257,11 +266,13 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   text-transform: uppercase;
 }
 
-.badge-open       { background: rgba(37,99,235,0.10);  color: var(--status-open); border: 1px solid rgba(37,99,235,0.18); }
-.badge-inprogress { background: rgba(217,119,6,0.10);  color: var(--status-inprogress); border: 1px solid rgba(217,119,6,0.18); }
-.badge-done       { background: rgba(22,163,74,0.10);  color: var(--status-done); border: 1px solid rgba(22,163,74,0.18); }
+.badge-open       { background: rgba(59,130,246,0.10);  color: var(--status-open); border: 1px solid rgba(59,130,246,0.18); }
+.badge-inprogress { background: rgba(245,158,11,0.10);  color: var(--status-inprogress); border: 1px solid rgba(245,158,11,0.18); }
+.badge-done       { background: rgba(16,185,129,0.10);  color: var(--status-done); border: 1px solid rgba(16,185,129,0.18); }
 .badge-resolved   { background: rgba(138,170,212,0.12); color: var(--status-resolved); border: 1px solid rgba(138,170,212,0.20); }
+.badge-reopen     { background: rgba(239,68,68,0.10);  color: var(--status-reopen); border: 1px solid rgba(239,68,68,0.18); }
 .badge-reopened   { background: rgba(239,68,68,0.10);  color: var(--status-reopened); border: 1px solid rgba(239,68,68,0.18); }
+.badge-reproduced { background: rgba(236,72,153,0.10);  color: var(--status-reproduced); border: 1px solid rgba(236,72,153,0.18); }
 
 .badge-low      { background: rgba(22,163,74,0.10);  color: var(--priority-low); border: 1px solid rgba(22,163,74,0.18); }
 .badge-medium   { background: rgba(217,119,6,0.10);  color: var(--priority-medium); border: 1px solid rgba(217,119,6,0.18); }

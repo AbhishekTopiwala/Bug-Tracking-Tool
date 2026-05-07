@@ -1,4 +1,4 @@
-export const STATUSES = ['Open', 'In Progress', 'Done', 'Resolved', 'Reopened'];
+export const STATUSES = ['Open', 'In Progress', 'Done', 'Resolved', 'Reopen', 'Reproduced'];
 
 export const getValidStatusTransitions = (currentStatus, role) => {
   if (role === 'Developer') {
@@ -6,9 +6,12 @@ export const getValidStatusTransitions = (currentStatus, role) => {
       case 'Open': 
         return ['Open', 'In Progress'];
       case 'In Progress': 
-        return ['In Progress', 'Done', 'Open'];
+        return ['In Progress', 'Done'];
+      case 'Reopen':
       case 'Reopened':
-        return ['Reopened', 'In Progress'];
+        return ['Reopen', 'In Progress'];
+      case 'Reproduced':
+        return ['Reproduced', 'In Progress'];
       case 'Done':
       case 'Resolved':
       default:
@@ -18,17 +21,21 @@ export const getValidStatusTransitions = (currentStatus, role) => {
     // QA or Admin role
     switch (currentStatus) {
       case 'Open': 
-        return ['Open', 'In Progress', 'Done', 'Resolved'];
+        return ['Open', 'In Progress'];
       case 'In Progress': 
-        return ['In Progress', 'Done', 'Open'];
+        return ['In Progress']; // QA cannot touch in progress bugs
       case 'Done': 
-        return ['Done', 'Resolved', 'Reopened'];
+        return ['Done', 'Resolved', 'Reopen'];
       case 'Resolved': 
-        return ['Resolved', 'Reopened'];
-      case 'Reopened': 
-        return ['Reopened', 'In Progress', 'Done', 'Resolved'];
+        return ['Resolved', 'Reproduced'];
+      case 'Reopen': 
+      case 'Reopened':
+        return ['Reopen']; // QA cannot change directly; Developer must move to In Progress
+      case 'Reproduced':
+        return ['Reproduced']; // Developer must move to In Progress
       default:
         return [currentStatus];
     }
   }
 };
+

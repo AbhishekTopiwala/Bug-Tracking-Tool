@@ -1,9 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Code2, ListTodo, Bell, Settings, LogOut, CheckCircle2, Folder } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Bell, Settings, LogOut, CheckCircle2, Folder } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const devNavItems = [
-  { to: '/dev', icon: ListTodo, label: 'My Bugs', exact: true },
+  { to: '/dev', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+  { to: '/dev/bugs', icon: ListTodo, label: 'My Board' },
   { to: '/dev/projects', icon: Folder, label: 'Projects' },
   { to: '/dev/notifications', icon: Bell, label: 'Notifications' },
   { to: '/dev/settings', icon: Settings, label: 'Settings' },

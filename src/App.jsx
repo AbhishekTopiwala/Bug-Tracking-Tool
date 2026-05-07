@@ -32,6 +32,7 @@ import ProjectsPage from './pages/ProjectsPage';
 
 // Developer Portal pages
 import DevDashboardPage from './pages/dev/DevDashboardPage';
+import DevBugsBoardPage from './pages/dev/DevBugsBoardPage';
 import DevBugDetailPage from './pages/dev/DevBugDetailPage';
 
 // ── Root redirect based on role ──────────────────────────────────────────────
@@ -98,6 +99,7 @@ function DevPortal() {
       <div className="main-content">
         <Routes>
           <Route index element={<DevDashboardPage />} />
+          <Route path="bugs" element={<DevBugsBoardPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="bugs/new" element={<BugFormPage />} />
           <Route path="bugs/:id" element={<DevBugDetailPage />} />

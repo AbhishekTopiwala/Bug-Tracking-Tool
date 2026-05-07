@@ -313,14 +313,14 @@ export default function BugFormPage() {
         await createNotification({
           userId: form.assigneeId,
           bugId: finalBugId,
-          message: `<strong>${currentUser.displayName}</strong> assigned you a new bug: <strong>${form.title}</strong>`,
+          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> assigned you a new bug: <strong>${form.title}</strong>`,
           type: 'assignment',
         });
       } else if (isEditing && form.assigneeId && form.assigneeId !== originalAssigneeId) {
         await createNotification({
           userId: form.assigneeId,
           bugId: finalBugId,
-          message: `<strong>${currentUser.displayName}</strong> assigned a bug to you: <strong>${form.title}</strong>`,
+          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> assigned a bug to you: <strong>${form.title}</strong>`,
           type: 'assignment',
         });
       }

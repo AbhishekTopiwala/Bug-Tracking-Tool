@@ -67,16 +67,18 @@ export default function Topbar({ title, onSearch }) {
 
       <div className="topbar-actions">
         {/* Quick create */}
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => {
-            const path = userProfile?.role === 'Developer' ? '/dev/bugs/new' : '/qa/bugs/new';
-            navigate(path);
-          }}
-        >
-          <Plus size={14} />
-          New Bug
-        </button>
+        {userProfile?.role !== 'Developer' && (
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              const path = userProfile?.role === 'Developer' ? '/dev/bugs/new' : '/qa/bugs/new';
+              navigate(path);
+            }}
+          >
+            <Plus size={14} />
+            New Bug
+          </button>
+        )}
 
         {/* Notifications */}
         <div style={{ position: 'relative' }} ref={notifRef}>

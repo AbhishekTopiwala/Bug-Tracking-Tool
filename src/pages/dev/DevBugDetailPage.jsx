@@ -18,6 +18,16 @@ const STATUS_FLOW = [
   { key: 'Done',        label: 'Done',         color: '#22c55e', bg: 'rgba(34,197,94,0.1)',  border: 'rgba(34,197,94,0.3)'  },
 ];
 
+const STATUS_STYLES = {
+  Open:         { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)',  border: 'rgba(59,130,246,0.3)'  },
+  'In Progress': { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)' },
+  Done:         { color: '#10b981', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)'  },
+  Resolved:     { color: '#10b981', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.3)'  },
+  Reopen:       { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.3)'   },
+  Reopened:     { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   border: 'rgba(239,68,68,0.3)'   },
+  Reproduced:   { color: '#ec4899', bg: 'rgba(236,72,153,0.1)',  border: 'rgba(236,72,153,0.3)'  },
+};
+
 const PRIORITY_COLOR = {
   Critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.2)' },
   High:     { color: '#f97316', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.2)' },
@@ -58,11 +68,12 @@ export default function DevBugDetailPage() {
       if (bug.reportedBy && bug.reportedBy !== currentUser.uid) {
         await createNotification({
           userId: bug.reportedBy, bugId: id,
-          message: `<strong>${currentUser.displayName}</strong> changed <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
+          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'Developer'}</strong> changed <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
           type: 'status_change',
         });
       }
-    } catch {
+    } catch (err) {
+      console.error("Error changing bug status (dev):", err);
       toast.error('Failed to update status');
     } finally {
       setUpdatingStatus(null);
@@ -77,7 +88,7 @@ export default function DevBugDetailPage() {
       await addComment(id, {
         text: comment.trim(),
         authorId: currentUser.uid,
-        authorName: currentUser.displayName || userProfile?.displayName,
+        authorName: userProfile?.displayName || currentUser?.displayName || 'Developer',
         authorAvatar: userProfile?.avatar,
         role: 'Developer',
       });
@@ -88,11 +99,12 @@ export default function DevBugDetailPage() {
       if (bug.reportedBy && bug.reportedBy !== currentUser.uid) {
         await createNotification({
           userId: bug.reportedBy, bugId: id,
-          message: `<strong>${currentUser.displayName}</strong> commented on <strong>${bug.title}</strong>`,
+          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'Developer'}</strong> commented on <strong>${bug.title}</strong>`,
           type: 'comment',
         });
       }
-    } catch {
+    } catch (err) {
+      console.error("Error adding comment (dev):", err);
       toast.error('Failed to add comment');
     } finally {
       setSubmitting(false);
@@ -114,6 +126,18 @@ export default function DevBugDetailPage() {
 
   const validTransitions = getValidStatusTransitions(bug.status, 'Developer');
   const pColor = PRIORITY_COLOR[bug.priority] || PRIORITY_COLOR.Medium;
+
+  const flowItems = [...STATUS_FLOW];
+  if (!STATUS_FLOW.some(s => s.key === bug.status)) {
+    const style = STATUS_STYLES[bug.status] || { color: 'var(--text-primary)', bg: 'var(--bg-secondary)', border: 'var(--border)' };
+    flowItems.unshift({
+      key: bug.status,
+      label: bug.status,
+      color: style.color,
+      bg: style.bg,
+      border: style.border
+    });
+  }
 
   return (
     <>
@@ -205,7 +229,7 @@ export default function DevBugDetailPage() {
                 <Zap size={12} style={{ color: 'var(--dev-accent)' }} /> Update Status
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {STATUS_FLOW.map((s, i) => {
+                {flowItems.map((s, i) => {
                   const isCurrent = bug.status === s.key;
                   const isValid = validTransitions.includes(s.key);
                   const isUpdating = updatingStatus === s.key;
@@ -236,7 +260,7 @@ export default function DevBugDetailPage() {
                         ) : null}
                         {s.label}
                       </button>
-                      {i < STATUS_FLOW.length - 1 && (
+                      {i < flowItems.length - 1 && (
                         <ChevronRight size={16} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
                       )}
                     </div>
@@ -413,18 +437,9 @@ export default function DevBugDetailPage() {
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '8px 16px', borderRadius: 10,
-                background: (() => {
-                  const s = STATUS_FLOW.find(s => s.key === bug.status);
-                  return s ? s.bg : 'var(--bg-secondary)';
-                })(),
-                border: `1px solid ${(() => {
-                  const s = STATUS_FLOW.find(s => s.key === bug.status);
-                  return s ? s.border : 'var(--border)';
-                })()}`,
-                color: (() => {
-                  const s = STATUS_FLOW.find(s => s.key === bug.status);
-                  return s ? s.color : 'var(--text-primary)';
-                })(),
+                background: STATUS_STYLES[bug.status]?.bg || 'var(--bg-secondary)',
+                border: `1px solid ${STATUS_STYLES[bug.status]?.border || 'var(--border)'}`,
+                color: STATUS_STYLES[bug.status]?.color || 'var(--text-primary)',
                 fontWeight: 700, fontSize: '0.875rem',
               }}>
                 <CheckCircle2 size={14} />

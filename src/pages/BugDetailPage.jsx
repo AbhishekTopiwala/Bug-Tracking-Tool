@@ -22,7 +22,15 @@ const cld = new Cloudinary({ cloud: { cloudName: 'dhtotljvn' } });
 
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
-const statusClass = { Open: 'badge-open', 'In Progress': 'badge-inprogress', Done: 'badge-done', Resolved: 'badge-resolved', Reopened: 'badge-reopened' };
+const statusClass = { 
+  Open: 'badge-open', 
+  'In Progress': 'badge-inprogress', 
+  Done: 'badge-done', 
+  Resolved: 'badge-resolved', 
+  Reopened: 'badge-reopened', 
+  Reopen: 'badge-reopen', 
+  Reproduced: 'badge-reproduced' 
+};
 const priorityClass = { Low: 'badge-low', Medium: 'badge-medium', High: 'badge-high', Critical: 'badge-critical' };
 
 export default function BugDetailPage() {
@@ -66,7 +74,7 @@ export default function BugDetailPage() {
         await createNotification({
           userId: bug.reportedBy,
           bugId: id,
-          message: `<strong>${currentUser.displayName}</strong> changed the status of <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
+          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> changed the status of <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
           type: 'status_change',
         });
       }
@@ -76,11 +84,12 @@ export default function BugDetailPage() {
         await createNotification({
           userId: bug.assigneeId,
           bugId: id,
-          message: `<strong>${currentUser.displayName}</strong> changed the status of <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
+          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> changed the status of <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
           type: 'status_change',
         });
       }
-    } catch {
+    } catch (err) {
+      console.error("Error changing bug status:", err);
       toast.error('Failed to update status');
     }
   };
@@ -91,7 +100,8 @@ export default function BugDetailPage() {
       await deleteBug(id);
       toast.success('Bug deleted');
       navigate('/qa/bugs');
-    } catch {
+    } catch (err) {
+      console.error("Error deleting bug:", err);
       toast.error('Failed to delete bug');
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -106,7 +116,7 @@ export default function BugDetailPage() {
       await addComment(id, {
         text: comment.trim(),
         authorId: currentUser.uid,
-        authorName: currentUser.displayName || userProfile?.displayName,
+        authorName: userProfile?.displayName || currentUser?.displayName || 'QA',
         authorAvatar: userProfile?.avatar,
         role: userProfile?.role || 'QA',
       });
@@ -125,11 +135,12 @@ export default function BugDetailPage() {
         await createNotification({
           userId: notifyId,
           bugId: id,
-          message: `<strong>${currentUser.displayName}</strong> commented on <strong>${bug.title}</strong>`,
+          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> commented on <strong>${bug.title}</strong>`,
           type: 'comment',
         });
       }
     } catch (err) {
+      console.error("Error adding comment:", err);
       toast.error('Failed to add comment');
     } finally {
       setSubmitting(false);
