@@ -17,6 +17,7 @@ import RoleRoute from './components/RoleRoute';
 // Auth pages
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import CloudinaryDemo from './pages/CloudinaryDemo';
 
 // QA Portal pages
 import DashboardPage from './pages/DashboardPage';
@@ -98,6 +99,7 @@ function DevPortal() {
         <Routes>
           <Route index element={<DevDashboardPage />} />
           <Route path="projects" element={<ProjectsPage />} />
+          <Route path="bugs/new" element={<BugFormPage />} />
           <Route path="bugs/:id" element={<DevBugDetailPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
@@ -118,6 +120,7 @@ function AppLayout() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/cloudinary-demo" element={<CloudinaryDemo />} />
       </Routes>
     );
   }
@@ -157,6 +160,7 @@ function AppLayout() {
       <Route path="/test-cases" element={<Navigate to="/qa/test-cases" replace />} />
       <Route path="/notifications" element={<Navigate to="/qa/notifications" replace />} />
       <Route path="/settings" element={<Navigate to="/qa/settings" replace />} />
+      <Route path="/cloudinary-demo" element={<CloudinaryDemo />} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

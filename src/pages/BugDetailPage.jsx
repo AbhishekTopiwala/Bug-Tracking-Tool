@@ -13,6 +13,12 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { getValidStatusTransitions } from '../utils/statusRules';
 import toast from 'react-hot-toast';
+import { Cloudinary } from '@cloudinary/url-gen';
+import { auto } from '@cloudinary/url-gen/actions/resize';
+import { autoGravity } from '@cloudinary/url-gen/qualifiers/gravity';
+import { AdvancedImage } from '@cloudinary/react';
+
+const cld = new Cloudinary({ cloud: { cloudName: 'dhtotljvn' } });
 
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
@@ -30,6 +36,8 @@ export default function BugDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [editingStatus, setEditingStatus] = useState(false);
   const [lightbox, setLightbox] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -78,13 +86,15 @@ export default function BugDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this bug?')) return;
+    setDeleting(true);
     try {
       await deleteBug(id);
       toast.success('Bug deleted');
       navigate('/qa/bugs');
     } catch {
       toast.error('Failed to delete bug');
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -148,6 +158,90 @@ export default function BugDetailPage() {
   return (
     <>
       <Topbar title="Bug Details" />
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => !deleting && setShowDeleteConfirm(false)}>
+          <div
+            className="modal"
+            style={{ maxWidth: 400, borderRadius: 20, overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header — centered */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              padding: '32px 32px 20px', gap: 14, background: 'var(--bg-card)',
+              borderBottom: '1px solid var(--border)',
+            }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 16,
+                background: 'linear-gradient(135deg, #fee2e2, #fecaca)',
+                border: '1px solid rgba(239,68,68,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(239,68,68,0.15)',
+              }}>
+                <Trash2 size={22} style={{ color: '#dc2626' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                  Delete Bug
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
+                  This action is <strong style={{ color: 'var(--danger)' }}>permanent</strong> and cannot be undone
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '20px 28px', background: 'var(--bg-secondary)' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.7, textAlign: 'center' }}>
+                You're about to delete{' '}
+                <span style={{
+                  fontWeight: 700, color: '#dc2626',
+                  background: 'rgba(220,38,38,0.08)', padding: '1px 8px',
+                  borderRadius: 6, fontSize: '0.85rem',
+                }}>
+                  #{bug.bugKey || bug.id?.slice(-6).toUpperCase()}
+                </span>
+                . All comments and attachments will be permanently removed.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              display: 'flex', gap: 10, padding: '16px 24px',
+              background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)',
+            }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                style={{ flex: 1, borderRadius: 10, fontWeight: 600, justifyContent: 'center' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{
+                  flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  gap: 8, padding: '10px 20px', borderRadius: 10,
+                  background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: '0.875rem',
+                  border: 'none', cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.7 : 1,
+                  boxShadow: '0 4px 14px rgba(220,38,38,0.3)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {deleting
+                  ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} /> Deleting...</>
+                  : <><Trash2 size={14} /> Delete Bug</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lightbox */}
       {lightbox && (
         <div
@@ -184,7 +278,7 @@ export default function BugDetailPage() {
             {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
               <button 
                 className="btn btn-danger" 
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 style={{ borderRadius: 12, padding: '10px 24px', fontWeight: 600, gap: 8 }}
               >
                 <Trash2 size={16} /> Delete
@@ -279,7 +373,14 @@ export default function BugDetailPage() {
                   {bug.attachments.map((att, i) => (
                     <div key={i} className="attachment-item" onClick={() => setLightbox(att)}>
                       {att.type?.startsWith('image/') ? (
-                        <img src={att.url} alt={att.name} />
+                        att.publicId ? (
+                          <AdvancedImage 
+                            cldImg={cld.image(att.publicId).format('auto').quality('auto').resize(auto().gravity(autoGravity()).width(300).height(300))} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <img src={att.url} alt={att.name} />
+                        )
                       ) : att.type?.startsWith('video/') ? (
                         <div style={{ position: 'relative', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Play size={24} style={{ color: '#fff' }} />

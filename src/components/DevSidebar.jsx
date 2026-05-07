@@ -21,13 +21,13 @@ export default function DevSidebar({ unreadCount = 0 }) {
   return (
     <aside className="dev-sidebar">
       {/* Logo */}
-      <div className="sidebar-logo" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="sidebar-logo">
         <div className="dev-logo-icon">
-          <Code2 size={18} color="#fff" />
+          <img src="/Qapture.png" alt="Qapture" />
         </div>
         <div className="logo-text">
-          <span className="logo-name">BugTrack AI</span>
-          <span className="logo-tagline" style={{ color: 'var(--dev-accent)' }}>Developer Portal</span>
+          <span className="logo-name">Qapture</span>
+          <span className="logo-tagline">Developer Portal</span>
         </div>
       </div>
 
@@ -50,25 +50,7 @@ export default function DevSidebar({ unreadCount = 0 }) {
           </NavLink>
         ))}
 
-        {/* Quick Status Guide */}
-        <div style={{ margin: '20px 8px 8px', padding: '12px', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-          <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-            Workflow
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {[
-              { label: 'Open', color: 'var(--status-open)' },
-              { label: 'In Progress', color: 'var(--status-inprogress)' },
-              { label: 'Done', color: 'var(--status-done)' },
-            ].map(({ label, color }, i) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                {label}
-                {i < 2 && <span style={{ color: 'var(--text-muted)', marginLeft: 'auto', fontSize: '0.65rem' }}>→</span>}
-              </div>
-            ))}
-          </div>
-        </div>
+
       </nav>
 
       {/* User Footer */}

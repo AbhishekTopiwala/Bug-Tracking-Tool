@@ -27,13 +27,14 @@ export default function Sidebar({ unreadCount = 0 }) {
       {/* Logo */}
       <NavLink to="/qa" className="sidebar-logo">
         <div className="logo-icon">
-          <Bug size={18} color="#fff" />
+          <img src="/Qapture.png" alt="Qapture" />
         </div>
         <div className="logo-text">
-          <span className="logo-name">BugTrack AI</span>
-          <span className="logo-tagline">QA Intelligence Platform</span>
+          <span className="logo-name">Qapture</span>
+          <span className="logo-tagline">Capture Bugs Smarter</span>
         </div>
       </NavLink>
+
 
       {/* Navigation */}
       <nav className="sidebar-nav">

@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import Topbar from '../components/Topbar';
 import { generateBugFromNote } from '../services/geminiService';
-import { createBug, updateBug, getBug, getUsers, uploadAttachment, addAttachmentToBug, createNotification, getProjects } from '../services/firestoreService';
+import { createBug, updateBug, getBug, getUsers, addAttachmentToBug, createNotification, getProjects } from '../services/firestoreService';
+import { uploadToCloudinary } from '../services/cloudinaryService';
 import { useAuth } from '../contexts/AuthContext';
 import { getValidStatusTransitions } from '../utils/statusRules';
 import toast from 'react-hot-toast';
@@ -89,7 +90,8 @@ export default function BugFormPage() {
         setInitialLoading(false);
       }).catch(() => {
         toast.error('Failed to load bug for editing');
-        navigate('/qa/bugs');
+        const fallbackPath = userProfile?.role === 'Developer' ? '/dev' : '/qa/bugs';
+        navigate(fallbackPath);
       });
     }
   }, [id, isEditing, navigate]);
@@ -290,11 +292,18 @@ export default function BugFormPage() {
         finalBugId = await createBug(bugData);
       }
 
-      // Upload attachments in parallel for better performance
+      // Upload attachments in parallel for better performance using Cloudinary
       if (files.length > 0) {
         const uploadPromises = files.map(async (file) => {
-          const att = await uploadAttachment(finalBugId, file);
-          return addAttachmentToBug(finalBugId, att);
+          try {
+            const att = await uploadToCloudinary(file);
+            return addAttachmentToBug(finalBugId, att);
+          } catch (err) {
+            console.error("Cloudinary Upload Error:", err);
+            // Fallback: if Cloudinary fails, it's better to tell the user but not crash the whole process
+            toast.error(`Failed to upload ${file.name}: ${err.message}`);
+            return null;
+          }
         });
         await Promise.all(uploadPromises);
       }
@@ -318,7 +327,12 @@ export default function BugFormPage() {
 
       if (!isEditing) localStorage.removeItem(DRAFT_KEY);
       toast.success(isEditing ? 'Bug updated successfully! 🐛' : 'Bug reported successfully! 🐛');
-      navigate(`/qa/bugs/${finalBugId}`);
+      
+      const detailPath = userProfile?.role === 'Developer' 
+        ? `/dev/bugs/${finalBugId}` 
+        : `/qa/bugs/${finalBugId}`;
+      
+      navigate(detailPath);
     } catch (err) {
       console.error(err);
       toast.error(`Failed to ${isEditing ? 'update' : 'create'} bug: ` + err.message);

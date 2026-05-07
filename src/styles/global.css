@@ -7,67 +7,60 @@
 
 /* ── CSS Variables ─────────────────────────────────────────────────────────── */
 :root {
-  /* Backgrounds — soft periwinkle blues */
-  --bg-primary:     #EDF2FB;
-  --bg-secondary:   #E2EAFC;
+  /* Backgrounds — clean SaaS palette */
+  --bg-primary:     #F5F7FB;
+  --bg-secondary:   #EEF2FF;
   --bg-card:        #FFFFFF;
-  --bg-card-hover:  #F5F8FF;
-  --bg-glass:       rgba(255, 255, 255, 0.85);
+  --bg-card-hover:  #F9FBFF;
+  --bg-glass:       rgba(255, 255, 255, 0.9);
 
   /* Borders */
-  --border:         #D7E3FC;
-  --border-hover:   #B6CCFE;
-  --border-focus:   #7B9EF8;
+  --border:         #E2E8F0;
+  --border-hover:   #CBD5E1;
+  --border-focus:   #5B6CFF;
 
-  /* Text — deep navy for legibility on light bg */
-  --text-primary:   #1e2a4a;
-  --text-secondary: #4a6091;
-  --text-muted:     #8aaad4;
+  /* Text — slate palette for modern look */
+  --text-primary:   #1E293B;
+  --text-secondary: #64748B;
+  --text-muted:     #94A3B8;
 
-  /* Accent — rich indigo/periwinkle */
-  --accent:         #4361EE;
-  --accent-hover:   #3451D1;
-  --accent-glow:    rgba(67, 97, 238, 0.20);
-  --accent-light:   #E2EAFC;
+  /* Accent — primary SaaS purple-blue */
+  --accent:         #5B6CFF;
+  --accent-hover:   #4A5AE6;
+  --accent-glow:    rgba(91, 108, 255, 0.15);
+  --accent-light:   #E0E7FF;
 
   /* Semantic colours */
-  --success:        #16a34a;
-  --success-light:  rgba(22, 163, 74, 0.10);
-  --warning:        #d97706;
-  --warning-light:  rgba(217, 119, 6, 0.10);
-  --danger:         #dc2626;
-  --danger-light:   rgba(220, 38, 38, 0.10);
-  --info:           #2563eb;
-  --info-light:     rgba(37, 99, 235, 0.10);
+  --success:        #10B981;
+  --success-light:  rgba(16, 185, 129, 0.1);
+  --warning:        #F59E0B;
+  --warning-light:  rgba(245, 158, 11, 0.1);
+  --danger:         #EF4444;
+  --danger-light:   rgba(239, 68, 68, 0.1);
+  --info:           #3B82F6;
+  --info-light:     rgba(59, 130, 246, 0.1);
 
-  /* Priority */
-  --priority-low:      #16a34a;
-  --priority-medium:   #d97706;
-  --priority-high:     #dc2626;
-  --priority-critical: #7c3aed;
-
-  /* Status */
-  --status-open:       #2563eb;
-  --status-inprogress: #d97706;
-  --status-done:       #16a34a;
-  --status-resolved:   #6b7280;
-  --status-reopened:   #ef4444;
+  /* Priority (SaaS friendly) */
+  --priority-low:      #10B981;
+  --priority-medium:   #F59E0B;
+  --priority-high:     #EF4444;
+  --priority-critical: #8B5CF6;
 
   /* Layout */
-  --sidebar-width: 260px;
+  --sidebar-width: 240px;
   --radius:        12px;
   --radius-sm:     8px;
   --radius-lg:     16px;
-  --radius-xl:     20px;
+  --radius-xl:     24px;
 
-  /* Shadows — subtle, on light bg */
-  --shadow-sm:   0 1px 3px rgba(67, 97, 238, 0.08), 0 1px 2px rgba(30, 42, 74, 0.06);
-  --shadow:      0 4px 20px rgba(67, 97, 238, 0.10), 0 2px 8px rgba(30, 42, 74, 0.06);
-  --shadow-lg:   0 20px 60px rgba(67, 97, 238, 0.12), 0 8px 24px rgba(30, 42, 74, 0.08);
-  --shadow-glow: 0 0 32px rgba(67, 97, 238, 0.18);
+  /* Shadows — soft SaaS shadows */
+  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow:      0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg:   0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 20px rgba(91, 108, 255, 0.1);
 
   --transition:      0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
@@ -122,7 +115,7 @@ h3 { font-size: 1.125rem; font-weight: 600; }
 h4 { font-size: 0.95rem;  font-weight: 600; }
 
 .text-gradient {
-  background: linear-gradient(135deg, #4361EE, #7B9EF8, #ABC4FF);
+  background: linear-gradient(135deg, var(--accent), #7B9EF8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

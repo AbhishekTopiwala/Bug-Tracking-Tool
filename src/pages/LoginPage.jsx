@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bug, Eye, EyeOff, Loader2, Code2 } from 'lucide-react';
+import { Bug, Eye, EyeOff, Loader2, Code2, Sparkles, CheckCircle2, Mail, Lock, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -9,7 +9,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, fetchUserProfile, currentUser } = useAuth();
+  const [selectedRole, setSelectedRole] = useState('qa'); // 'qa' or 'dev'
+  const [rememberMe, setRememberMe] = useState(false);
+
+  const { login, fetchUserProfile } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -36,97 +39,140 @@ export default function LoginPage() {
     }
   }
 
+  const isDev = selectedRole === 'dev';
+
   return (
     <div className="auth-page">
-      <div className="auth-bg" />
-      <div className="auth-card">
-        {/* Logo */}
-        <div className="auth-logo">
-          <div className="logo-icon" style={{ width: 44, height: 44, borderRadius: 12 }}>
-            <Bug size={22} color="#fff" />
+      <div className="auth-container">
+        {/* Left Branding Section */}
+        <div className="auth-left">
+        <div className="auth-brand-header">
+          <div className="auth-logo-container">
+            <img src="/Qapture.png" alt="Qapture" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>BugTrack AI</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>QA Intelligence Platform</div>
-          </div>
-        </div>
-
-        <h1 className="auth-title">Welcome back</h1>
-        <p className="auth-subtitle">Sign in — you'll be redirected to your portal automatically</p>
-
-        {/* Role hint cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
-          <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--accent-light)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-              <Bug size={13} style={{ color: 'var(--accent)' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)' }}>QA Portal</span>
-            </div>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Create & track bugs, use AI tools</p>
-          </div>
-          <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16,185,129,0.2)', background: 'var(--dev-accent-light)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-              <Code2 size={13} style={{ color: 'var(--dev-accent)' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--dev-accent)' }}>Dev Portal</span>
-            </div>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>View assigned bugs, fix & update status</p>
+          <div className="auth-brand-text">
+            <div className="auth-brand-name">Qapture</div>
+            <div className="auth-brand-tagline">Capture Bugs Smarter</div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input
-              id="login-email"
-              type="email"
-              className="form-control"
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
-          </div>
+        <h2 className="auth-marketing-title">Modern bug tracking for QA teams and Developers</h2>
+        <p className="auth-marketing-subtitle">Create, assign and resolve bugs faster with AI powered workflows.</p>
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <div style={{ position: 'relative' }}>
+        <div className="auth-features">
+          <div className="auth-feature-item">
+            <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Sparkles size={16} /></div>
+            <div className="auth-feature-text">
+              <span className="auth-feature-title">AI Bug Generator</span>
+              <span className="auth-feature-desc">Automatically generate titles and steps</span>
+            </div>
+          </div>
+          <div className="auth-feature-item">
+            <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Bug size={16} /></div>
+            <div className="auth-feature-text">
+              <span className="auth-feature-title">Smart QA Workflow</span>
+              <span className="auth-feature-desc">Assign and track bugs efficiently</span>
+            </div>
+          </div>
+          <div className="auth-feature-item">
+            <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Code2 size={16} /></div>
+            <div className="auth-feature-text">
+              <span className="auth-feature-title">Developer Collaboration</span>
+              <span className="auth-feature-desc">Seamlessly integrate with dev tools</span>
+            </div>
+          </div>
+          <div className="auth-feature-item">
+            <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><CheckCircle2 size={16} /></div>
+            <div className="auth-feature-text">
+              <span className="auth-feature-title">Screenshot & Video Uploads</span>
+              <span className="auth-feature-desc">Attach visual proofs instantly</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Right Auth Section */}
+      <div className="auth-right">
+        <div className="auth-card">
+          <h1 className="auth-title">Welcome back</h1>
+          <p className="auth-subtitle">Sign in to your Qapture account to continue</p>
+
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Email Address</label>
+              <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                <Mail size={18} className="auth-input-icon" />
+                <input
+                  id="login-email"
+                  type="email"
+                  className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="form-label" style={{ margin: 0, fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Password</label>
+                <a href="#" className={isDev ? 'dev-link' : ''} style={{ margin: 0, textDecoration: 'none', color: isDev ? 'var(--dev-accent)' : 'var(--accent)', fontWeight: 500, fontSize: '0.85rem' }}>Forgot password?</a>
+              </div>
+              <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                <Lock size={18} className="auth-input-icon" />
+                <input
+                  id="login-password"
+                  type={showPass ? 'text' : 'password'}
+                  className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  style={{ paddingRight: 48 }}
+                />
+                <button
+                  type="button"
+                  className="btn-icon"
+                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                  onClick={() => setShowPass((v) => !v)}
+                >
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
-                id="login-password"
-                type={showPass ? 'text' : 'password'}
-                className="form-control"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                style={{ paddingRight: 48 }}
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: isDev ? 'var(--dev-accent)' : 'var(--accent)', cursor: 'pointer' }}
               />
-              <button
-                type="button"
-                className="btn-icon"
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}
-                onClick={() => setShowPass((v) => !v)}
-              >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+              <label htmlFor="rememberMe" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>Remember me for 30 days</label>
             </div>
+
+            <button
+              id="login-submit"
+              type="submit"
+              className={`auth-btn ${isDev ? 'dev-btn' : ''}`}
+              disabled={loading}
+            >
+              {loading ? <Loader2 size={18} className="spin" /> : null}
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <div className="auth-footer">
+            Don't have an account?{' '}
+            <Link to="/signup" className={isDev ? 'dev-link' : ''}>
+              Create account
+            </Link>
           </div>
-
-          <button
-            id="login-submit"
-            type="submit"
-            className="btn btn-primary btn-lg"
-            disabled={loading}
-            style={{ width: '100%', justifyContent: 'center' }}
-          >
-            {loading ? <Loader2 size={18} className="spin" /> : null}
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          Don't have an account?{' '}
-          <Link to="/signup" style={{ color: 'var(--accent)', fontWeight: 600 }}>
-            Create account
-          </Link>
+        </div>
         </div>
       </div>
     </div>

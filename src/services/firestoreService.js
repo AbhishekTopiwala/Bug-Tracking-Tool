@@ -15,8 +15,9 @@ import {
   writeBatch,
   limit,
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
+import { uploadToCloudinary } from './cloudinaryService';
 
 // ── BUGS ──────────────────────────────────────────────────────────────────────
 
@@ -128,28 +129,14 @@ export async function getAllDevelopers() {
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
 
-export async function uploadAttachment(bugId, file) {
-  if (!storage) throw new Error('Firebase Storage is not initialized. Check your configuration.');
-  
-  // Sanitize filename
-  const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-  const fileRef = ref(storage, `bugs/${bugId}/${Date.now()}_${safeName}`);
-  
-  // Use uploadBytesResumable for better reliability with larger files (videos)
-  const uploadTask = uploadBytesResumable(fileRef, file);
-  
-  return new Promise((resolve, reject) => {
-    uploadTask.on(
-      'state_changed',
-      null, // Handle progress if needed in future
-      (error) => reject(error),
-      async () => {
-        const url = await getDownloadURL(uploadTask.snapshot.ref);
-        resolve({ url, name: file.name, type: file.type, path: fileRef.fullPath });
-      }
-    );
-  });
-}
+export const uploadAttachment = async (bugId, file) => {
+  try {
+    return await uploadToCloudinary(file);
+  } catch (error) {
+    console.error("Cloudinary Upload Error via uploadAttachment:", error);
+    throw error;
+  }
+};
 
 export async function addAttachmentToBug(bugId, attachment) {
   const bugRef = doc(db, 'bugs', bugId);

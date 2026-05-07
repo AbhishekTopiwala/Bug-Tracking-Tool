@@ -16,6 +16,8 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   const isDeveloper = userProfile?.role === 'Developer';
@@ -66,16 +68,18 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleDelete = async (e, id) => {
-    e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this project? Existing bugs will remain but their link to this project will be removed.')) return;
-
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteProject(id);
+      await deleteProject(deleteTarget.id);
       toast.success('Project deleted');
+      setDeleteTarget(null);
       fetchProjects();
     } catch (error) {
       toast.error('Failed to delete project');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -236,7 +240,7 @@ export default function ProjectsPage() {
                         </div>
                         {!isDeveloper && (
                           <button 
-                            onClick={(e) => handleDelete(e, project.id)}
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: project.id, name: project.name }); }}
                             style={{ padding: 6, borderRadius: 6, background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', transition: 'color 0.2s' }}
                             onMouseOver={(e) => e.currentTarget.style.color = 'var(--danger)'}
                             onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
@@ -302,10 +306,11 @@ export default function ProjectsPage() {
                            {!isDeveloper && (
                             <button 
                               className="btn btn-primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate('/qa/bugs/new', { state: { prefilled: { projectId: project.id, projectName: project.name } } });
-                              }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const path = userProfile?.role === 'Developer' ? '/dev/bugs/new' : '/qa/bugs/new';
+                                  navigate(path, { state: { prefilled: { projectId: project.id, projectName: project.name } } });
+                                }}
                               style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: 6, gap: 4, height: 'auto', fontWeight: 600 }}
                             >
                               <Plus size={14} /> Bug
@@ -320,6 +325,90 @@ export default function ProjectsPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Delete Project Confirmation Modal */}
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={() => !deleting && setDeleteTarget(null)}>
+          <div
+            className="modal"
+            style={{ maxWidth: 420, borderRadius: 20, overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              padding: '32px 32px 20px', gap: 14, background: 'var(--bg-card)',
+              borderBottom: '1px solid var(--border)',
+            }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 16,
+                background: 'linear-gradient(135deg, #fee2e2, #fecaca)',
+                border: '1px solid rgba(239,68,68,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(239,68,68,0.15)',
+              }}>
+                <Trash2 size={22} style={{ color: '#dc2626' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                  Delete Project
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
+                  This action is <strong style={{ color: 'var(--danger)' }}>permanent</strong> and cannot be undone
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '20px 28px', background: 'var(--bg-secondary)' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.7, textAlign: 'center' }}>
+                You're about to delete{' '}
+                <span style={{
+                  fontWeight: 700, color: '#dc2626',
+                  background: 'rgba(220,38,38,0.08)', padding: '1px 8px',
+                  borderRadius: 6, fontSize: '0.85rem',
+                }}>
+                  {deleteTarget.name}
+                </span>
+                . Existing bugs will remain but their link to this project will be removed.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              display: 'flex', gap: 10, padding: '16px 24px',
+              background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)',
+            }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                style={{ flex: 1, borderRadius: 10, fontWeight: 600, justifyContent: 'center' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{
+                  flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  gap: 8, padding: '10px 20px', borderRadius: 10,
+                  background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: '0.875rem',
+                  border: 'none', cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.7 : 1,
+                  boxShadow: '0 4px 14px rgba(220,38,38,0.3)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {deleting
+                  ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} /> Deleting...</>
+                  : <><Trash2 size={14} /> Delete Project</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Project Modal */}
       <AnimatePresence>

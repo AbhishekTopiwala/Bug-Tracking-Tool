@@ -25,7 +25,6 @@ export default function NotificationsPage() {
 
   const handleClick = async (notif) => {
     if (!notif.read) await markNotificationRead(notif.id);
-    if (notif.bugId) navigate(`/bugs/${notif.bugId}`);
   };
 
   const markAllRead = async () => {

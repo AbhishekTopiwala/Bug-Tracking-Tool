@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bug, Eye, EyeOff, Code2, FlaskConical, Loader2 } from 'lucide-react';
+import { Bug, Eye, EyeOff, Loader2, Code2, Sparkles, CheckCircle2, FlaskConical, User, Mail, Lock, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -36,6 +36,7 @@ export default function SignupPage() {
 
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const selectedRole = ROLES.find((r) => r.key === form.role);
+  const isDev = form.role === 'Developer';
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -45,7 +46,7 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await signup(form.email, form.password, form.name, form.role, selectedRole.avatarBg);
-      toast.success(`Welcome to BugTrack AI! ${form.role === 'Developer' ? '👨‍💻' : '🧪'}`);
+      toast.success(`Welcome to Qapture! ${form.role === 'Developer' ? '👨‍💻' : '🧪'}`);
       navigate(form.role === 'Developer' ? '/dev' : '/');
     } catch (err) {
       const msg = err.code === 'auth/email-already-in-use'
@@ -59,145 +60,171 @@ export default function SignupPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-bg" />
-      <div className="auth-card" style={{ maxWidth: 520 }}>
-        {/* Logo */}
-        <div className="auth-logo">
-          <div
-            className="logo-icon"
-            style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg, ${selectedRole.accent}, ${selectedRole.accent}cc)` }}
-          >
-            <Bug size={22} color="#fff" />
+      <div className="auth-container">
+        {/* Left Branding Section */}
+        <div className="auth-left">
+          <div className="auth-brand-header">
+            <div className="auth-logo-container">
+              <img src="/Qapture.png" alt="Qapture" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+            <div className="auth-brand-text">
+              <div className="auth-brand-name">Qapture</div>
+              <div className="auth-brand-tagline">Capture Bugs Smarter</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>BugTrack AI</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>QA Intelligence Platform</div>
+
+          <h2 className="auth-marketing-title">Modern bug tracking for QA teams and Developers</h2>
+          <p className="auth-marketing-subtitle">Create, assign and resolve bugs faster with AI powered workflows.</p>
+
+          <div className="auth-features">
+            <div className="auth-feature-item">
+              <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Sparkles size={16} /></div>
+              <div className="auth-feature-text">
+                <span className="auth-feature-title">AI Bug Generator</span>
+                <span className="auth-feature-desc">Automatically generate titles and steps</span>
+              </div>
+            </div>
+            <div className="auth-feature-item">
+              <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Bug size={16} /></div>
+              <div className="auth-feature-text">
+                <span className="auth-feature-title">Smart QA Workflow</span>
+                <span className="auth-feature-desc">Assign and track bugs efficiently</span>
+              </div>
+            </div>
+            <div className="auth-feature-item">
+              <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Code2 size={16} /></div>
+              <div className="auth-feature-text">
+                <span className="auth-feature-title">Developer Collaboration</span>
+                <span className="auth-feature-desc">Seamlessly integrate with dev tools</span>
+              </div>
+            </div>
+            <div className="auth-feature-item">
+              <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><CheckCircle2 size={16} /></div>
+              <div className="auth-feature-text">
+                <span className="auth-feature-title">Screenshot & Video Uploads</span>
+                <span className="auth-feature-desc">Attach visual proofs instantly</span>
+              </div>
+            </div>
           </div>
+
+
         </div>
 
-        <h1 className="auth-title">Create your account</h1>
-        <p className="auth-subtitle">Choose your role to get started</p>
+        {/* Right Auth Section */}
+        <div className="auth-right">
+          <div className="auth-card" style={{ maxWidth: 500, padding: '40px 48px' }}>
+            <h1 className="auth-title">Create your account</h1>
+            <p className="auth-subtitle">Choose your role to get started</p>
 
-        {/* Role Selector */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
-          {ROLES.map(({ key, icon: Icon, label, desc, accent, accentBg, accentBorder }) => {
-            const isSelected = form.role === key;
-            return (
+            {/* Interactive Role Toggle */}
+            <div className="role-toggle">
               <button
-                key={key}
                 type="button"
-                id={`role-${key.toLowerCase()}`}
-                onClick={() => setForm((f) => ({ ...f, role: key }))}
-                style={{
-                  padding: '14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: `2px solid ${isSelected ? accentBorder : 'var(--border)'}`,
-                  background: isSelected ? accentBg : 'var(--bg-secondary)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all var(--transition)',
-                  outline: 'none',
-                }}
+                className={`role-btn ${!isDev ? 'active-qa' : ''}`}
+                onClick={() => setForm((f) => ({ ...f, role: 'QA' }))}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <Icon size={16} style={{ color: isSelected ? accent : 'var(--text-muted)' }} />
-                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: isSelected ? accent : 'var(--text-primary)' }}>
-                    {label}
-                  </span>
+                <FlaskConical size={16} /> QA Engineer
+              </button>
+              <button
+                type="button"
+                className={`role-btn ${isDev ? 'active-dev' : ''}`}
+                onClick={() => setForm((f) => ({ ...f, role: 'Developer' }))}
+              >
+                <Code2 size={16} /> Developer
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Full Name</label>
+                <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                  <User size={18} className="auth-input-icon" />
+                  <input
+                    id="signup-name"
+                    type="text"
+                    className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                    placeholder="e.g. Alex Johnson"
+                    value={form.name}
+                    onChange={update('name')}
+                  />
                 </div>
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{desc}</p>
-              </button>
-            );
-          })}
-        </div>
+              </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div className="grid-2" style={{ gap: 16 }}>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Full Name</label>
-              <input
-                id="signup-name"
-                type="text"
-                className="form-control"
-                placeholder="e.g. Alex Johnson"
-                value={form.name}
-                onChange={update('name')}
-                style={{ '--focus-color': selectedRole.accent }}
-              />
-            </div>
-          </div>
+              <div className="form-group">
+                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Email Address</label>
+                <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                  <Mail size={18} className="auth-input-icon" />
+                  <input
+                    id="signup-email"
+                    type="email"
+                    className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                    placeholder="you@company.com"
+                    value={form.email}
+                    onChange={update('email')}
+                  />
+                </div>
+              </div>
 
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input
-              id="signup-email"
-              type="email"
-              className="form-control"
-              placeholder="you@company.com"
-              value={form.email}
-              onChange={update('email')}
-            />
-          </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Password</label>
+                  <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                    <Lock size={18} className="auth-input-icon" />
+                    <input
+                      id="signup-password"
+                      type={showPass ? 'text' : 'password'}
+                      className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                      placeholder="Min 6 chars"
+                      value={form.password}
+                      onChange={update('password')}
+                      style={{ paddingRight: 36 }}
+                    />
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                      onClick={() => setShowPass((v) => !v)}
+                    >
+                      {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                id="signup-password"
-                type={showPass ? 'text' : 'password'}
-                className="form-control"
-                placeholder="Min. 6 characters"
-                value={form.password}
-                onChange={update('password')}
-                style={{ paddingRight: 48 }}
-              />
+                <div className="form-group">
+                  <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Confirm</label>
+                  <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                    <Lock size={18} className="auth-input-icon" />
+                    <input
+                      id="signup-confirm"
+                      type="password"
+                      className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                      placeholder="Repeat pass"
+                      value={form.confirm}
+                      onChange={update('confirm')}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <button
-                type="button"
-                className="btn-icon"
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}
-                onClick={() => setShowPass((v) => !v)}
+                id="signup-submit"
+                type="submit"
+                className={`auth-btn ${isDev ? 'dev-btn' : ''}`}
+                disabled={loading}
+                style={{ marginTop: 8 }}
               >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                {loading ? <Loader2 size={18} className="spin" /> : null}
+                {loading ? 'Creating account...' : `Join as ${selectedRole.label}`}
               </button>
+            </form>
+
+            <div className="auth-footer">
+              Already have an account?{' '}
+              <Link to="/login" className={isDev ? 'dev-link' : ''}>
+                Sign in
+              </Link>
             </div>
           </div>
-
-          <div className="form-group">
-            <label className="form-label">Confirm Password</label>
-            <input
-              id="signup-confirm"
-              type="password"
-              className="form-control"
-              placeholder="Repeat password"
-              value={form.confirm}
-              onChange={update('confirm')}
-            />
-          </div>
-
-          <button
-            id="signup-submit"
-            type="submit"
-            className="btn btn-lg"
-            disabled={loading}
-            style={{
-              width: '100%',
-              justifyContent: 'center',
-              marginTop: 4,
-              background: `linear-gradient(135deg, ${selectedRole.accent}, ${selectedRole.accent}cc)`,
-              color: '#fff',
-              border: 'none',
-            }}
-          >
-            {loading ? <Loader2 size={18} className="spin" /> : null}
-            {loading ? 'Creating account...' : `Join as ${selectedRole.label}`}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          Already have an account?{' '}
-          <Link to="/login" style={{ color: selectedRole.accent, fontWeight: 600 }}>
-            Sign in
-          </Link>
         </div>
       </div>
     </div>

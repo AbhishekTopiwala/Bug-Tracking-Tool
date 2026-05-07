@@ -23,5 +23,16 @@
     "providers": {
       "emailPassword": true
     }
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true
+    }
   }
 }

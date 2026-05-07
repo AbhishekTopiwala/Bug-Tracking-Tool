@@ -2,15 +2,22 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Bell, Plus, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { markNotificationRead, clearAllNotifications, deleteNotification } from '../services/firestoreService';
+import { markNotificationRead, clearAllNotifications, deleteNotification, subscribeToNotifications } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function Topbar({ title, notifications = [], onSearch }) {
+export default function Topbar({ title, onSearch }) {
   const [showNotifs, setShowNotifs] = useState(false);
   const [searchVal, setSearchVal] = useState('');
+  const [notifications, setNotifications] = useState([]);
   const notifRef = useRef(null);
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsub = subscribeToNotifications(currentUser.uid, setNotifications);
+    return () => unsub();
+  }, [currentUser]);
 
   const unread = notifications.filter((n) => !n.read);
 
@@ -31,8 +38,6 @@ export default function Topbar({ title, notifications = [], onSearch }) {
 
   const handleNotifClick = async (notif) => {
     if (!notif.read) await markNotificationRead(notif.id);
-    if (notif.bugId) navigate(`/bugs/${notif.bugId}`);
-    setShowNotifs(false);
   };
 
   const handleClearAll = async () => {
@@ -64,7 +69,10 @@ export default function Topbar({ title, notifications = [], onSearch }) {
         {/* Quick create */}
         <button
           className="btn btn-primary btn-sm"
-          onClick={() => navigate('/bugs/new')}
+          onClick={() => {
+            const path = userProfile?.role === 'Developer' ? '/dev/bugs/new' : '/qa/bugs/new';
+            navigate(path);
+          }}
         >
           <Plus size={14} />
           New Bug
