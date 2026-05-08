@@ -1,7 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Bug, LayoutDashboard, Plus, Zap, TestTube2,
-  Bell, Settings, LogOut, Folder,
+  Bell, Settings, LogOut, Folder, Users,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,6 +16,11 @@ const navItems = [
 export default function Sidebar({ unreadCount = 0 }) {
   const { currentUser, userProfile, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const closeSidebar = () => {
+    document.body.classList.remove('sidebar-open');
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -23,70 +28,92 @@ export default function Sidebar({ unreadCount = 0 }) {
   };
 
   return (
-    <aside className="sidebar">
-      {/* Logo */}
-      <NavLink to="/qa" className="sidebar-logo">
-        <div className="logo-icon">
-          <img src="/Qapture.png" alt="Qapture" />
-        </div>
-        <div className="logo-text">
-          <span className="logo-name">Qapture</span>
-          <span className="logo-tagline">Capture Bugs Smarter</span>
-        </div>
-      </NavLink>
-
-
-      {/* Navigation */}
-      <nav className="sidebar-nav">
-        {navItems.map(({ to, icon: Icon, label, exact }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={exact}
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-          >
-            <Icon size={16} />
-            {label}
-          </NavLink>
-        ))}
-
-        <div className="nav-section">
-          <p className="nav-section-label">Account</p>
-          <NavLink
-            to="/qa/notifications"
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-          >
-            <Bell size={16} />
-            Notifications
-            {unreadCount > 0 && (
-              <span className="nav-link-badge">{unreadCount}</span>
-            )}
-          </NavLink>
-          <NavLink
-            to="/qa/settings"
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-          >
-            <Settings size={16} />
-            Settings
-          </NavLink>
-        </div>
-      </nav>
-
-      {/* User Footer */}
-      <div className="sidebar-footer">
-        <div className="user-card" onClick={handleLogout} title="Click to logout">
-          <img
-            src={userProfile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.displayName || 'U')}&background=6366f1&color=fff`}
-            alt={currentUser?.displayName}
-            className="user-avatar"
-          />
-          <div className="user-info">
-            <p className="user-name">{currentUser?.displayName || 'User'}</p>
-            <p className="user-role">{userProfile?.role || 'QA'} · Logout</p>
+    <>
+      <aside className="sidebar">
+        {/* Logo */}
+        <NavLink to="/qa" className="sidebar-logo" onClick={closeSidebar}>
+          <div className="logo-icon">
+            <img src="/Qapture.png" alt="Qapture" />
           </div>
-          <LogOut size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <div className="logo-text">
+            <span className="logo-name">Qapture</span>
+            <span className="logo-tagline">QA Portal</span>
+          </div>
+        </NavLink>
+
+
+        {/* Navigation */}
+        <nav className="sidebar-nav">
+          {navItems.map(({ to, icon: Icon, label, exact }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={exact}
+              className={({ isActive }) => {
+                const isProjects = label === 'Projects';
+                const isBugsPath = location.pathname.includes('/bugs');
+                const isProjectPath = location.pathname.includes('/projects');
+                const shouldBeActive = isActive || (isProjects && (isBugsPath || isProjectPath));
+                return `nav-link ${shouldBeActive ? 'active' : ''}`;
+              }}
+              onClick={closeSidebar}
+            >
+              <Icon size={16} />
+              {label}
+            </NavLink>
+          ))}
+
+          <div className="nav-section">
+            <p className="nav-section-label">Account</p>
+            <NavLink
+              to="/qa/notifications"
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={closeSidebar}
+            >
+              <Bell size={16} />
+              Notifications
+              {unreadCount > 0 && (
+                <span className="nav-link-badge">{unreadCount}</span>
+              )}
+            </NavLink>
+            <NavLink
+              to="/qa/settings"
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={closeSidebar}
+            >
+              <Settings size={16} />
+              Settings
+            </NavLink>
+            {userProfile?.role === 'Admin' && (
+              <NavLink
+                to="/qa/team"
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                onClick={closeSidebar}
+              >
+                <Users size={16} />
+                Team
+              </NavLink>
+            )}
+          </div>
+        </nav>
+
+        {/* User Footer */}
+        <div className="sidebar-footer">
+          <div className="user-card" onClick={handleLogout} title="Click to logout">
+            <img
+              src={userProfile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.displayName || 'U')}&background=6366f1&color=fff`}
+              alt={currentUser?.displayName}
+              className="user-avatar"
+            />
+            <div className="user-info">
+              <p className="user-name">{currentUser?.displayName || 'User'}</p>
+              <p className="user-role">{userProfile?.role || 'QA'} · Logout</p>
+            </div>
+            <LogOut size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+      <div className="sidebar-backdrop" onClick={closeSidebar} />
+    </>
   );
 }

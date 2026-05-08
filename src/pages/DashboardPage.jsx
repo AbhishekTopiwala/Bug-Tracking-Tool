@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import BugCard from '../components/BugCard';
 import Topbar from '../components/Topbar';
-import { subscribeToBugs } from '../services/firestoreService';
+import { subscribeToBugs, getProjects } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 
 function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
@@ -85,33 +85,54 @@ export default function DashboardPage() {
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [assigneeFilter, setAssigneeFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const { userProfile } = useAuth();
+  const [assignedProjectIds, setAssignedProjectIds] = useState([]);
+  const { userProfile, currentUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!currentUser || !userProfile) return;
+
     const unsub = subscribeToBugs((data) => {
       setBugs(data);
       setLoading(false);
     });
+
+    getProjects(currentUser.uid, userProfile.role).then(projs => {
+      setAssignedProjectIds(projs.map(p => p.id));
+    });
+
     return () => unsub();
-  }, []);
+  }, [currentUser, userProfile?.role]);
+
+  // Filter bugs based on role
+  const myBugs = useMemo(() => {
+    if (userProfile?.role === 'QA') {
+      // QAs only see bugs they reported
+      return bugs.filter(b => b.reportedBy === currentUser?.uid);
+    }
+    if (userProfile?.role === 'Developer') {
+      // Developers see bugs in projects they are assigned to
+      return bugs.filter(b => assignedProjectIds.includes(b.projectId));
+    }
+    return bugs; // Admins see everything
+  }, [bugs, currentUser, userProfile?.role, assignedProjectIds]);
 
   const stats = useMemo(() => ({
-    total: bugs.length,
-    open: bugs.filter((b) => b.status === 'Open').length,
-    inProgress: bugs.filter((b) => b.status === 'In Progress').length,
-    done: bugs.filter((b) => b.status === 'Done').length,
-    resolved: bugs.filter((b) => b.status === 'Resolved').length,
-    critical: bugs.filter((b) => b.priority === 'Critical').length,
-  }), [bugs]);
+    total: myBugs.length,
+    open: myBugs.filter((b) => b.status === 'Open').length,
+    inProgress: myBugs.filter((b) => b.status === 'In Progress').length,
+    done: myBugs.filter((b) => b.status === 'Done').length,
+    resolved: myBugs.filter((b) => b.status === 'Resolved').length,
+    critical: myBugs.filter((b) => b.priority === 'Critical').length,
+  }), [myBugs]);
 
   const assignees = useMemo(() => {
-    const names = [...new Set(bugs.filter((b) => b.assigneeName).map((b) => b.assigneeName))];
+    const names = [...new Set(myBugs.filter((b) => b.assigneeName).map((b) => b.assigneeName))];
     return ['All', ...names];
-  }, [bugs]);
+  }, [myBugs]);
 
   const filtered = useMemo(() => {
-    return bugs.filter((bug) => {
+    return myBugs.filter((bug) => {
       if (statusFilter !== 'All' && bug.status !== statusFilter) return false;
       if (priorityFilter !== 'All' && bug.priority !== priorityFilter) return false;
       if (assigneeFilter !== 'All' && bug.assigneeName !== assigneeFilter) return false;

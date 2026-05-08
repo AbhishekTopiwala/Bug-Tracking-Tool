@@ -201,10 +201,25 @@ export async function createProject(projectData) {
   return docRef.id;
 }
 
-export async function getProjects() {
+export async function getProjects(userId, role) {
   const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const allProjects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  if (role && role !== 'Admin' && userId) {
+    // Only return projects where the user is in the assignedUsers array
+    return allProjects.filter(p => p.assignedUsers?.includes(userId));
+  }
+  
+  return allProjects;
+}
+
+export async function updateProject(id, data) {
+  const docRef = doc(db, 'projects', id);
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function deleteProject(id) {

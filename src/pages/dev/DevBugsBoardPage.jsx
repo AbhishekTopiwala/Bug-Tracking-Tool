@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  CheckCircle2, Bug, Filter, X, Circle, AlertCircle, ChevronDown
+  CheckCircle2, Bug, Filter, X, AlertCircle, ChevronDown, ChevronUp, ArrowLeft
 } from 'lucide-react';
 import Topbar from '../../components/Topbar';
 import { subscribeToBugs, updateBug, createNotification } from '../../services/firestoreService';
@@ -37,13 +37,14 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
           alignItems: 'center',
           gap: 8,
           padding: '8px 16px',
-          background: open ? 'var(--bg-card)' : 'var(--bg-secondary)', 
+          background: open ? 'var(--bg-card)' : 'var(--bg-secondary)',
           border: '1px solid',
           borderColor: open ? 'var(--border)' : 'transparent',
           borderRadius: 8,
           cursor: 'pointer',
           transition: 'all 0.2s',
-          color: 'var(--text-secondary)'
+          color: 'var(--text-secondary)',
+          whiteSpace: 'nowrap',
         }}
         onMouseOver={(e) => { if (!open) e.currentTarget.style.background = 'var(--border)'; }}
         onMouseOut={(e) => { if (!open) e.currentTarget.style.background = 'var(--bg-secondary)'; }}
@@ -58,7 +59,7 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
         <div style={{
           position: 'absolute', top: '100%', left: 0, marginTop: 8,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 8, boxShadow: 'var(--shadow-lg)', padding: 6, zIndex: 100,
+          borderRadius: 8, boxShadow: 'var(--shadow-lg)', padding: 6, zIndex: 200,
           display: 'flex', flexDirection: 'column', minWidth: 160, gap: 2
         }}>
           {options.map((opt) => (
@@ -81,6 +82,30 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* Collapsible Kanban Column — header tap collapses on mobile */
+function KanbanColumn({ status, bugs, children }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className={`kanban-column${collapsed ? ' kanban-column--collapsed' : ''}`}>
+      <div
+        className="kanban-column-header"
+        onClick={() => setCollapsed(c => !c)}
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h3 className="kanban-column-title">{status}</h3>
+          <span className="kanban-column-count">{bugs.length}</span>
+        </div>
+        <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+          {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+        </span>
+      </div>
+      {!collapsed && children}
     </div>
   );
 }
@@ -117,7 +142,7 @@ export default function DevBugsBoardPage() {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return (
-          bug.title?.toLowerCase().includes(q) || 
+          bug.title?.toLowerCase().includes(q) ||
           bug.description?.toLowerCase().includes(q) ||
           bug.bugKey?.toLowerCase().includes(q) ||
           bug.id?.toLowerCase().includes(q)
@@ -131,7 +156,7 @@ export default function DevBugsBoardPage() {
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
-    
+
     const newStatus = destination.droppableId;
     const bugToMove = allBugs.find(b => b.id === draggableId);
     if (!bugToMove) return;
@@ -143,10 +168,10 @@ export default function DevBugsBoardPage() {
       toast.error(`Cannot move bug from "${bugToMove.status}" to "${newStatus}" as ${role}`);
       return;
     }
-    
+
     // Optimistic UI update
     setAllBugs(prev => prev.map(b => b.id === draggableId ? { ...b, status: newStatus } : b));
-    
+
     try {
       await updateBug(draggableId, { status: newStatus });
       toast.success(`Moved to ${newStatus}`);
@@ -166,8 +191,6 @@ export default function DevBugsBoardPage() {
     }
   };
 
-  const boardHeight = projectFilter ? 'calc(100vh - 250px)' : 'calc(100vh - 200px)';
-
   return (
     <>
       <Topbar title={projectFilter ? `Project: ${projectFilter}` : 'My Active Bugs'} onSearch={setSearchQuery} />
@@ -179,9 +202,10 @@ export default function DevBugsBoardPage() {
             display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
             padding: '10px 16px', background: 'rgba(16,185,129,0.06)',
             borderRadius: 12, border: '1px solid rgba(16,185,129,0.2)',
+            flexWrap: 'wrap',
           }}>
             <Filter size={14} style={{ color: 'var(--dev-accent)' }} />
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, flex: 1, minWidth: 0 }}>
               Filtering by project: <span style={{ color: 'var(--dev-accent)' }}>{projectFilter}</span>
             </span>
             <button
@@ -190,7 +214,7 @@ export default function DevBugsBoardPage() {
                 marginLeft: 'auto', background: 'transparent', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)',
-                transition: 'all 0.2s',
+                transition: 'all 0.2s', whiteSpace: 'nowrap',
               }}
             >
               <X size={12} /> Clear
@@ -198,9 +222,9 @@ export default function DevBugsBoardPage() {
           </div>
         )}
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {/* Filters — uses responsive .filters-bar class */}
+        <div className="filters-bar">
+          <div className="filters-bar-left">
             <FilterDropdown
               icon={AlertCircle}
               label="Priority"
@@ -209,14 +233,24 @@ export default function DevBugsBoardPage() {
               onChange={setPriorityFilter}
             />
           </div>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-            {filtered.length} bugs found
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button 
+              className="btn btn-ghost btn-sm" 
+              onClick={() => navigate('/dev/projects')}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 8px' }}
+            >
+              <ArrowLeft size={16} />
+              Back
+            </button>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              {filtered.length} bugs found
+            </span>
+          </div>
         </div>
 
         {/* Bug List Board */}
         {loading ? (
-          <div className="kanban-board" style={{ height: boardHeight }}>
+          <div className="kanban-board">
             {STATUS_COLUMNS.map((col) => (
               <div key={col} className="kanban-column">
                 <div className="kanban-column-header">
@@ -237,7 +271,7 @@ export default function DevBugsBoardPage() {
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', gap: 16, padding: '64px 32px',
             background: 'var(--bg-card)', borderRadius: 16, border: '1px dashed var(--border)',
-            textAlign: 'center', height: boardHeight, boxSizing: 'border-box'
+            textAlign: 'center', boxSizing: 'border-box'
           }}>
             <div style={{
               width: 72, height: 72, borderRadius: '50%',
@@ -252,7 +286,7 @@ export default function DevBugsBoardPage() {
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: 340, lineHeight: 1.6 }}>
                 {baseBugs.length === 0
-                  ? 'No bugs have been assigned to you yet. You\'ll be notified when a QA assigns one.'
+                  ? "No bugs have been assigned to you yet. You'll be notified when a QA assigns one."
                   : 'No bugs match your current filters. Try adjusting your priority search.'}
               </p>
             </div>
@@ -268,21 +302,15 @@ export default function DevBugsBoardPage() {
           </div>
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="kanban-board" style={{ height: boardHeight }}>
+            <div className="kanban-board">
               {STATUS_COLUMNS.map((status) => {
                 const columnBugs = filtered.filter(b => b.status === status);
                 return (
-                  <div key={status} className="kanban-column">
-                    <div className="kanban-column-header">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <h3 className="kanban-column-title">{status}</h3>
-                        <span className="kanban-column-count">{columnBugs.length}</span>
-                      </div>
-                    </div>
+                  <KanbanColumn key={status} status={status} bugs={columnBugs}>
                     <Droppable droppableId={status}>
                       {(provided, snapshot) => (
-                        <div 
-                          ref={provided.innerRef} 
+                        <div
+                          ref={provided.innerRef}
                           {...provided.droppableProps}
                           className={`kanban-droppable ${snapshot.isDraggingOver ? 'is-dragging-over' : ''}`}
                         >
@@ -308,7 +336,7 @@ export default function DevBugsBoardPage() {
                         </div>
                       )}
                     </Droppable>
-                  </div>
+                  </KanbanColumn>
                 );
               })}
             </div>

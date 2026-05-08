@@ -19,14 +19,16 @@ export function AuthProvider({ children }) {
   async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1') {
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(user, { displayName });
-    await setDoc(doc(db, 'users', user.uid), {
+    const userData = {
       uid: user.uid,
       email,
       displayName,
       role,
       createdAt: new Date().toISOString(),
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=${avatarBg}&color=fff`,
-    });
+    };
+    await setDoc(doc(db, 'users', user.uid), userData);
+    setUserProfile(userData);
     return user;
   }
 

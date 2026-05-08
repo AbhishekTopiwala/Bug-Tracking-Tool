@@ -82,7 +82,7 @@ export default function LoginPage() {
             </div>
           </div>
           <div className="auth-feature-item">
-            <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><CheckCircle2 size={16} /></div>
+            <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(91, 108, 255, 0.1)' }}><CheckCircle2 size={16} /></div>
             <div className="auth-feature-text">
               <span className="auth-feature-title">Screenshot & Video Uploads</span>
               <span className="auth-feature-desc">Attach visual proofs instantly</span>

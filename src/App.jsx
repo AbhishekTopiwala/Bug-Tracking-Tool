@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
 import './styles/components.css';
 import './styles/developer.css';
+import './styles/admin.css';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { subscribeToNotifications } from './services/firestoreService';
@@ -11,6 +12,7 @@ import { subscribeToNotifications } from './services/firestoreService';
 // Shared components
 import Sidebar from './components/Sidebar';
 import DevSidebar from './components/DevSidebar';
+import AdminSidebar from './components/AdminSidebar';
 import PrivateRoute from './components/PrivateRoute';
 import RoleRoute from './components/RoleRoute';
 
@@ -35,13 +37,39 @@ import DevDashboardPage from './pages/dev/DevDashboardPage';
 import DevBugsBoardPage from './pages/dev/DevBugsBoardPage';
 import DevBugDetailPage from './pages/dev/DevBugDetailPage';
 
+// Admin Portal pages
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import TeamManagementPage from './pages/admin/TeamManagementPage';
+import ProjectOverviewPage from './pages/admin/ProjectOverviewPage';
+import ProjectTeamPage from './pages/admin/ProjectTeamPage';
+import { Loader2 } from 'lucide-react';
+
 // ── Root redirect based on role ──────────────────────────────────────────────
 function RootRedirect() {
   const { currentUser, userProfile, loading } = useAuth();
 
-  if (loading || !userProfile) return null;
+  if (loading) return null;
   if (!currentUser) return <Navigate to="/login" replace />;
+
+  if (!userProfile) {
+    return (
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'var(--bg-primary)',
+        color: 'var(--text-secondary)'
+      }}>
+        <Loader2 size={32} className="spin" style={{ marginBottom: 16, color: 'var(--accent)' }} />
+        <p style={{ fontWeight: 500 }}>Initializing your workspace...</p>
+      </div>
+    );
+  }
+
   if (userProfile.role === 'Developer') return <Navigate to="/dev" replace />;
+  if (userProfile.role === 'Admin')     return <Navigate to="/admin" replace />;
   return <Navigate to="/qa" replace />;
 }
 
@@ -112,6 +140,39 @@ function DevPortal() {
   );
 }
 
+// ── Admin Portal Layout ───────────────────────────────────────────────────────
+function AdminPortal() {
+  const { currentUser } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsub = subscribeToNotifications(currentUser.uid, setNotifications);
+    return () => unsub();
+  }, [currentUser]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  return (
+    <div className="app-layout">
+      <AdminSidebar unreadCount={unreadCount} />
+      <div className="main-content">
+        <Routes>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="team" element={<TeamManagementPage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/:projectId" element={<ProjectOverviewPage />} />
+          <Route path="projects/:projectId/team" element={<ProjectTeamPage />} />
+          <Route path="bugs" element={<BugsListPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ─────────────────────────────────────────────────────────────────
 function AppLayout() {
   const location = useLocation();
@@ -132,12 +193,12 @@ function AppLayout() {
       {/* Root → role-based redirect */}
       <Route path="/" element={<PrivateRoute><RootRedirect /></PrivateRoute>} />
 
-      {/* QA Portal — /qa/* */}
+      {/* QA Portal — /qa/* (QA role only) */}
       <Route
         path="/qa/*"
         element={
           <PrivateRoute>
-            <RoleRoute allowedRoles={['QA', 'Admin']} redirectTo="/dev">
+            <RoleRoute allowedRoles={['QA']} redirectTo="/">
               <QAPortal />
             </RoleRoute>
           </PrivateRoute>
@@ -149,14 +210,26 @@ function AppLayout() {
         path="/dev/*"
         element={
           <PrivateRoute>
-            <RoleRoute allowedRoles={['Developer']} redirectTo="/qa">
+            <RoleRoute allowedRoles={['Developer']} redirectTo="/">
               <DevPortal />
             </RoleRoute>
           </PrivateRoute>
         }
       />
 
-      {/* Legacy /bugs/* redirect to /qa/bugs/* */}
+      {/* Admin Portal — /admin/* */}
+      <Route
+        path="/admin/*"
+        element={
+          <PrivateRoute>
+            <RoleRoute allowedRoles={['Admin']} redirectTo="/">
+              <AdminPortal />
+            </RoleRoute>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Legacy redirects */}
       <Route path="/bugs/*" element={<PrivateRoute><RootRedirect /></PrivateRoute>} />
       <Route path="/ai-generator" element={<Navigate to="/qa/ai-generator" replace />} />
       <Route path="/test-cases" element={<Navigate to="/qa/test-cases" replace />} />

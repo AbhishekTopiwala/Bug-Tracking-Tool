@@ -51,16 +51,24 @@ export default function BugDetailPage() {
     const load = async () => {
       try {
         const data = await getBug(id);
+        
+        // Security check for QA role: only see your own bugs
+        if (userProfile?.role === 'QA' && data.reportedBy !== currentUser?.uid) {
+          toast.error('You do not have permission to view this bug');
+          navigate('/qa/dashboard');
+          return;
+        }
+
         setBug(data);
       } catch {
         toast.error('Bug not found');
-        navigate('/qa/bugs');
+        navigate('/qa/dashboard');
       } finally {
         setLoading(false);
       }
     };
-    load();
-  }, [id]);
+    if (userProfile) load();
+  }, [id, userProfile, currentUser, navigate]);
 
   const handleStatusChange = async (newStatus) => {
     try {

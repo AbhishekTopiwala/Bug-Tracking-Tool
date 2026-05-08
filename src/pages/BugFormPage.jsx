@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   Wand2, Upload, X, Plus, Minus, Loader2, Image,
@@ -56,20 +56,29 @@ export default function BugFormPage() {
 
   // Load developers and projects
   useEffect(() => {
+    if (!currentUser || !userProfile) return;
+    
     Promise.all([
       getUsers('Developer'),
-      getProjects()
+      getProjects(currentUser.uid, userProfile.role)
     ]).then(([devs, projs]) => {
       setDevelopers(devs);
       setProjects(projs);
     }).catch(() => {
     });
-  }, []);
+  }, [currentUser, userProfile?.role]);
 
   // Load bug if editing
   useEffect(() => {
     if (isEditing) {
       getBug(id).then((bug) => {
+        // Security check for QA role: only edit your own bugs
+        if (userProfile?.role === 'QA' && bug.reportedBy !== currentUser?.uid) {
+          toast.error('You do not have permission to edit this bug');
+          navigate('/qa/dashboard');
+          return;
+        }
+
         setOriginalAssigneeId(bug.assigneeId || null);
         setOriginalStatus(bug.status || 'Open');
         setForm({
@@ -94,7 +103,7 @@ export default function BugFormPage() {
         navigate(fallbackPath);
       });
     }
-  }, [id, isEditing, navigate]);
+  }, [id, isEditing, navigate, userProfile, currentUser]);
 
   // Auto-save draft
   useEffect(() => {
@@ -147,10 +156,10 @@ export default function BugFormPage() {
   const removeTag = (tag) => setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }));
 
   const handleAssignee = (e) => {
-    const dev = developers.find((d) => d.uid === e.target.value);
+    const dev = developers.find((d) => (d.id || d.uid) === e.target.value);
     setForm((f) => ({
       ...f,
-      assigneeId: dev?.uid || '',
+      assigneeId: dev?.id || dev?.uid || '',
       assigneeName: dev?.displayName || '',
     }));
   };
@@ -163,6 +172,15 @@ export default function BugFormPage() {
       projectName: project?.name || '',
     }));
   };
+
+  const projectDevelopers = useMemo(() => {
+    if (!form.projectId) return [];
+    const selectedProject = projects.find(p => p.id === form.projectId);
+    if (!selectedProject || !selectedProject.assignedUsers) return [];
+    
+    // Filter the developers who are also in the project's assignedUsers list
+    return developers.filter(dev => selectedProject.assignedUsers.includes(dev.id));
+  }, [form.projectId, projects, developers]);
 
   const handleFiles = (incoming) => {
     const newFiles = Array.from(incoming);
@@ -262,6 +280,7 @@ export default function BugFormPage() {
     e.preventDefault();
     if (!form.title.trim()) return toast.error('Bug title is required');
     if (!form.description.trim()) return toast.error('Description is required');
+    if (!form.projectId) return toast.error('Project assignment is required');
     setLoading(true);
 
     try {
@@ -648,28 +667,49 @@ export default function BugFormPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Project</label>
-                    <select id="bug-project" className="form-control form-select" value={form.projectId} onChange={handleProject}>
-                      <option value="">No Project</option>
+                    <label className="form-label">Project *</label>
+                    <select 
+                      id="bug-project" 
+                      className="form-control form-select" 
+                      value={form.projectId} 
+                      onChange={handleProject}
+                      required
+                    >
+                      <option value="">Select a Project</option>
                       {projects.map((p) => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
+                    {projects.length === 0 && (
+                      <p style={{ fontSize: '0.72rem', color: 'var(--danger)', marginTop: 4 }}>
+                        You must be assigned to a project first
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Assign Developer</label>
-                    <select id="bug-assignee" className="form-control form-select" value={form.assigneeId} onChange={handleAssignee}>
+                    <select 
+                      id="bug-assignee" 
+                      className="form-control form-select" 
+                      value={form.assigneeId} 
+                      onChange={handleAssignee}
+                      disabled={!form.projectId}
+                    >
                       <option value="">Unassigned</option>
-                      {developers.map((d) => (
-                        <option key={d.uid} value={d.uid}>{d.displayName}</option>
+                      {projectDevelopers.map((d) => (
+                        <option key={d.id} value={d.id}>{d.displayName}</option>
                       ))}
                     </select>
-                    {developers.length === 0 && (
+                    {!form.projectId ? (
                       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        No developers registered yet
+                        Select a project first to see assigned developers
                       </p>
-                    )}
+                    ) : projectDevelopers.length === 0 ? (
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        No developers assigned to this project
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Tags */}
