@@ -3,9 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
       allow read: if request.auth != null;
-      // TEMPORARY: Allow all authenticated writes to debug why the admin check is failing
-      // We will restrict this back to admins once we confirm the toggle works
-      allow write: if request.auth != null;
+      // Users can write to their own user document, while Admins can write to any user document (e.g., toggle active/inactive)
+      allow write: if request.auth != null && (
+        request.auth.uid == userId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin'
+      );
     }
     match /bugs/{bugId} {
       allow read, write: if request.auth != null;

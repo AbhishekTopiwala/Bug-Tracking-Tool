@@ -6,8 +6,9 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
@@ -69,19 +70,48 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeProfile = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
       if (user) {
+        // Fetch profile initially to have it in context and check if deactivated
         const profile = await fetchUserProfile(user.uid);
-        // If user is deactivated, force logout
         if (profile && profile.isActive === false) {
           await logout();
           toast.error('Your account has been deactivated.');
+          setLoading(false);
+          return;
         }
+
+        // Setup real-time listener to automatically log out the user if an Admin deactivates them
+        const docRef = doc(db, 'users', user.uid);
+        unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUserProfile(data);
+            if (data.isActive === false) {
+              await logout();
+              toast.error('Your account has been deactivated.');
+            }
+          }
+        });
+      } else {
+        setUserProfile(null);
       }
       setLoading(false);
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
 
   const value = {
