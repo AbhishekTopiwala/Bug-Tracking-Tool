@@ -184,11 +184,25 @@
   z-index: 40;
 }
 
+.admin-topbar-title-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+
 .admin-topbar-title {
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-primary);
-  flex: 1;
+  line-height: 1.2;
+}
+
+.admin-topbar-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-top: 2px;
 }
 
 .admin-notification-btn {
@@ -209,6 +223,45 @@
 .admin-notification-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+/* Admin Search */
+.admin-topbar-search {
+  flex: 1;
+  max-width: 400px;
+  margin: 0 40px;
+}
+
+.admin-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.admin-search-icon {
+  position: absolute;
+  left: 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.admin-search-input {
+  width: 100%;
+  height: 48px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 0 16px 0 48px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.admin-search-input:focus {
+  outline: none;
+  border-color: var(--admin-accent);
+  background: white;
+  box-shadow: 0 8px 20px rgba(91, 108, 255, 0.06);
 }
 
 .admin-notification-dot {
@@ -267,7 +320,7 @@
 }
 
 .admin-welcome-title {
-  font-size: 2.25rem;
+  font-size: 2rem;
   font-weight: 900;
   margin: 0;
   letter-spacing: -0.04em;
@@ -796,4 +849,223 @@
 /* Fix for table rows in activity log */
 .admin-member-list tr:hover {
   background: var(--bg-hover);
+}
+
+/* ── Team Management: View Toggle ─────────────────────────────────────────── */
+.tm-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.tm-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.tm-view-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
+
+.tm-view-btn--active {
+  background: var(--admin-accent) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(91, 108, 255, 0.25);
+}
+
+/* ── Team Management: Project Group Card ──────────────────────────────────── */
+.tm-project-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.tm-project-group:hover {
+  box-shadow: var(--shadow);
+}
+
+.tm-project-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  gap: 16px;
+  transition: background 0.15s ease;
+}
+
+.tm-project-group-header:hover {
+  background: var(--bg-card);
+}
+
+.tm-project-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--admin-accent-light);
+  color: var(--admin-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tm-project-name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.tm-project-desc {
+  margin: 3px 0 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.tm-member-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 100px;
+  background: var(--admin-accent-light);
+  color: var(--admin-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.tm-project-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ── Team Management: Inline Role Pills ───────────────────────────────────── */
+.tm-role-inline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+
+.tm-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.tm-role-pill:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.tm-role-pill:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Active state per role */
+.tm-role-pill--admin {
+  border-color: #5B6CFF;
+  background: rgba(91, 108, 255, 0.1);
+  color: #5B6CFF;
+}
+
+.tm-role-pill--developer {
+  border-color: var(--info, #3B82F6);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--info, #3B82F6);
+}
+
+.tm-role-pill--qa {
+  border-color: var(--success, #10B981);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success, #10B981);
+}
+
+/* ── Team Management: Active Toggle Switch ────────────────────────────────── */
+.tm-toggle {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tm-toggle-track {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  border-radius: 100px;
+  background: var(--border);
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tm-toggle-track--on {
+  background: #10B981;
+}
+
+.tm-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  transition: transform 0.2s ease;
+}
+
+.tm-toggle-track--on .tm-toggle-thumb {
+  transform: translateX(18px);
+}
+
+.tm-row-inactive {
+  opacity: 0.55;
+  filter: grayscale(0.5);
+  background: var(--bg-secondary);
+}
+
+.tm-row-inactive:hover {
+  opacity: 0.8;
+  filter: grayscale(0.2);
 }

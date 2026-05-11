@@ -120,7 +120,10 @@ export async function getUsers(role) {
     q = query(collection(db, 'users'));
   }
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Filter out deactivated users (isActive === false)
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter(u => u.isActive !== false);
 }
 
 export async function getAllDevelopers() {

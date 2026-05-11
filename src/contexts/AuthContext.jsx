@@ -19,11 +19,27 @@ export function AuthProvider({ children }) {
   async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1') {
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(user, { displayName });
+    
+    // Check for existing invited user with same email and remove to avoid duplicates
+    try {
+      const { query, collection, where, getDocs, deleteDoc } = await import('firebase/firestore');
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const snap = await getDocs(q);
+      const batch = [];
+      snap.docs.forEach(d => {
+        if (d.id !== user.uid) batch.push(deleteDoc(d.ref));
+      });
+      if (batch.length > 0) await Promise.all(batch);
+    } catch (e) {
+      console.error("Error cleaning up invited user docs:", e);
+    }
+
     const userData = {
       uid: user.uid,
       email,
       displayName,
       role,
+      isActive: true,
       createdAt: new Date().toISOString(),
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=${avatarBg}&color=fff`,
     };
@@ -45,8 +61,9 @@ export function AuthProvider({ children }) {
     const docRef = doc(db, 'users', uid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      setUserProfile(docSnap.data());
-      return docSnap.data();
+      const data = docSnap.data();
+      setUserProfile(data);
+      return data;
     }
     return null;
   }
@@ -55,7 +72,12 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        await fetchUserProfile(user.uid);
+        const profile = await fetchUserProfile(user.uid);
+        // If user is deactivated, force logout
+        if (profile && profile.isActive === false) {
+          await logout();
+          toast.error('Your account has been deactivated.');
+        }
       }
       setLoading(false);
     });

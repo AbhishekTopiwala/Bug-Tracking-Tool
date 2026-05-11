@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Users, UserPlus, MoreVertical, Code2, TestTube2,
-  Mail, Trash2, RefreshCw, X, Search, AlertTriangle,
-  Check, Crown,
+  Users, UserPlus, Code2, TestTube2,
+  Mail, Trash2, X, Search, AlertTriangle,
+  Check, Crown, Folder, LayoutGrid, List, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AdminTopbar from '../../components/AdminTopbar';
@@ -10,8 +10,13 @@ import {
   fetchAllUsers,
   updateUserRole,
   deactivateUser,
+  activateUser,
   inviteUser,
+  checkUserHasBugs,
+  checkUserHasProjects,
 } from '../../services/teamService';
+import { getProjects } from '../../services/firestoreService';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,54 +49,49 @@ function RoleBadge({ role }) {
   );
 }
 
-// ─── Actions Dropdown ─────────────────────────────────────────────────────────
+// ─── Deactivate Toggle Switch ─────────────────────────────────────────────────
 
-function ActionsMenu({ user, onRoleChange, onDeactivate }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+function ActiveToggle({ user, onToggle }) {
+  const [busy, setBusy] = useState(false);
+  const isActive = user.isActive !== false;
 
-  useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+  const handleChange = async (e) => {
+    // Prevent accidental double-clicks or bubbling
+    e.preventDefault();
+    if (busy) return;
+    
+    setBusy(true);
+    try {
+      await onToggle(user, isActive);
+    } finally {
+      setBusy(false);
     }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  };
 
   return (
-    <div className="tm-actions-wrap" ref={ref}>
-      <button
-        className="tm-actions-trigger"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="User actions"
-      >
-        <MoreVertical size={16} />
-      </button>
-
-      {open && (
-        <div className="tm-actions-menu animate-fade">
-          <p className="tm-actions-label">Change Role</p>
-          {ROLES.map((r) => (
-            <button
-              key={r}
-              className={`tm-action-item ${user.role === r ? 'tm-action-item--active' : ''} tm-action-item--${r.toLowerCase()}`}
-              onClick={() => { onRoleChange(user, r); setOpen(false); }}
-            >
-              {ROLE_META[r] && (() => { const Icon = ROLE_META[r].icon; return <Icon size={14} />; })()}
-              <span>{r}</span>
-              {user.role === r && <Check size={14} className="tm-action-check" />}
-            </button>
-          ))}
-          <div className="tm-actions-divider" />
-          <button
-            className="tm-action-item tm-action-item--danger"
-            onClick={() => { onDeactivate(user); setOpen(false); }}
-          >
-            <Trash2 size={13} />
-            Deactivate User
-          </button>
-        </div>
-      )}
+    <div
+      className="tm-toggle"
+      title={busy ? 'Saving…' : isActive ? 'Click to deactivate' : 'Click to activate'}
+      onClick={handleChange}
+      style={{ 
+        opacity: busy ? 0.6 : 1,
+        cursor: busy ? 'not-allowed' : 'pointer'
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={isActive}
+        readOnly
+        style={{ 
+          position: 'absolute',
+          opacity: 0,
+          width: 0,
+          height: 0
+        }}
+      />
+      <span className={`tm-toggle-track ${isActive ? 'tm-toggle-track--on' : ''}`}>
+        <span className="tm-toggle-thumb" />
+      </span>
     </div>
   );
 }
@@ -123,7 +123,6 @@ function InviteModal({ onClose, onSuccess }) {
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal tm-invite-modal animate-slide">
-        {/* Header */}
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div className="tm-invite-icon">
@@ -141,7 +140,6 @@ function InviteModal({ onClose, onSuccess }) {
           </button>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit}>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div className="form-group">
@@ -205,36 +203,117 @@ function InviteModal({ onClose, onSuccess }) {
   );
 }
 
-// ─── Confirm Deactivate Modal ─────────────────────────────────────────────────
 
-function ConfirmModal({ user, onClose, onConfirm, loading }) {
+// ─── Member Row (shared) ──────────────────────────────────────────────────────
+
+function MemberRow({ user, onToggle }) {
+  const isActive = user.isActive !== false;
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal animate-slide" style={{ maxWidth: 460 }}>
-        <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div className="tm-danger-icon">
-              <AlertTriangle size={18} />
-            </div>
-            <h3 style={{ margin: 0 }}>Deactivate User</h3>
+    <tr className={`tm-table-row${isActive ? '' : ' tm-row-inactive'}`}>
+      <td>
+        <div className="tm-member-cell">
+          <div className="tm-avatar">
+            {user.photoURL
+              ? <img src={user.photoURL} alt={user.name} />
+              : <span>{getInitials(user.name, user.email)}</span>
+            }
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
+          <div>
+            <p className="tm-member-name">
+              {user.name || (user.email ? user.email.split('@')[0] : '—')}
+            </p>
+            <p className="tm-member-uid">UID: {user.uid?.slice(0, 8)}…</p>
+          </div>
         </div>
-        <div className="modal-body">
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Are you sure you want to deactivate{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>{user?.name || user?.email}</strong>?
-            They will lose access immediately. This action can be reversed by re-inviting them.
-          </p>
+      </td>
+      <td>
+        <a href={`mailto:${user.email}`} className="tm-email-link">
+          <Mail size={13} />
+          {user.email}
+        </a>
+      </td>
+      <td><RoleBadge role={user.role} /></td>
+      <td className="tm-date-cell">
+        {user.createdAt?.seconds
+          ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('en-IN', {
+            day: '2-digit', month: 'short', year: 'numeric',
+          })
+          : '—'}
+      </td>
+      <td style={{ textAlign: 'center' }}>
+        <ActiveToggle user={user} onToggle={onToggle} />
+      </td>
+    </tr>
+  );
+}
+
+// ─── Project Team Group Card ──────────────────────────────────────────────────
+
+function ProjectGroupCard({ project, members, onToggle }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className="tm-project-group">
+      <div
+        className="tm-project-group-header"
+        onClick={() => setCollapsed(c => !c)}
+        style={{ cursor: 'pointer' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="tm-project-icon">
+            <Folder size={16} />
+          </div>
+          <div>
+            <p className="tm-project-name">{project.name}</p>
+            {project.description && (
+              <p className="tm-project-desc">{project.description}</p>
+            )}
+          </div>
         </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-danger" onClick={onConfirm} disabled={loading}>
-            {loading ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <Trash2 size={14} />}
-            Deactivate
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className="tm-member-count-badge">
+            {members.length} member{members.length !== 1 ? 's' : ''}
+          </span>
+          <span style={{
+            color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600,
+            transition: 'transform 0.2s',
+            display: 'inline-block',
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)'
+          }}>▼</span>
         </div>
       </div>
+
+      {!collapsed && (
+        members.length === 0 ? (
+          <div className="tm-project-empty">
+            <Users size={20} />
+            <span>No members assigned to this project</span>
+          </div>
+        ) : (
+          <div className="tm-table-scroll">
+            <table className="tm-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Joined</th>
+                  <th style={{ textAlign: 'center' }}>Active</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map(user => (
+                  <MemberRow
+                    key={user.id}
+                    user={user}
+                    onToggle={onToggle}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
     </div>
   );
 }
@@ -242,87 +321,140 @@ function ConfirmModal({ user, onClose, onConfirm, loading }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TeamManagementPage() {
+  const { currentUser } = useAuth();
   const [users, setUsers] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('All');
   const [showInvite, setShowInvite] = useState(false);
-  const [confirmUser, setConfirmUser] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  // 'all' | 'project'
+  const [viewMode, setViewMode] = useState('all');
 
-  const loadUsers = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const data = await fetchAllUsers();
-      setUsers(data);
+      const [userData, projectData] = await Promise.all([
+        fetchAllUsers(),
+        getProjects(null, 'Admin'),
+      ]);
+      setUsers(userData);
+      setProjects(projectData);
     } catch (err) {
-      toast.error('Failed to load team members');
+      toast.error('Failed to load team data');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => { loadData(); }, []);
 
-  // ── Filtered list ──
+  // ── Filtered list (All Members view) — show ALL users including inactive ──
   const filtered = users.filter((u) => {
     const matchRole = filterRole === 'All' || u.role === filterRole;
     const matchSearch = !search ||
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase());
-    return matchRole && matchSearch && u.isActive !== false;
+    return matchRole && matchSearch;
   });
 
-  // ── Handlers ──
-  const handleRoleChange = async (user, newRole) => {
-    if (user.role === newRole) return;
+  // ── Project-grouped data (only active in project view) ──
+  const projectGroups = projects.map(project => {
+    const assigned = (project.assignedUsers || []);
+    const members = users.filter(u => {
+      const uid = u.uid || u.id;
+      if (!assigned.includes(uid)) return false;
+      const matchSearch = !search ||
+        u.name?.toLowerCase().includes(search.toLowerCase()) ||
+        u.email?.toLowerCase().includes(search.toLowerCase());
+      const matchRole = filterRole === 'All' || u.role === filterRole;
+      return matchSearch && matchRole;
+    });
+    return { project, members };
+  });
+
+  // ── Toggle active/inactive ──
+  const handleToggle = async (user, currentlyActive) => {
+    const targetId = user.id || user.uid;
+    console.log('[TeamManagement] Toggle requested for:', {
+      email: user.email,
+      id: user.id,
+      uid: user.uid,
+      targetId,
+      currentlyActive
+    });
+    
+    if (!targetId) {
+      console.error('[TeamManagement] No valid ID found for user:', user);
+      return toast.error("Cannot update user: Missing unique identifier.");
+    }
+
+    // 1. Self-protection
+    if (targetId === currentUser?.uid) {
+      return toast.error("You cannot deactivate your own account.");
+    }
+
     try {
-      await updateUserRole(user.id, newRole);
-      setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, role: newRole } : u));
-      toast.success(`${user.name || user.email}'s role updated to ${newRole}`);
-    } catch {
-      toast.error('Failed to update role');
+      // 2. Perform update
+      if (currentlyActive) {
+        await deactivateUser(targetId);
+        setUsers(prev => prev.map(u => (u.id === targetId || u.uid === targetId) ? { ...u, isActive: false } : u));
+        toast.success(`${user.name || user.email} has been deactivated.`);
+      } else {
+        await activateUser(targetId);
+        setUsers(prev => prev.map(u => (u.id === targetId || u.uid === targetId) ? { ...u, isActive: true } : u));
+        toast.success(`${user.name || user.email} has been activated.`);
+      }
+    } catch (err) {
+      console.error('[TeamManagement] Toggle error:', err);
+      toast.error(`Failed to update status: ${err.message || 'Permission denied'}`);
     }
   };
 
-  const handleDeactivate = async () => {
-    if (!confirmUser) return;
-    setActionLoading(true);
-    try {
-      await deactivateUser(confirmUser.id);
-      setUsers((prev) => prev.map((u) => u.id === confirmUser.id ? { ...u, isActive: false } : u));
-      toast.success(`${confirmUser.name || confirmUser.email} has been deactivated`);
-      setConfirmUser(null);
-    } catch {
-      toast.error('Failed to deactivate user');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // ── Stats ──
-  const total = users.filter((u) => u.isActive !== false).length;
-  const admins = users.filter((u) => u.role === 'Admin' && u.isActive !== false).length;
-  const devs = users.filter((u) => u.role === 'Developer' && u.isActive !== false).length;
-  const qas = users.filter((u) => u.role === 'QA' && u.isActive !== false).length;
+  // ── Stats (active only for counts) ──
+  const activeUsers = users.filter(u => u.isActive !== false);
+  const total = activeUsers.length;
+  const admins = activeUsers.filter((u) => u.role === 'Admin').length;
+  const devs = activeUsers.filter((u) => u.role === 'Developer').length;
+  const qas = activeUsers.filter((u) => u.role === 'QA').length;
 
   return (
     <>
-      <AdminTopbar title="Team" />
+      <AdminTopbar
+        title="Team Management"
+        subtitle="Manage your team members, roles, and access."
+      />
       <div className="page-container">
 
-        {/* ── Header ── */}
-        <div className="page-header">
-          <div className="page-header-left">
-            <h1 className="page-title">Team Management</h1>
-            <p className="page-subtitle">Manage your team members, roles, and access.</p>
+        {/* Top actions row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+          {/* View toggle */}
+          <div className="tm-view-toggle">
+            <button
+              id="view-all-members"
+              className={`tm-view-btn ${viewMode === 'all' ? 'tm-view-btn--active' : ''}`}
+              onClick={() => setViewMode('all')}
+            >
+              <List size={15} />
+              All Members
+            </button>
+            <button
+              id="view-by-project"
+              className={`tm-view-btn ${viewMode === 'project' ? 'tm-view-btn--active' : ''}`}
+              onClick={() => setViewMode('project')}
+            >
+              <LayoutGrid size={15} />
+              By Project
+            </button>
           </div>
+
           <button className="btn btn-primary" onClick={() => setShowInvite(true)}>
             <UserPlus size={16} />
             Invite Member
           </button>
         </div>
 
+        {/* Stats */}
         <div className="admin-stats-grid tm-stats-grid">
           {[
             { label: 'Total Members', value: total, icon: Users, color: 'var(--admin-accent)' },
@@ -342,6 +474,7 @@ export default function TeamManagementPage() {
           ))}
         </div>
 
+        {/* Toolbar */}
         <div className="tm-toolbar">
           <div className="search-wrapper tm-search">
             <Search size={15} className="search-icon" />
@@ -366,115 +499,100 @@ export default function TeamManagementPage() {
             ))}
           </div>
 
-          <button className="btn btn-secondary btn-sm" onClick={loadUsers} title="Refresh">
+          <button className="btn btn-secondary btn-sm" onClick={loadData} title="Refresh">
             <RefreshCw size={14} />
           </button>
         </div>
 
-        {/* ── Table ── */}
-        <div className="tm-table-wrap card">
-          {loading ? (
-            <div className="tm-table-loading">
-              <span className="spinner spinner-lg" />
-              <p>Loading team members…</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="empty-state">
-              <Users size={48} />
-              <h3>No members found</h3>
-              <p>Try adjusting your search or invite someone new.</p>
-            </div>
-          ) : (
-            <div className="tm-table-scroll">
-              <table className="tm-table">
-                <thead>
-                  <tr>
-                    <th>Member</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Joined</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((user) => (
-                    <tr key={user.id} className="tm-table-row">
-                      {/* Avatar + Name */}
-                      <td>
-                        <div className="tm-member-cell">
-                          <div className="tm-avatar">
-                            {user.photoURL
-                              ? <img src={user.photoURL} alt={user.name} />
-                              : <span>{getInitials(user.name, user.email)}</span>
-                            }
-                          </div>
-                          <div>
-                            <p className="tm-member-name">
-                              {user.name || (user.email ? user.email.split('@')[0] : '—')}
-                            </p>
-                            <p className="tm-member-uid">UID: {user.uid?.slice(0, 8)}…</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Email */}
-                      <td>
-                        <a href={`mailto:${user.email}`} className="tm-email-link">
-                          <Mail size={13} />
-                          {user.email}
-                        </a>
-                      </td>
-
-                      {/* Role Badge */}
-                      <td><RoleBadge role={user.role} /></td>
-
-                      {/* Joined date */}
-                      <td className="tm-date-cell">
-                        {user.createdAt?.seconds
-                          ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('en-IN', {
-                            day: '2-digit', month: 'short', year: 'numeric',
-                          })
-                          : '—'}
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ textAlign: 'right' }}>
-                        <ActionsMenu
-                          user={user}
-                          onRoleChange={handleRoleChange}
-                          onDeactivate={setConfirmUser}
-                        />
-                      </td>
+        {/* ── ALL MEMBERS VIEW ── */}
+        {viewMode === 'all' && (
+          <div className="tm-table-wrap card">
+            {loading ? (
+              <div className="tm-table-loading">
+                <span className="spinner spinner-lg" />
+                <p>Loading team members…</p>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="empty-state">
+                <Users size={48} />
+                <h3>No members found</h3>
+                <p>Try adjusting your search or invite someone new.</p>
+              </div>
+            ) : (
+              <div className="tm-table-scroll">
+                <table className="tm-table">
+                  <thead>
+                    <tr>
+                      <th>Member</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Joined</th>
+                      <th style={{ textAlign: 'center' }}>Active</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {filtered.map((user) => (
+                      <MemberRow
+                        key={user.id}
+                        user={user}
+                        onToggle={handleToggle}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-          {!loading && (
-            <div className="tm-table-footer">
-              Showing <strong>{filtered.length}</strong> of <strong>{total}</strong> members
-            </div>
-          )}
-        </div>
+            {!loading && (
+              <div className="tm-table-footer">
+                Showing <strong>{filtered.length}</strong> of <strong>{total}</strong> members
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PROJECT VIEW ── */}
+        {viewMode === 'project' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {loading ? (
+              <div className="tm-table-wrap card">
+                <div className="tm-table-loading">
+                  <span className="spinner spinner-lg" />
+                  <p>Loading projects…</p>
+                </div>
+              </div>
+            ) : projectGroups.length === 0 ? (
+              <div className="tm-table-wrap card">
+                <div className="empty-state">
+                  <Folder size={48} />
+                  <h3>No projects found</h3>
+                  <p>Create a project first to see team assignments here.</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {projectGroups.map(({ project, members }) => (
+                  <ProjectGroupCard
+                    key={project.id}
+                    project={project}
+                    members={members}
+                    onToggle={handleToggle}
+                  />
+                ))}
+                <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-muted)', paddingRight: 4 }}>
+                  {projects.length} project{projects.length !== 1 ? 's' : ''} · {total} active member{total !== 1 ? 's' : ''}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Invite Modal ── */}
       {showInvite && (
         <InviteModal
           onClose={() => setShowInvite(false)}
-          onSuccess={loadUsers}
-        />
-      )}
-
-      {/* ── Confirm Deactivate Modal ── */}
-      {confirmUser && (
-        <ConfirmModal
-          user={confirmUser}
-          onClose={() => setConfirmUser(null)}
-          onConfirm={handleDeactivate}
-          loading={actionLoading}
+          onSuccess={loadData}
         />
       )}
     </>

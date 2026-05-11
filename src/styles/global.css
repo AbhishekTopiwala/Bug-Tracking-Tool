@@ -808,6 +808,27 @@ textarea.form-control {
     min-width: 200px;
   }
 
+  .topbar-title-wrap {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+  }
+
+  .topbar-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .topbar-subtitle {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
   /* Page header wraps on tablet */
   .page-header {
     flex-wrap: wrap;

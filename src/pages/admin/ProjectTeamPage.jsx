@@ -178,36 +178,44 @@ export default function ProjectTeamPage() {
 
   return (
     <div className="admin-layout">
-      <AdminTopbar title="Manage Project Team" />
+      <AdminTopbar 
+        title="Manage Team Access" 
+        subtitle={`Configure workspace permissions for ${project?.name}`}
+      />
 
       <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '40px 60px' }}>
-        {/* Header Section */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 48, gap: 40 }}>
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: '3rem', fontWeight: 900, margin: 0, letterSpacing: '-0.05em', color: 'var(--text-primary)' }}>
-              Manage Team Access
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginTop: 12, fontWeight: 500 }}>
-              Configure workspace permissions for <span style={{ color: 'var(--admin-accent)', fontWeight: 700 }}>{project?.name}</span>
-            </p>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', marginBottom: 48, gap: 40 }}>
 
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <button 
-              className="btn btn-secondary"
+            <button
+              className="btn"
               onClick={() => navigate(`/admin/projects/${project?.id}`)}
-              style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8 }}
+              style={{
+                background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)',
+                fontWeight: 700, padding: '12px 24px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+                boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
             >
               <ArrowLeft size={18} /> Back to Project
             </button>
-            <button 
-              className="btn btn-primary"
+            <button
+              className="btn"
               onClick={handleSave}
               disabled={isSaving}
-              style={{ borderRadius: 12, padding: '10px 24px', fontWeight: 700, gap: 10 }}
+              style={{
+                background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)',
+                fontWeight: 700, padding: '12px 24px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+                boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s',
+                opacity: isSaving ? 0.7 : 1,
+                cursor: isSaving ? 'not-allowed' : 'pointer'
+              }}
+              onMouseOver={(e) => { if (!isSaving) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; } }}
+              onMouseOut={(e) => { if (!isSaving) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; } }}
             >
               {isSaving ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />}
-              {isSaving ? 'Saving...' : 'Save Assignments'}
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </div>
@@ -270,11 +278,11 @@ export default function ProjectTeamPage() {
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selected</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--admin-accent)' }}>{selectedIds.length}</span>
+              <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--admin-accent)' }}>{selectedIds.length}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)' }}>{allUsers.length}</span>
+              <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)' }}>{allUsers.length}</span>
             </div>
           </div>
         </div>
@@ -282,7 +290,7 @@ export default function ProjectTeamPage() {
         {/* Members Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))',
+          gridTemplateColumns: 'repeat(3, 1fr)',
           gap: 24
         }}>
           <AnimatePresence mode="popLayout">
@@ -315,34 +323,7 @@ export default function ProjectTeamPage() {
           </AnimatePresence>
         </div>
 
-        {/* Bottom Save Button (Floating-ish) */}
-        <div style={{
-          marginTop: 48, padding: '32px', borderRadius: 24,
-          background: 'linear-gradient(to right, #1e1b4b, #312e81)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'white',
-          boxShadow: '0 20px 40px rgba(30, 27, 75, 0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ShieldCheck size={28} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>Finalize Assignments</div>
-              <p style={{ margin: 0, opacity: 0.7, fontSize: '0.9rem' }}>{selectedIds.length} members will have access to this project.</p>
-            </div>
-          </div>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            style={{
-              background: 'white', color: '#1e1b4b', border: 'none', padding: '16px 40px',
-              borderRadius: 14, fontWeight: 900, fontSize: '1rem', cursor: isSaving ? 'default' : 'pointer',
-              transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 12
-            }}
-          >
-            {isSaving ? 'Saving Changes...' : 'Save All Changes'}
-          </button>
-        </div>
+
       </div>
     </div>
   );

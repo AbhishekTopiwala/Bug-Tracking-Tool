@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { markNotificationRead, clearAllNotifications, deleteNotification, subscribeToNotifications } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function Topbar({ title, onSearch, onBack }) {
+export default function Topbar({ title, subtitle, onSearch, onBack }) {
   const [showNotifs, setShowNotifs] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [notifications, setNotifications] = useState([]);
@@ -56,7 +56,10 @@ export default function Topbar({ title, onSearch, onBack }) {
       >
         <Menu size={20} />
       </button>
-      <div className="topbar-title">{title}</div>
+      <div className="topbar-title-wrap">
+        <div className="topbar-title">{title}</div>
+        {subtitle && <div className="topbar-subtitle">{subtitle}</div>}
+      </div>
 
       <div className="topbar-actions" style={{ marginLeft: 'auto' }}>
         {/* Search */}

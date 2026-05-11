@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { User, Shield, Bell, Key, Save, Loader2 } from 'lucide-react';
 import Topbar from '../components/Topbar';
+import AdminTopbar from '../components/AdminTopbar';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
@@ -32,16 +33,17 @@ export default function SettingsPage() {
     }
   };
 
+  const isAdmin = userProfile?.role === 'Admin';
+
   return (
     <>
-      <Topbar title="Settings" />
+      {isAdmin ? (
+        <AdminTopbar title="Settings" />
+      ) : (
+        <Topbar title="Settings" />
+      )}
       <div className="page-container">
-        <div className="page-header">
-          <div className="page-header-left">
-            <h1 className="page-title">Settings</h1>
-            <p className="page-subtitle">Manage your account and preferences</p>
-          </div>
-        </div>
+
 
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 24, alignItems: 'start' }}>
           {/* Sidebar Nav */}

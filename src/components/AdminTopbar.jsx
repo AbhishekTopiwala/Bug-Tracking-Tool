@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, X, Menu } from 'lucide-react';
+import { Bell, X, Menu, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   markNotificationRead,
@@ -14,11 +14,17 @@ import { useAuth } from '../contexts/AuthContext';
  * AdminTopbar — same notification logic as Topbar but styled for the Admin portal.
  * Does NOT show "New Bug" button (admins manage people, not bugs directly).
  */
-export default function AdminTopbar({ title }) {
+export default function AdminTopbar({ title, subtitle, onSearch }) {
   const [showNotifs, setShowNotifs] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const notifRef = useRef(null);
   const { currentUser } = useAuth();
+  const [searchVal, setSearchVal] = useState('');
+
+  const handleSearch = (e) => {
+    setSearchVal(e.target.value);
+    onSearch?.(e.target.value);
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -61,7 +67,25 @@ export default function AdminTopbar({ title }) {
         <Menu size={20} />
       </button>
 
-      <div className="admin-topbar-title">{title}</div>
+      <div className="admin-topbar-title-wrap">
+        <div className="admin-topbar-title">{title}</div>
+        {subtitle && <div className="admin-topbar-subtitle">{subtitle}</div>}
+      </div>
+
+      {onSearch && (
+        <div className="admin-topbar-search">
+          <div className="admin-search-wrapper">
+            <Search size={16} className="admin-search-icon" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="admin-search-input"
+              value={searchVal}
+              onChange={handleSearch}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="topbar-actions">
         {/* Notifications */}

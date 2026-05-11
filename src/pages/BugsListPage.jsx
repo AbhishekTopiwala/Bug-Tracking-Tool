@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bug, AlertCircle, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import BugCard from '../components/BugCard';
 import Topbar from '../components/Topbar';
+import AdminTopbar from '../components/AdminTopbar';
 import { subscribeToBugs, getProjects, updateBug, createNotification } from '../services/firestoreService';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { toast } from 'react-hot-toast';
@@ -206,9 +207,15 @@ export default function BugsListPage() {
     });
   }, [bugs, statusFilter, priorityFilter, searchQuery, projectFilter]);
 
+  const isAdmin = userProfile?.role === 'Admin';
+
   return (
     <>
-      <Topbar title={`${projectFilter || 'Project'} Bugs`} onSearch={setSearchQuery} />
+      {isAdmin ? (
+        <AdminTopbar title={`${projectFilter || 'Project'} Bugs`} onSearch={setSearchQuery} />
+      ) : (
+        <Topbar title={`${projectFilter || 'Project'} Bugs`} onSearch={setSearchQuery} />
+      )}
       <div className="page-container" style={{ paddingTop: 12 }}>
 
         {/* Filters & Bug Count Row — uses responsive CSS class */}

@@ -139,7 +139,10 @@ export default function ProjectOverviewPage() {
 
   return (
     <div className="admin-layout">
-      <AdminTopbar title={`${project.name} Details`} />
+      <AdminTopbar 
+        title={project.name} 
+        subtitle={project.description || "Project workspace and quality tracking dashboard."}
+      />
 
       <motion.div
         className="page-content"
@@ -149,53 +152,34 @@ export default function ProjectOverviewPage() {
         style={{ padding: '40px 60px', maxWidth: '1600px', margin: '0 auto' }}
       >
         {/* Premium Header Section */}
-        <motion.div variants={itemVariants} style={{ marginBottom: 48 }}>
+        <motion.div variants={itemVariants} style={{ marginBottom: 40 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 32 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-                <div style={{ 
-                  width: 56, height: 56, borderRadius: 16, 
-                  background: 'linear-gradient(135deg, var(--admin-accent), #3D49DF)', 
-                  color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 8px 20px rgba(91, 108, 255, 0.25)'
-                }}>
-                  <FolderOpen size={28} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0, letterSpacing: '-0.04em', color: 'var(--text-primary)' }}>{project.name}</h1>
-                    <span style={{ 
-                      padding: '4px 12px', borderRadius: 20, background: 'var(--admin-accent-light)', 
-                      color: 'var(--admin-accent)', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.05em' 
-                    }}>ACTIVE</span>
-                  </div>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', margin: '4px 0 0 0', fontWeight: 500 }}>
-                    {project.description || "Project workspace and quality tracking dashboard."}
-                  </p>
-                </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 32, marginTop: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                <Calendar size={16} />
+                <span style={{ fontWeight: 600 }}>Started {project.createdAt ? new Date(project.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'N/A'}</span>
               </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: 32, marginTop: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <Calendar size={16} />
-                  <span style={{ fontWeight: 600 }}>Started {project.createdAt ? new Date(project.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'N/A'}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <Users size={16} />
-                  <span style={{ fontWeight: 600 }}>{allUsers.length} Team Members</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <Shield size={16} />
-                  <span style={{ fontWeight: 600 }}>{project.type || 'Standard'} Security</span>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                <Users size={16} />
+                <span style={{ fontWeight: 600 }}>{allUsers.length} Team Members</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                <Shield size={16} />
+                <span style={{ fontWeight: 600 }}>{project.type || 'Standard'} Security</span>
               </div>
             </div>
             
             <div style={{ display: 'flex', gap: 12, paddingBottom: 8 }}>
               <button 
-                className="btn btn-secondary"
+                className="btn"
                 onClick={() => navigate('/admin/projects')}
-                style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8 }}
+                style={{ 
+                  background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', 
+                  fontWeight: 700, padding: '12px 24px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+                  boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
               >
                 <ArrowLeft size={18} /> Back to Projects
               </button>
@@ -217,12 +201,12 @@ export default function ProjectOverviewPage() {
                 className="btn" 
                 onClick={() => navigate(`/admin/projects/${project.id}/team`)}
                 style={{ 
-                  background: 'var(--admin-accent-light)', border: '1px solid var(--admin-accent)', color: 'var(--admin-accent)', 
-                  fontWeight: 800, padding: '12px 24px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
-                  boxShadow: '0 4px 12px rgba(91, 108, 255, 0.1)', transition: 'all 0.2s'
+                  background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', 
+                  fontWeight: 700, padding: '12px 24px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+                  boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = 'var(--admin-accent)'; e.currentTarget.style.color = 'white'; }}
-                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'var(--admin-accent-light)'; e.currentTarget.style.color = 'var(--admin-accent)'; }}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
               >
                 <Users size={18} />
                 Manage Team
@@ -239,8 +223,8 @@ export default function ProjectOverviewPage() {
               variants={itemVariants}
               whileHover={{ y: -4 }}
               style={{ 
-                background: 'var(--bg-card)', padding: '28px', borderRadius: 20, border: '1px solid var(--border)',
-                display: 'flex', flexDirection: 'column', gap: 16, boxShadow: 'var(--shadow-sm)',
+                background: 'var(--bg-card)', padding: '20px', borderRadius: 20, border: '1px solid var(--border)',
+                display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)',
                 position: 'relative', overflow: 'hidden'
               }}
             >
@@ -252,7 +236,7 @@ export default function ProjectOverviewPage() {
                 <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</span>
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{stat.value}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{stat.value}</h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{stat.desc}</p>
               </div>
             </motion.div>
@@ -268,7 +252,7 @@ export default function ProjectOverviewPage() {
               <div className="admin-card-header" style={{ border: 'none', padding: 0, marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <TrendingUp size={20} style={{ color: 'var(--admin-accent)' }} />
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Bug Status Distribution</h3>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Bug Status Distribution</h3>
                 </div>
               </div>
 
@@ -301,7 +285,7 @@ export default function ProjectOverviewPage() {
 
                 <div style={{ background: 'var(--bg-primary)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                   <div style={{ width: 100, height: 100, borderRadius: '50%', border: '8px solid var(--admin-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 900 }}>{stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: 900 }}>{stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%</span>
                   </div>
                   <h4 style={{ margin: '0 0 4px 0' }}>Efficiency Score</h4>
                   <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Bug resolution rate for this project</p>
@@ -314,7 +298,7 @@ export default function ProjectOverviewPage() {
               <div className="admin-card-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <Activity size={20} style={{ color: 'var(--admin-accent)' }} />
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Activity Log</h3>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Activity Log</h3>
                 </div>
                 <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/admin/bugs?project=${encodeURIComponent(project.name)}`)}>
                   View All Bugs <ChevronRight size={14} />

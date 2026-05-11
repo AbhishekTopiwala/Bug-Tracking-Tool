@@ -1,11 +1,14 @@
 export const STATUSES = ['Open', 'In Progress', 'Done', 'Resolved', 'Reopen', 'Reproduced'];
 
 export const getValidStatusTransitions = (currentStatus, role) => {
+  // Admin can move any bug to any status
+  if (role === 'Admin') return STATUSES;
+
   if (role === 'Developer') {
     switch (currentStatus) {
-      case 'Open': 
+      case 'Open':
         return ['Open', 'In Progress'];
-      case 'In Progress': 
+      case 'In Progress':
         return ['In Progress', 'Done'];
       case 'Reopen':
       case 'Reopened':
@@ -18,17 +21,17 @@ export const getValidStatusTransitions = (currentStatus, role) => {
         return [currentStatus]; // Once Done or Resolved, dev cannot change it
     }
   } else {
-    // QA or Admin role
+    // QA role
     switch (currentStatus) {
-      case 'Open': 
+      case 'Open':
         return ['Open', 'In Progress'];
-      case 'In Progress': 
+      case 'In Progress':
         return ['In Progress']; // QA cannot touch in progress bugs
-      case 'Done': 
+      case 'Done':
         return ['Done', 'Resolved', 'Reopen'];
-      case 'Resolved': 
+      case 'Resolved':
         return ['Resolved', 'Reproduced'];
-      case 'Reopen': 
+      case 'Reopen':
       case 'Reopened':
         return ['Reopen']; // QA cannot change directly; Developer must move to In Progress
       case 'Reproduced':
@@ -38,4 +41,3 @@ export const getValidStatusTransitions = (currentStatus, role) => {
     }
   }
 };
-

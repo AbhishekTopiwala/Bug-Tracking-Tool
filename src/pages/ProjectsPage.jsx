@@ -7,6 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { getProjects, createProject, deleteProject, subscribeToBugs, updateProject, getUsers } from '../services/firestoreService';
 import Topbar from '../components/Topbar';
+import AdminTopbar from '../components/AdminTopbar';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -178,16 +179,22 @@ export default function ProjectsPage() {
 
   return (
     <>
-      <Topbar title="Project Management" onSearch={setSearchQuery} />
+      {isAdmin ? (
+        <AdminTopbar 
+          title="Projects" 
+          subtitle="Manage and organize testing workspaces"
+          onSearch={setSearchQuery} 
+        />
+      ) : (
+        <Topbar 
+          title="Projects" 
+          subtitle="Manage and organize testing workspaces"
+          onSearch={setSearchQuery} 
+        />
+      )}
       <div className="page-container">
-        <div className="page-header" style={{ marginBottom: 32 }}>
-          <div className="page-header-left">
-            <h1 className="page-title">Projects</h1>
-            <p className="page-subtitle">
-              {isAdmin ? 'Manage and organize testing workspaces' : 'Your assigned testing workspaces'}
-            </p>
-          </div>
-          {isAdmin && (
+        {isAdmin && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 32 }}>
             <button 
               className="btn btn-primary" 
               onClick={() => setShowModal(true)}
@@ -196,8 +203,8 @@ export default function ProjectsPage() {
               <Plus size={20} />
               New Project
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Projects Grid - Redesigned */}
         {loading ? (

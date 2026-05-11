@@ -3,6 +3,7 @@ import { Bell, CheckCheck, BellOff, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import Topbar from '../components/Topbar';
+import AdminTopbar from '../components/AdminTopbar';
 import { subscribeToNotifications, markNotificationRead, clearAllNotifications, deleteNotification } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -11,7 +12,8 @@ import { db } from '../firebase/config';
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
+  const isAdmin = userProfile?.role === 'Admin';
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,28 +44,52 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <Topbar title="Notifications" />
+      {isAdmin ? (
+        <AdminTopbar 
+          title="Notifications" 
+          subtitle={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
+        />
+      ) : (
+        <Topbar title="Notifications" />
+      )}
       <div className="page-container">
-        <div className="page-header">
-          <div className="page-header-left">
-            <h1 className="page-title">Notifications</h1>
-            <p className="page-subtitle">
-              {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
-            </p>
+        {!isAdmin && (
+          <div className="page-header">
+            <div className="page-header-left">
+              <h1 className="page-title">Notifications</h1>
+              <p className="page-subtitle">
+                {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {unreadCount > 0 && (
+                <button className="btn btn-secondary" onClick={markAllRead}>
+                  <CheckCheck size={15} /> Mark all read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button className="btn btn-danger" onClick={handleClearAll}>
+                  <Trash2 size={15} /> Clear All
+                </button>
+              )}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+        )}
+
+        {isAdmin && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 32 }}>
             {unreadCount > 0 && (
-              <button className="btn btn-secondary" onClick={markAllRead}>
-                <CheckCheck size={15} /> Mark all read
+              <button className="btn btn-secondary" onClick={markAllRead} style={{ borderRadius: 12 }}>
+                <CheckCheck size={16} /> Mark all read
               </button>
             )}
             {notifications.length > 0 && (
-              <button className="btn btn-danger" onClick={handleClearAll}>
-                <Trash2 size={15} /> Clear All
+              <button className="btn btn-danger" onClick={handleClearAll} style={{ borderRadius: 12 }}>
+                <Trash2 size={16} /> Clear All
               </button>
             )}
           </div>
-        </div>
+        )}
 
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
