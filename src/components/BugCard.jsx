@@ -3,7 +3,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { MessageSquare, Paperclip, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-
 export default function BugCard({ bug, hideStatus = false }) {
   const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();

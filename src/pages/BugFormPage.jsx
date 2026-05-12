@@ -51,6 +51,10 @@ export default function BugFormPage() {
   const prefilled = location.state?.prefilled;
   const isEditing = Boolean(id);
 
+  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const paramProjectName = queryParams.get('project');
+  const paramProjectId = queryParams.get('projectId');
+
   const [form, setForm] = useState({
     title: prefilled?.title || '',
     description: prefilled?.description || '',
@@ -109,9 +113,24 @@ export default function BugFormPage() {
     ]).then(([devs, projs]) => {
       setDevelopers(devs);
       setProjects(projs);
+
+      // Pre-select project from query parameters if not editing
+      if (!isEditing) {
+        if (paramProjectId) {
+          const matched = projs.find(p => p.id === paramProjectId);
+          if (matched) {
+            setForm(f => ({ ...f, projectId: matched.id, projectName: matched.name }));
+          }
+        } else if (paramProjectName) {
+          const matched = projs.find(p => p.name.toLowerCase() === paramProjectName.toLowerCase());
+          if (matched) {
+            setForm(f => ({ ...f, projectId: matched.id, projectName: matched.name }));
+          }
+        }
+      }
     }).catch(() => {
     });
-  }, [currentUser, userProfile?.role]);
+  }, [currentUser, userProfile?.role, paramProjectId, paramProjectName, isEditing]);
 
   // Load bug if editing
   useEffect(() => {

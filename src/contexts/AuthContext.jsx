@@ -128,11 +128,30 @@ export function AuthProvider({ children }) {
 
     // Fetch branding settings real-time
     console.log("AuthContext: Setting up branding listener...");
+
+    // Preload instantly from localStorage fallback so it loads without any latency
+    try {
+      const cached = localStorage.getItem('qapture_branding');
+      if (cached) {
+        const localData = JSON.parse(cached);
+        setBranding(localData);
+        if (localData.primaryColor) {
+          document.documentElement.style.setProperty('--accent', localData.primaryColor);
+          document.documentElement.style.setProperty('--dev-accent', localData.primaryColor);
+        }
+      }
+    } catch (e) {
+      console.warn("AuthContext: Initial local cache read warning:", e);
+    }
+
     const brandingUnsub = onSnapshot(doc(db, 'settings', 'branding'), (snap) => {
       console.log("AuthContext: Branding settings updated");
       if (snap.exists()) {
         const data = snap.data();
         setBranding(data);
+        try {
+          localStorage.setItem('qapture_branding', JSON.stringify(data));
+        } catch (e) {}
         // Apply primary color to CSS variables
         if (data.primaryColor) {
           document.documentElement.style.setProperty('--accent', data.primaryColor);
@@ -140,7 +159,7 @@ export function AuthProvider({ children }) {
         }
       }
     }, (err) => {
-      console.error("AuthContext: Branding listener error", err);
+      console.warn("AuthContext: Live branding listener rejected (this is expected if cloud Firestore rules are not yet deployed):", err);
     });
 
     // Safety timeout: if auth takes more than 5 seconds, force loading to false

@@ -13,7 +13,6 @@ const adminNavItems = [
 
 const accountItems = [
   { to: '/admin/notifications', icon: Bell, label: 'Notifications', exact: false },
-  { to: '/admin/branding', icon: Palette, label: 'Branding', exact: false },
   { to: '/admin/settings', icon: Settings, label: 'Settings', exact: false },
 ];
 

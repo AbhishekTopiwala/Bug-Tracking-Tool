@@ -1,10 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bug, AlertCircle, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import { 
+  Bug, AlertCircle, ChevronDown, ChevronUp, ArrowLeft,
+  LayoutGrid, List, SlidersHorizontal, User, Tag, Search, 
+  Minimize2, Maximize2, Square, CheckSquare, Settings
+} from 'lucide-react';
 import BugCard from '../components/BugCard';
 import Topbar from '../components/Topbar';
 import AdminTopbar from '../components/AdminTopbar';
-import { subscribeToBugs, getProjects, updateBug, createNotification } from '../services/firestoreService';
+import { 
+  subscribeToBugs, getProjects, updateBug, createNotification, getUsers 
+} from '../services/firestoreService';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +18,7 @@ import { getValidStatusTransitions } from '../utils/statusRules';
 
 const STATUSES = ['All', 'Open', 'In Progress', 'Done', 'Resolved', 'Reopen', 'Reproduced'];
 const PRIORITIES = ['All', 'Critical', 'High', 'Medium', 'Low'];
+const SWIMLANE_PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
 
 function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
   const [open, setOpen] = useState(false);
@@ -32,7 +39,7 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
       <button
         onClick={() => setOpen(!open)}
         style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px',
           background: open ? 'var(--bg-card)' : 'var(--bg-secondary)',
           border: '1px solid',
           borderColor: open ? 'var(--border)' : 'transparent',
@@ -42,10 +49,10 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
         onMouseOver={(e) => { if (!open) e.currentTarget.style.background = 'var(--border)'; }}
         onMouseOut={(e) => { if (!open) e.currentTarget.style.background = 'var(--bg-secondary)'; }}
       >
-        <Icon size={16} style={{ color: value !== 'All' ? 'var(--accent)' : 'var(--text-muted)' }} />
-        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{label}:</span>
-        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: value !== 'All' ? 'var(--accent)' : 'var(--text-primary)' }}>{value}</span>
-        <ChevronDown size={14} style={{ marginLeft: 4, opacity: 0.5, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+        <Icon size={14} style={{ color: value !== 'All' && value !== '' ? 'var(--accent)' : 'var(--text-muted)' }} />
+        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{label}:</span>
+        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: value !== 'All' && value !== '' ? 'var(--accent)' : 'var(--text-primary)' }}>{value === '' ? 'Unassigned' : value}</span>
+        <ChevronDown size={12} style={{ marginLeft: 4, opacity: 0.5, transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
       </button>
 
       {open && (
@@ -53,7 +60,8 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
           position: 'absolute', top: '100%', left: 0, marginTop: 8,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
           borderRadius: 8, boxShadow: 'var(--shadow-lg)', padding: 6, zIndex: 200,
-          display: 'flex', flexDirection: 'column', minWidth: 160, gap: 2
+          display: 'flex', flexDirection: 'column', minWidth: 170, gap: 2,
+          maxHeight: 260, overflowY: 'auto'
         }}>
           {options.map((opt) => (
             <button
@@ -61,7 +69,7 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
               onClick={() => { onChange(opt); setOpen(false); }}
               style={{
                 padding: '8px 12px', textAlign: 'left', border: 'none', background: 'transparent',
-                borderRadius: 6, cursor: 'pointer', fontSize: '0.85rem',
+                borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem',
                 color: value === opt ? 'var(--accent)' : 'var(--text-secondary)',
                 fontWeight: value === opt ? 600 : 500,
                 backgroundColor: value === opt ? 'var(--accent-light)' : 'transparent',
@@ -70,35 +78,11 @@ function FilterDropdown({ icon: Icon, label, value, options, onChange }) {
               onMouseOver={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'; }}
               onMouseOut={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
-              {opt}
+              {opt === '' ? 'Unassigned' : opt}
             </button>
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-/* Collapsible Kanban Column wrapper — header tap collapses on mobile */
-function KanbanColumn({ status, bugs, provided, snapshot, children }) {
-  const [collapsed, setCollapsed] = useState(false);
-
-  return (
-    <div className={`kanban-column${collapsed ? ' kanban-column--collapsed' : ''}`}>
-      <div
-        className="kanban-column-header"
-        onClick={() => setCollapsed(c => !c)}
-        style={{ cursor: 'pointer', userSelect: 'none' }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h3 className="kanban-column-title">{status}</h3>
-          <span className="kanban-column-count">{bugs.length}</span>
-        </div>
-        <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-          {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-        </span>
-      </div>
-      {!collapsed && children}
     </div>
   );
 }
@@ -109,12 +93,33 @@ export default function BugsListPage() {
   const [bugs, setBugs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [projectsLoading, setProjectsLoading] = useState(true);
-  const statusFilter = 'All';
+  
+  // Custom Filters States
+  const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
+  const [assigneeFilter, setAssigneeFilter] = useState('All');
+  const [tagFilter, setTagFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [viewMode, setViewMode] = useState('board'); // 'board' or 'list'
+  const [useSwimlanes, setUseSwimlanes] = useState(false);
+  const [collapsedColumns, setCollapsedColumns] = useState({});
+  const [collapsedSwimlanes, setCollapsedSwimlanes] = useState({
+    Critical: true,
+    High: true,
+    Medium: true,
+    Low: true
+  });
+  // High-density table selection
+  const [selectedBugs, setSelectedBugs] = useState([]);
+  
+  // Project list states
   const [projectFilter, setProjectFilter] = useState(searchParams.get('project') || '');
   const [projects, setProjects] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [allUsers, setAllUsers] = useState([]);
+  
   const navigate = useNavigate();
+  const basePath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
 
   // If the URL changes, update the filter
   useEffect(() => {
@@ -123,10 +128,10 @@ export default function BugsListPage() {
       setProjectFilter(p);
     } else {
       // No project selected, redirect to projects page
-      const basePath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
-      navigate(`${basePath}/projects`);
+      const bPath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
+      navigate(`${bPath}/projects`);
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, userProfile?.role]);
 
   // If filter changes, update URL
   const handleProjectFilterChange = (newVal) => {
@@ -141,7 +146,12 @@ export default function BugsListPage() {
     getProjects(currentUser.uid, userProfile.role)
       .then(setProjects)
       .finally(() => setProjectsLoading(false));
-  }, [currentUser, userProfile?.role]);
+
+    // Fetch workspace users to support inline assignee modifications in list view
+    getUsers()
+      .then(setAllUsers)
+      .catch(console.error);
+  }, [currentUser, userProfile]);
 
   useEffect(() => {
     const unsub = subscribeToBugs((data) => {
@@ -151,30 +161,51 @@ export default function BugsListPage() {
     return () => unsub();
   }, []);
 
-  // Filter bugs based on role
+  // Filter bugs based on role and project membership
   const myBugs = useMemo(() => {
-    // When a specific project is selected from URL, filter directly by name — no need to wait for project list
     if (projectFilter) {
-      if (userProfile?.role === 'Admin') return bugs.filter(b => b.projectName === projectFilter);
       return bugs.filter(b => b.projectName === projectFilter);
     }
-    // For the "all bugs" view, wait for project membership to load
     if (projectsLoading) return [];
     if (userProfile?.role === 'Admin') return bugs;
     return bugs.filter(b => projects.some(p => p.id === b.projectId));
   }, [bugs, userProfile?.role, projects, projectsLoading, projectFilter]);
+
+  // Extract unique assignees and tags dynamically from loaded bugs to feed filtering dropdowns
+  const assigneeOptions = useMemo(() => {
+    const set = new Set();
+    myBugs.forEach(b => {
+      set.add(b.assigneeName || '');
+    });
+    return ['All', ...Array.from(set)];
+  }, [myBugs]);
+
+  const tagOptions = useMemo(() => {
+    const set = new Set();
+    myBugs.forEach(b => {
+      if (b.tags) b.tags.forEach(t => set.add(t));
+    });
+    return ['All', ...Array.from(set)];
+  }, [myBugs]);
 
   const handleDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-    const newStatus = destination.droppableId;
+    let newStatus = destination.droppableId;
+    let newPriority = null;
+
+    // Decode Swimlane IDs
+    if (destination.droppableId.includes('__')) {
+      [newStatus, newPriority] = destination.droppableId.split('__');
+    }
+
     const bugToMove = bugs.find(b => b.id === draggableId);
     if (!bugToMove) return;
 
     const role = userProfile?.role || 'QA';
-    // Only the reporter or assigned dev (by assigneeId) can change status
+    // Only the reporter, assignee or admin can change status
     const canChangeStatus = userProfile?.role === 'Admin' || 
                             bugToMove.reportedBy === currentUser?.uid || 
                             bugToMove.assigneeId === currentUser?.uid;
@@ -186,17 +217,31 @@ export default function BugsListPage() {
 
     const validTransitions = getValidStatusTransitions(bugToMove.status, role);
 
-    if (!validTransitions.includes(newStatus)) {
+    if (newStatus !== bugToMove.status && !validTransitions.includes(newStatus)) {
       toast.error(`Cannot move bug from "${bugToMove.status}" to "${newStatus}" as ${role}`);
       return;
     }
 
     // Optimistic UI update
-    setBugs(prev => prev.map(b => b.id === draggableId ? { ...b, status: newStatus } : b));
+    setBugs(prev => prev.map(b => {
+      if (b.id === draggableId) {
+        const updated = { ...b, status: newStatus };
+        if (newPriority) updated.priority = newPriority;
+        return updated;
+      }
+      return b;
+    }));
 
     try {
-      await updateBug(draggableId, { status: newStatus });
-      toast.success(`Moved to ${newStatus}`);
+      const updates = { status: newStatus };
+      if (newPriority) updates.priority = newPriority;
+      await updateBug(draggableId, updates, userProfile?.displayName || currentUser?.displayName);
+      
+      let toastMsg = `Moved to ${newStatus}`;
+      if (newPriority && newPriority !== bugToMove.priority) {
+        toastMsg += ` & updated priority to ${newPriority}`;
+      }
+      toast.success(toastMsg);
     } catch (err) {
       console.error(err);
       toast.error('Failed to update status');
@@ -207,6 +252,11 @@ export default function BugsListPage() {
     return myBugs.filter((bug) => {
       if (statusFilter !== 'All' && bug.status !== statusFilter) return false;
       if (priorityFilter !== 'All' && bug.priority !== priorityFilter) return false;
+      if (assigneeFilter !== 'All') {
+        const checkVal = assigneeFilter === '' ? undefined : assigneeFilter;
+        if (bug.assigneeName !== checkVal) return false;
+      }
+      if (tagFilter !== 'All' && (!bug.tags || !bug.tags.includes(tagFilter))) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return (
@@ -218,7 +268,107 @@ export default function BugsListPage() {
       }
       return true;
     });
-  }, [myBugs, statusFilter, priorityFilter, searchQuery]);
+  }, [myBugs, statusFilter, priorityFilter, assigneeFilter, tagFilter, searchQuery]);
+
+  // Inline Triage Operations for List View
+  const handleUpdateStatusInline = async (bugId, newStatus) => {
+    const bug = bugs.find(b => b.id === bugId);
+    if (!bug) return;
+    
+    const role = userProfile?.role || 'QA';
+    const canChangeStatus = userProfile?.role === 'Admin' || 
+                            bug.reportedBy === currentUser?.uid || 
+                            bug.assigneeId === currentUser?.uid;
+
+    if (!canChangeStatus) {
+      toast.error('Only the reporter or assigned developer can change the status');
+      return;
+    }
+
+    const validTransitions = getValidStatusTransitions(bug.status, role);
+    if (newStatus !== bug.status && !validTransitions.includes(newStatus)) {
+      toast.error(`Cannot move bug from "${bug.status}" to "${newStatus}" as ${role}`);
+      return;
+    }
+
+    setBugs(prev => prev.map(b => b.id === bugId ? { ...b, status: newStatus } : b));
+    try {
+      await updateBug(bugId, { status: newStatus }, userProfile?.displayName || currentUser?.displayName);
+      toast.success(`Updated status to ${newStatus}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handleUpdatePriorityInline = async (bugId, newPriority) => {
+    const bug = bugs.find(b => b.id === bugId);
+    if (!bug) return;
+
+    setBugs(prev => prev.map(b => b.id === bugId ? { ...b, priority: newPriority } : b));
+    try {
+      await updateBug(bugId, { priority: newPriority }, userProfile?.displayName || currentUser?.displayName);
+      toast.success(`Priority updated to ${newPriority}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update priority');
+    }
+  };
+
+  const handleUpdateAssigneeInline = async (bugId, assigneeId) => {
+    const bug = bugs.find(b => b.id === bugId);
+    if (!bug) return;
+
+    const userSelected = allUsers.find(u => u.id === assigneeId);
+    const assigneeName = userSelected ? userSelected.displayName : '';
+
+    setBugs(prev => prev.map(b => b.id === bugId ? { ...b, assigneeId, assigneeName } : b));
+    try {
+      await updateBug(bugId, { assigneeId, assigneeName }, userProfile?.displayName || currentUser?.displayName);
+      toast.success(`Assigned bug to ${assigneeName || 'Unassigned'}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update assignee');
+    }
+  };
+
+  // Bulk Triage operations
+  const handleBulkUpdate = async (type, value) => {
+    if (selectedBugs.length === 0) return;
+    const loadingToast = toast.loading(`Bulk updating ${selectedBugs.length} bugs...`);
+    
+    try {
+      const promises = selectedBugs.map(async (id) => {
+        const bug = bugs.find(b => b.id === id);
+        if (!bug) return;
+        
+        const updates = {};
+        if (type === 'status') {
+          const role = userProfile?.role || 'QA';
+          const validTransitions = getValidStatusTransitions(bug.status, role);
+          if (value !== bug.status && !validTransitions.includes(value)) return; // skip if invalid
+          updates.status = value;
+        } else if (type === 'priority') {
+          updates.priority = value;
+        } else if (type === 'assignee') {
+          const userSelected = allUsers.find(u => u.id === value);
+          updates.assigneeId = value;
+          updates.assigneeName = userSelected ? userSelected.displayName : '';
+        }
+        
+        await updateBug(id, updates, userProfile?.displayName || currentUser?.displayName);
+      });
+
+      await Promise.all(promises);
+      toast.dismiss(loadingToast);
+      toast.success(`Successfully updated ${selectedBugs.length} bugs!`);
+      setSelectedBugs([]);
+    } catch (err) {
+      console.error(err);
+      toast.dismiss(loadingToast);
+      toast.error('Failed to bulk update');
+    }
+  };
 
   const isAdmin = userProfile?.role === 'Admin';
 
@@ -237,44 +387,136 @@ export default function BugsListPage() {
           onSearch={setSearchQuery} 
         />
       )}
+      
       <div className="page-container" style={{ paddingTop: 12 }}>
+        
+        {/* VIEW MODE & DENSITY CONTROLS ROW */}
+        <div className="view-control-container">
+          {/* Left: View Mode Segmented Controls */}
+          <div className="view-segmented-control">
+            <button
+              onClick={() => { setViewMode('board'); setSelectedBugs([]); }}
+              className={`view-segment-btn ${viewMode === 'board' ? 'active' : ''}`}
+            >
+              <LayoutGrid size={14} />
+              Board View
+            </button>
+            <button
+              onClick={() => { setViewMode('list'); }}
+              className={`view-segment-btn ${viewMode === 'list' ? 'active' : ''}`}
+            >
+              <List size={14} />
+              List View
+            </button>
+          </div>
 
-        {/* Filters & Bug Count Row — uses responsive CSS class */}
-        <div className="filters-bar">
-          <div className="filters-bar-left" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <FilterDropdown
-              icon={AlertCircle}
-              label="Priority"
-              value={priorityFilter}
-              options={PRIORITIES}
-              onChange={setPriorityFilter}
+          {/* Right: Board Layout Customization Switches */}
+          {viewMode === 'board' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+              <label className="swimlanes-toggle-label">
+                <input
+                  type="checkbox"
+                  checked={useSwimlanes}
+                  onChange={(e) => setUseSwimlanes(e.target.checked)}
+                  className="swimlanes-toggle-checkbox"
+                />
+                <span>Swimlanes (By Priority)</span>
+              </label>
+            </div>
+          )}
+
+          {/* Right: Quick actions for List mode */}
+          {viewMode === 'list' && (
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              Bulk Triage Enabled (Use checkboxes below)
+            </span>
+          )}
+        </div>
+
+        {/* ENHANCED FILTERS BAR */}
+        <div className="filters-bar" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: '1 1 200px', maxWidth: 280 }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, color: 'var(--text-muted)', pointerEvents: 'none' }} />
+            <input
+              type="text"
+              placeholder="Search bugs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                padding: '8px 12px 8px 34px', fontSize: '0.82rem', width: '100%',
+                borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-card)',
+                color: 'var(--text-primary)', transition: 'all 0.2s'
+              }}
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <FilterDropdown
+            icon={User}
+            label="Assignee"
+            value={assigneeFilter}
+            options={assigneeOptions}
+            onChange={setAssigneeFilter}
+          />
+
+          <FilterDropdown
+            icon={SlidersHorizontal}
+            label="Status"
+            value={statusFilter}
+            options={STATUSES}
+            onChange={setStatusFilter}
+          />
+
+          <FilterDropdown
+            icon={Tag}
+            label="Tags"
+            value={tagFilter}
+            options={tagOptions}
+            onChange={setTagFilter}
+          />
+
+          <FilterDropdown
+            icon={AlertCircle}
+            label="Priority"
+            value={priorityFilter}
+            options={PRIORITIES}
+            onChange={setPriorityFilter}
+          />
+
+          {(assigneeFilter !== 'All' || statusFilter !== 'All' || tagFilter !== 'All' || priorityFilter !== 'All' || searchQuery !== '') && (
+            <button
+              onClick={() => {
+                setAssigneeFilter('All');
+                setStatusFilter('All');
+                setTagFilter('All');
+                setPriorityFilter('All');
+                setSearchQuery('');
+              }}
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600 }}
+            >
+              Reset Filters
+            </button>
+          )}
+
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
             <button 
               className="btn btn-ghost btn-sm" 
               onClick={() => {
-                if (userProfile?.role === 'Admin') {
-                  const p = projects.find(proj => proj.name === projectFilter || proj.id === projectFilter);
-                  navigate(p ? `/admin/projects/${p.id}` : '/admin/projects');
-                } else if (userProfile?.role === 'Developer') {
-                  navigate('/dev/projects');
-                } else {
-                  navigate('/qa/projects');
-                }
+                const p = projects.find(proj => proj.name === projectFilter || proj.id === projectFilter);
+                navigate(p ? `${basePath}/projects/${p.id}` : `${basePath}/projects`);
               }}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontWeight: 600, padding: '10px 20px', background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-light)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontWeight: 600, padding: '8px 14px', background: 'var(--bg-secondary)', borderRadius: 10, border: '1px solid var(--border-light)' }}
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={14} />
               Back
             </button>
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-              {filtered.length} bugs found
+              {filtered.length} found
             </span>
           </div>
         </div>
 
+        {/* LOADING & EMPTY STATES */}
         {(loading || (!projectFilter && projectsLoading)) ? (
           <div className="grid-auto">
             {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 180 }} />)}
@@ -285,13 +527,329 @@ export default function BugsListPage() {
             <h3>No bugs found</h3>
             <p>Try adjusting your filters to find what you are looking for.</p>
           </div>
-        ) : statusFilter === 'All' ? (
+        ) : viewMode === 'list' ? (
+          
+          /* LIST VIEW: HIGH-DENSITY BULK TRIAGE DATA TABLE */
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ width: 40, padding: '12px 16px' }}>
+                      <button
+                        onClick={() => {
+                          if (selectedBugs.length === filtered.length) {
+                            setSelectedBugs([]);
+                          } else {
+                            setSelectedBugs(filtered.map(b => b.id));
+                          }
+                        }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', padding: 0 }}
+                      >
+                        {selectedBugs.length === filtered.length ? (
+                          <CheckSquare size={16} style={{ color: 'var(--accent)' }} />
+                        ) : (
+                          <Square size={16} style={{ color: 'var(--text-muted)' }} />
+                        )}
+                      </button>
+                    </th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: '0.72rem' }}>ID</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: '0.72rem' }}>Title</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: '0.72rem' }}>Status</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: '0.72rem' }}>Priority</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: '0.72rem' }}>Assignee</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: '0.72rem' }}>Project</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((bug) => {
+                    const isSelected = selectedBugs.includes(bug.id);
+                    const bKey = bug.bugKey || bug.id?.slice(-6).toUpperCase();
+                    const priorityColor = `var(--priority-${bug.priority?.toLowerCase() || 'medium'})`;
+                    
+                    return (
+                      <tr
+                        key={bug.id}
+                        style={{
+                          borderBottom: '1px solid var(--border)',
+                          background: isSelected ? 'rgba(91, 108, 255, 0.04)' : 'transparent',
+                          transition: 'background 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+                        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <td style={{ padding: '10px 16px' }}>
+                          <button
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedBugs(prev => prev.filter(id => id !== bug.id));
+                              } else {
+                                setSelectedBugs(prev => [...prev, bug.id]);
+                              }
+                            }}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', padding: 0 }}
+                          >
+                            {isSelected ? (
+                              <CheckSquare size={16} style={{ color: 'var(--accent)' }} />
+                            ) : (
+                              <Square size={16} style={{ color: 'var(--text-muted)' }} />
+                            )}
+                          </button>
+                        </td>
+                        <td 
+                          onClick={() => navigate(`${basePath}/bugs/${bug.id}`)}
+                          style={{ padding: '10px 16px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-secondary)', cursor: 'pointer' }}
+                        >
+                          #{bKey}
+                        </td>
+                        <td
+                          onClick={() => navigate(`${basePath}/bugs/${bug.id}`)}
+                          style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          title={bug.title}
+                        >
+                          {bug.title}
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <select
+                            value={bug.status}
+                            onChange={(e) => handleUpdateStatusInline(bug.id, e.target.value)}
+                            style={{
+                              fontSize: '0.78rem', fontWeight: 600, padding: '4px 8px', borderRadius: 6,
+                              border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {STATUSES.filter(s => s !== 'All').map(s => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <select
+                            value={bug.priority}
+                            onChange={(e) => handleUpdatePriorityInline(bug.id, e.target.value)}
+                            style={{
+                              fontSize: '0.78rem', fontWeight: 600, padding: '4px 8px', borderRadius: 6,
+                              border: '1px solid var(--border)', background: 'var(--bg-card)', color: priorityColor,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {PRIORITIES.filter(p => p !== 'All').map(p => (
+                              <option key={p} value={p} style={{ color: `var(--priority-${p.toLowerCase()})` }}>{p}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <select
+                            value={bug.assigneeId || ''}
+                            onChange={(e) => handleUpdateAssigneeInline(bug.id, e.target.value)}
+                            style={{
+                              fontSize: '0.78rem', fontWeight: 600, padding: '4px 8px', borderRadius: 6,
+                              border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)',
+                              cursor: 'pointer', maxWidth: 150
+                            }}
+                          >
+                            <option value="">Unassigned</option>
+                            {allUsers.map((u) => (
+                              <option key={u.id} value={u.id}>{u.displayName}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>
+                          {bug.projectName || '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : useSwimlanes ? (
+
+          /* SWIMLANES: GROUP KANBAN BOARD HORIZONTALLY BY PRIORITY */
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {SWIMLANE_PRIORITIES.map((priority) => {
+                const priorityBugs = filtered.filter(b => b.priority === priority);
+                const isSwimlaneCollapsed = collapsedSwimlanes[priority];
+                const priorityColor = `var(--priority-${priority.toLowerCase()})`;
+
+                return (
+                  <div key={priority} style={{ background: 'var(--bg-secondary)', borderRadius: 16, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                    
+                    {/* Collapsible Swimlane Row Header */}
+                    <div 
+                      onClick={() => setCollapsedSwimlanes(prev => ({ ...prev, [priority]: !prev[priority] }))}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
+                        background: 'var(--bg-card)', borderBottom: isSwimlaneCollapsed ? 'none' : '1px solid var(--border)',
+                        cursor: 'pointer', userSelect: 'none', transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'var(--bg-card)'}
+                    >
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: priorityColor, boxShadow: `0 0 6px ${priorityColor}` }} />
+                      <h4 style={{ fontSize: '0.88rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)' }}>
+                        {priority} Priority
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: 100, border: '1px solid var(--border)' }}>
+                          {priorityBugs.length} bugs
+                        </span>
+                      </h4>
+                      <div style={{ marginLeft: 'auto', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                        {isSwimlaneCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                      </div>
+                    </div>
+
+                    {/* Swimlane Kanban Columns */}
+                    {!isSwimlaneCollapsed && (
+                      <div className="kanban-board" style={{ height: 'auto', maxHeight: 380, padding: 12, gap: 12 }}>
+                        {STATUSES.filter(s => s !== 'All').map((status) => {
+                          const columnBugs = priorityBugs.filter(b => b.status === status);
+                          const isColumnCollapsed = collapsedColumns[status];
+
+                          // Column Collapsed View within Swimlane
+                          if (isColumnCollapsed) {
+                            return (
+                              <div
+                                key={status}
+                                style={{
+                                  width: 40, minWidth: 40, maxWidth: 40,
+                                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                                  borderRadius: 12, padding: '12px 4px', display: 'flex',
+                                  flexDirection: 'column', alignItems: 'center', gap: 12,
+                                  boxSizing: 'border-box'
+                                }}
+                              >
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCollapsedColumns(prev => ({ ...prev, [status]: false })); }}
+                                  title={`Expand ${status}`}
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                >
+                                  <Maximize2 size={10} />
+                                </button>
+                                <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                  {status}
+                                </div>
+                                <span className="kanban-column-count" style={{ padding: '2px 6px', fontSize: '0.6rem' }}>{columnBugs.length}</span>
+                              </div>
+                            );
+                          }
+
+                          // Column Expanded View within Swimlane
+                          return (
+                            <div
+                              key={status}
+                              className="kanban-column"
+                              style={{
+                                minWidth: 180, background: 'var(--bg-card)', borderRadius: 12, padding: 8, height: 320
+                              }}
+                            >
+                              <div className="kanban-column-header" style={{ padding: '0 2px 8px 2px', marginBottom: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <h5 style={{ fontSize: '0.82rem', fontWeight: 700, margin: 0, color: 'var(--text-secondary)' }}>{status}</h5>
+                                  <span className="kanban-column-count" style={{ padding: '1px 6px', fontSize: '0.62rem' }}>{columnBugs.length}</span>
+                                </div>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setCollapsedColumns(prev => ({ ...prev, [status]: true })); }}
+                                  title={`Collapse ${status}`}
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex' }}
+                                >
+                                  <Minimize2 size={10} />
+                                </button>
+                              </div>
+
+                              <Droppable droppableId={`${status}__${priority}`}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.droppableProps}
+                                    className={`kanban-droppable ${snapshot.isDraggingOver ? 'is-dragging-over' : ''}`}
+                                    style={{ padding: 2, overflowY: 'auto' }}
+                                  >
+                                    {columnBugs.map((bug, index) => (
+                                      <Draggable key={bug.id} draggableId={bug.id} index={index}>
+                                        {(provided, snapshot) => (
+                                          <div
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            {...provided.dragHandleProps}
+                                            className={`kanban-draggable-item ${snapshot.isDragging ? 'is-dragging' : ''}`}
+                                            style={{ ...provided.draggableProps.style, marginBottom: 8 }}
+                                          >
+                                            <BugCard bug={bug} hideStatus={true} />
+                                          </div>
+                                        )}
+                                      </Draggable>
+                                    ))}
+                                    {provided.placeholder}
+                                  </div>
+                                )}
+                              </Droppable>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </DragDropContext>
+        ) : (
+
+          /* KANBAN BOARD WITH COLLAPSIBLE COLUMNS */
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="kanban-board">
-              {STATUSES.filter(s => s !== 'All').map(status => {
+              {STATUSES.filter(s => s !== 'All').map((status) => {
                 const columnBugs = filtered.filter(b => b.status === status);
+                const isColumnCollapsed = collapsedColumns[status];
+
+                // Collapsed Column (Narrow 40px Strip with rotated title and count)
+                if (isColumnCollapsed) {
+                  return (
+                    <div
+                      key={status}
+                      style={{
+                        width: 40, minWidth: 40, maxWidth: 40,
+                        background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                        borderRadius: 16, padding: '16px 4px', display: 'flex',
+                        flexDirection: 'column', alignItems: 'center', gap: 16,
+                        height: '100%', boxSizing: 'border-box', transition: 'all 0.2s'
+                      }}
+                    >
+                      <button
+                        onClick={() => setCollapsedColumns(prev => ({ ...prev, [status]: false }))}
+                        title={`Expand ${status}`}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                      >
+                        <Maximize2 size={12} />
+                      </button>
+                      <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                        {status}
+                      </div>
+                      <span className="kanban-column-count" style={{ padding: '2px 6px', fontSize: '0.62rem' }}>{columnBugs.length}</span>
+                    </div>
+                  );
+                }
+
+                // Full-width Column
                 return (
-                  <KanbanColumn key={status} status={status} bugs={columnBugs}>
+                  <div key={status} className="kanban-column">
+                    <div className="kanban-column-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <h3 className="kanban-column-title">{status}</h3>
+                        <span className="kanban-column-count">{columnBugs.length}</span>
+                      </div>
+                      <button
+                        onClick={() => setCollapsedColumns(prev => ({ ...prev, [status]: true }))}
+                        title={`Collapse ${status}`}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex' }}
+                      >
+                        <Minimize2 size={12} />
+                      </button>
+                    </div>
+
                     <Droppable droppableId={status}>
                       {(provided, snapshot) => (
                         <div
@@ -321,14 +879,88 @@ export default function BugsListPage() {
                         </div>
                       )}
                     </Droppable>
-                  </KanbanColumn>
+                  </div>
                 );
               })}
             </div>
           </DragDropContext>
-        ) : (
-          <div className="grid-auto">
-            {filtered.map((bug) => <BugCard key={bug.id} bug={bug} hideStatus={true} />)}
+        )}
+
+        {/* FLOATING BULK TRIAGE ACTIONS PANEL */}
+        {selectedBugs.length > 0 && (
+          <div
+            style={{
+              position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              boxShadow: '0 10px 35px rgba(0,0,0,0.15)', borderRadius: 16,
+              display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px',
+              zIndex: 1000, animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+              flexWrap: 'wrap'
+            }}
+          >
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--accent)' }}>
+              {selectedBugs.length} bugs selected
+            </span>
+
+            <div style={{ height: 20, width: 1, background: 'var(--border)' }} />
+
+            {/* Bulk Assignee */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Assign:</span>
+              <select
+                onChange={(e) => { if (e.target.value !== '') handleBulkUpdate('assignee', e.target.value); }}
+                defaultValue=""
+                style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer' }}
+              >
+                <option value="" disabled>Select Dev</option>
+                <option value="">Unassigned</option>
+                {allUsers.map((u) => (
+                  <option key={u.id} value={u.id}>{u.displayName}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Bulk Status */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Status:</span>
+              <select
+                onChange={(e) => { if (e.target.value !== '') handleBulkUpdate('status', e.target.value); }}
+                defaultValue=""
+                style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer' }}
+              >
+                <option value="" disabled>Select Status</option>
+                {STATUSES.filter(s => s !== 'All').map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Bulk Priority */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Priority:</span>
+              <select
+                onChange={(e) => { if (e.target.value !== '') handleBulkUpdate('priority', e.target.value); }}
+                defaultValue=""
+                style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer' }}
+              >
+                <option value="" disabled>Select Priority</option>
+                {PRIORITIES.filter(p => p !== 'All').map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ height: 20, width: 1, background: 'var(--border)' }} />
+
+            <button
+              onClick={() => setSelectedBugs([])}
+              style={{
+                fontSize: '0.75rem', fontWeight: 700, background: 'transparent', border: 'none',
+                color: 'var(--text-muted)', cursor: 'pointer', hover: { color: 'var(--text-primary)' }
+              }}
+            >
+              Cancel
+            </button>
           </div>
         )}
       </div>

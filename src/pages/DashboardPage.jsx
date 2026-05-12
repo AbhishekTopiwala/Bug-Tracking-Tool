@@ -117,47 +117,422 @@ function ProjectHealthCard({ project, bugs, onClick }) {
   );
 }
 
-function ActivityItem({ notif }) {
+function SingleProjectDashboardView({ project, bugs, navigate }) {
+  const projectBugs = bugs.filter(b => b.projectId === project.id);
+  const total = projectBugs.length;
+  const resolved = projectBugs.filter(b => ['Done', 'Resolved'].includes(b.status)).length;
+  const open = projectBugs.filter(b => b.status === 'Open').length;
+  const inProgress = projectBugs.filter(b => b.status === 'In Progress').length;
+  const critical = projectBugs.filter(b => b.priority === 'Critical' && !['Done','Resolved'].includes(b.status)).length;
+  const progress = total > 0 ? Math.round((resolved / total) * 100) : 0;
+  
+  const high = projectBugs.filter(b => b.priority === 'High' && !['Done','Resolved'].includes(b.status)).length;
+  const medium = projectBugs.filter(b => b.priority === 'Medium' && !['Done','Resolved'].includes(b.status)).length;
+  const low = projectBugs.filter(b => b.priority === 'Low' && !['Done','Resolved'].includes(b.status)).length;
+
+  const healthColor = progress >= 80 ? '#10b981' : progress >= 50 ? '#f59e0b' : '#ef4444';
+  const healthStatus = progress >= 80 ? 'Healthy' : progress >= 50 ? 'Needs Attention' : 'Critical State';
+
+  // Get top 3 urgent active bugs (Critical or High priority first)
+  const urgentBugs = [...projectBugs]
+    .filter(b => !['Done', 'Resolved'].includes(b.status))
+    .sort((a, b) => {
+      const weight = { Critical: 4, High: 3, Medium: 2, Low: 1 };
+      const weightA = weight[a.priority] || 0;
+      const weightB = weight[b.priority] || 0;
+      if (weightA !== weightB) return weightB - weightA;
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+    })
+    .slice(0, 3);
+
+  return (
+    <div
+      style={{
+        background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(99, 102, 241, 0.03) 100%)',
+        border: '1px solid var(--border)',
+        borderRadius: 18,
+        padding: 24,
+        position: 'relative',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)',
+        overflow: 'hidden',
+        transition: 'all 0.3s ease',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+        e.currentTarget.style.boxShadow = '0 10px 30px rgba(99, 102, 241, 0.08)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = 'var(--border)';
+        e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.02)';
+      }}
+    >
+      {/* Decorative background glow */}
+      <div style={{
+        position: 'absolute',
+        top: -100,
+        right: -100,
+        width: 300,
+        height: 300,
+        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Header Info */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 48,
+            height: 48,
+            borderRadius: 14,
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.05) 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifycontent: 'center',
+            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)',
+            flexShrink: 0,
+          }}>
+            <Folder size={22} style={{ color: '#6366f1', margin: 'auto' }} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text-primary)', lineHeight: 1 }}>{project.name}</span>
+              <span style={{
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: healthColor,
+                background: `${healthColor}12`,
+                padding: '3px 8px',
+                borderRadius: 99,
+                border: `1px solid ${healthColor}25`
+              }}>
+                {healthStatus}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+              Active Project Console • <strong>{total}</strong> bugs tracked
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => navigate(`/qa/bugs/new?project=${encodeURIComponent(project.name)}`)}
+            style={{
+              padding: '8px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#6366f1',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(99,102,241,0.25)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(99,102,241,0.35)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.25)'; }}
+          >
+            <Bug size={14} /> Report Bug
+          </button>
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => navigate(`/qa/bugs?project=${encodeURIComponent(project.name)}`)}
+            style={{
+              padding: '8px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              borderRadius: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'transparent',
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-secondary)'; e.currentTarget.style.borderColor = 'var(--text-muted)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+          >
+            View Board <ArrowRight size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Internal Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20, alignItems: 'stretch' }}>
+        
+        {/* Left Column - Metrics and Progress */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Progress Bar Container */}
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light, rgba(0,0,0,0.04))', borderRadius: 14, padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Overall Resolution Progress</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: healthColor }}>{progress}%</span>
+            </div>
+            <div style={{ height: 8, background: 'rgba(0,0,0,0.05)', borderRadius: 99, overflow: 'hidden', marginBottom: 12 }}>
+              <div style={{
+                height: '100%',
+                width: `${progress}%`,
+                background: `linear-gradient(90deg, ${healthColor} 0%, ${healthColor}cc 100%)`,
+                borderRadius: 99,
+                transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              }} />
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+              <strong>{resolved}</strong> out of <strong>{total}</strong> issues resolved. Let's get this to 100%!
+            </p>
+          </div>
+
+          {/* Status Breakdown Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <div style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.1)', borderRadius: 12, padding: '10px 8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#3b82f6', lineHeight: 1 }}>{open}</div>
+              <div style={{ fontSize: '0.68rem', color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Open</div>
+            </div>
+            <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 12, padding: '10px 8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f59e0b', lineHeight: 1 }}>{inProgress}</div>
+              <div style={{ fontSize: '0.68rem', color: '#f59e0b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Active</div>
+            </div>
+            <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.1)', borderRadius: 12, padding: '10px 8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', lineHeight: 1 }}>{resolved}</div>
+              <div style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Done</div>
+            </div>
+          </div>
+
+          {/* Priority Quick View Banner */}
+          <div style={{
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              Unresolved:
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end' }}>
+              {critical > 0 && (
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: 6 }}>
+                  {critical} Critical
+                </span>
+              )}
+              {high > 0 && (
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#f97316', background: 'rgba(249,115,22,0.1)', padding: '2px 6px', borderRadius: 6 }}>
+                  {high} High
+                </span>
+              )}
+              {medium > 0 && (
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: 6 }}>
+                  {medium} Med
+                </span>
+              )}
+              {low > 0 && (
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', background: 'rgba(148,163,184,0.1)', padding: '2px 6px', borderRadius: 6 }}>
+                  {low} Low
+                </span>
+              )}
+              {critical === 0 && high === 0 && medium === 0 && low === 0 && (
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 6 }}>
+                  No Unresolved Bugs! ✨
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Actionable Urgent Bugs List */}
+        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light, rgba(0,0,0,0.04))', borderRadius: 14, padding: 16, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+            <Activity size={14} style={{ color: '#6366f1' }} />
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 700 }}>Action Needed</span>
+          </div>
+
+          {urgentBugs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', margin: 'auto' }}>
+              <CheckCircle2 size={24} style={{ color: '#10b981', opacity: 0.6, marginBottom: 8, display: 'inline-block' }} />
+              <p style={{ fontSize: '0.78rem', margin: 0, fontWeight: 600 }}>All clean!</p>
+              <p style={{ fontSize: '0.7rem', margin: '2px 0 0', opacity: 0.7 }}>No active unresolved bugs found.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, justifyContent: 'center' }}>
+              {urgentBugs.map(bug => {
+                const pc = PRIORITY_COLOR[bug.priority] || PRIORITY_COLOR.Medium;
+                const sc = STATUS_COLOR[bug.status] || STATUS_COLOR.Open;
+                return (
+                  <div
+                    key={bug.id}
+                    onClick={() => navigate(`/qa/bugs/${bug.id}`)}
+                    style={{
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 10,
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = '#6366f1';
+                      e.currentTarget.style.transform = 'translateX(2px)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'var(--border)';
+                      e.currentTarget.style.transform = 'translateX(0)';
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                          {bug.bugKey}
+                        </span>
+                        <span style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          color: pc.color,
+                          background: pc.bg,
+                          padding: '1px 4px',
+                          borderRadius: 4
+                        }}>
+                          {bug.priority}
+                        </span>
+                      </div>
+                      <div style={{
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {bug.title}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      color: sc.color,
+                      background: sc.bg,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      flexShrink: 0
+                    }}>
+                      {bug.status}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function ActivityItem({ notif, navigate }) {
   const timeAgo = notif.createdAt?.seconds
     ? formatDistanceToNow(new Date(notif.createdAt.seconds * 1000), { addSuffix: true })
     : 'just now';
 
   const icon = notif.type === 'status_change'
-    ? <GitPullRequest size={14} style={{ color: '#6366f1' }} />
+    ? <GitPullRequest size={13} style={{ color: '#6366f1' }} />
     : notif.type === 'comment'
-    ? <MessageSquare size={14} style={{ color: '#f59e0b' }} />
-    : <Activity size={14} style={{ color: '#10b981' }} />;
+    ? <MessageSquare size={13} style={{ color: '#f59e0b' }} />
+    : <Activity size={13} style={{ color: '#10b981' }} />;
 
   const iconBg = notif.type === 'status_change'
-    ? 'rgba(99,102,241,0.12)'
+    ? 'rgba(99,102,241,0.08)'
     : notif.type === 'comment'
-    ? 'rgba(245,158,11,0.12)'
-    : 'rgba(16,185,129,0.12)';
+    ? 'rgba(245,158,11,0.08)'
+    : 'rgba(16,185,129,0.08)';
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 12,
-      padding: '12px 0',
-      borderBottom: '1px solid var(--border-light, rgba(0,0,0,0.05))',
-    }}>
+    <div 
+      onClick={() => notif.bugId && navigate(`/qa/bugs/${notif.bugId}`)}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 14,
+        padding: '12px 10px',
+        borderRadius: 12,
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        position: 'relative',
+        cursor: notif.bugId ? 'pointer' : 'default',
+        background: !notif.read ? 'rgba(99, 102, 241, 0.02)' : 'transparent',
+      }}
+      onMouseEnter={e => {
+        if (notif.bugId) {
+          e.currentTarget.style.background = 'var(--bg-secondary)';
+          e.currentTarget.style.transform = 'translateX(4px)';
+        }
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = !notif.read ? 'rgba(99, 102, 241, 0.02)' : 'transparent';
+        e.currentTarget.style.transform = 'translateX(0)';
+      }}
+    >
       <div style={{
-        width: 30, height: 30, borderRadius: 8,
+        width: 30, 
+        height: 30, 
+        borderRadius: '50%',
         background: iconBg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1
+        border: '3px solid var(--bg-card)', 
+        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        flexShrink: 0, 
+        marginTop: 1,
+        position: 'relative',
+        zIndex: 2,
       }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
-          style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}
+          className="activity-message"
+          style={{ 
+            fontSize: '0.8rem', 
+            color: 'var(--text-secondary)', 
+            lineHeight: 1.45,
+          }}
           dangerouslySetInnerHTML={{ __html: notif.message }}
         />
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 3 }}>{timeAgo}</div>
+        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{timeAgo}</span>
+          {!notif.read && (
+            <>
+              <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#6366f1' }} />
+              <span style={{ color: '#6366f1', fontWeight: 700 }}>New</span>
+            </>
+          )}
+        </div>
       </div>
       {!notif.read && (
-        <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366f1', flexShrink: 0, marginTop: 6 }} />
+        <div style={{ 
+          width: 8, 
+          height: 8, 
+          borderRadius: '50%', 
+          background: '#6366f1', 
+          boxShadow: '0 0 8px rgba(99, 102, 241, 0.6)',
+          flexShrink: 0, 
+          marginTop: 12,
+          position: 'relative',
+          zIndex: 2,
+        }} />
       )}
     </div>
   );
@@ -279,6 +654,12 @@ export default function DashboardPage() {
                 <h3 style={{ fontSize: '1rem' }}>No projects assigned</h3>
                 <p style={{ fontSize: '0.85rem' }}>Ask your Admin to add you to a project.</p>
               </div>
+            ) : projects.length === 1 ? (
+              <SingleProjectDashboardView
+                project={projects[0]}
+                bugs={myBugs}
+                navigate={navigate}
+              />
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 }}>
                 {projects.map(project => (
@@ -372,8 +753,33 @@ export default function DashboardPage() {
                 <p style={{ fontSize: '0.75rem', margin: '4px 0 0', opacity: 0.7 }}>Updates will appear here when Devs act on your bugs.</p>
               </div>
             ) : (
-              <div style={{ maxHeight: 520, overflowY: 'auto', marginRight: -4, paddingRight: 4 }}>
-                {notifications.map(n => <ActivityItem key={n.id} notif={n} />)}
+              <div style={{ 
+                maxHeight: 520, 
+                overflowY: 'auto', 
+                marginRight: -4, 
+                paddingRight: 4,
+                position: 'relative',
+              }}>
+                {/* Timeline vertical connector track */}
+                <div style={{
+                  position: 'absolute',
+                  left: 23, // center of 30px icon with 10px list padding + 15px half-width
+                  top: 16,
+                  bottom: 16,
+                  width: 2,
+                  background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.02) 100%)',
+                  pointerEvents: 'none',
+                }} />
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {notifications.slice(0, 2).map(n => (
+                    <ActivityItem 
+                      key={n.id} 
+                      notif={n} 
+                      navigate={navigate} 
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -385,10 +791,20 @@ export default function DashboardPage() {
                 borderRadius: 10, cursor: 'pointer', fontSize: '0.8rem',
                 fontWeight: 600, color: 'var(--text-muted)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                transition: 'all 0.2s',
+                transition: 'all 0.25s ease',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.color = '#6366f1'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#6366f1';
+                e.currentTarget.style.color = '#6366f1';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.06)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.color = 'var(--text-muted)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
               View All Notifications <ArrowRight size={13} />
             </button>
