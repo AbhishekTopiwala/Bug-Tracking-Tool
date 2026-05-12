@@ -14,7 +14,7 @@ const navItems = [
 ];
 
 export default function Sidebar({ unreadCount = 0 }) {
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, logout, branding } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -32,11 +32,15 @@ export default function Sidebar({ unreadCount = 0 }) {
       <aside className="sidebar">
         {/* Logo */}
         <NavLink to="/qa" className="sidebar-logo" onClick={closeSidebar}>
-          <div className="logo-icon">
-            <img src="/Qapture.png" alt="Qapture" />
+          <div className="logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {branding.logoUrl ? (
+              <img src={branding.logoUrl} alt={branding.portalName} style={{ objectFit: 'contain' }} />
+            ) : (
+              <img src="/Qapture.png" alt="Qapture" />
+            )}
           </div>
           <div className="logo-text">
-            <span className="logo-name">Qapture</span>
+            <span className="logo-name">{branding.portalName || 'Qapture'}</span>
             <span className="logo-tagline">QA Portal</span>
           </div>
         </NavLink>
@@ -51,9 +55,26 @@ export default function Sidebar({ unreadCount = 0 }) {
               end={exact}
               className={({ isActive }) => {
                 const isProjects = label === 'Projects';
+                const isReportBug = label === 'Report Bug';
                 const isBugsPath = location.pathname.includes('/bugs');
                 const isProjectPath = location.pathname.includes('/projects');
-                const shouldBeActive = isActive || (isProjects && (isBugsPath || isProjectPath));
+                
+                // Projects is active for project list, project detail, and bug detail/edit
+                // But NOT for the global "Report Bug" context if it's separate (though here they share same target now)
+                let shouldBeActive = isActive;
+                if (isProjects && (isBugsPath || isProjectPath)) {
+                  // Only highlight Projects for bugs if it's a specific bug, not the "new bug" form
+                  if (!location.pathname.includes('/bugs/new')) {
+                    shouldBeActive = true;
+                  }
+                }
+                
+                // Report Bug is only active if the label matches and we are actually on a "new bug" path 
+                // or if the user just clicked it (target is projects)
+                if (isReportBug) {
+                  shouldBeActive = location.pathname.includes('/bugs/new');
+                }
+
                 return `nav-link ${shouldBeActive ? 'active' : ''}`;
               }}
               onClick={closeSidebar}

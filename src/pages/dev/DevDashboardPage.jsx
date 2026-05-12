@@ -6,12 +6,13 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Topbar from '../../components/Topbar';
-import { subscribeToBugs } from '../../services/firestoreService';
+import { subscribeToBugs, getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function DevDashboardPage() {
   const [allBugs, setAllBugs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [assignedProjectIds, setAssignedProjectIds] = useState([]);
 
   const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();
@@ -21,12 +22,20 @@ export default function DevDashboardPage() {
       setAllBugs(bugs);
       setLoading(false);
     });
+
+    if (!currentUser) return;
+
+    getProjects(currentUser.uid, userProfile?.role).then(projs => {
+      setAssignedProjectIds(projs.map(p => p.id));
+    });
+
     return () => unsub();
-  }, []);
+  }, [currentUser, userProfile?.role]);
 
   const baseBugs = useMemo(() => {
-    return allBugs.filter((b) => b.assigneeId === currentUser?.uid);
-  }, [allBugs, currentUser]);
+    // Developers see all bugs in projects they are assigned to
+    return allBugs.filter(b => assignedProjectIds.includes(b.projectId));
+  }, [allBugs, assignedProjectIds]);
 
   // Calculations for developer analytics
   const stats = useMemo(() => {
@@ -108,23 +117,11 @@ export default function DevDashboardPage() {
 
   return (
     <>
-      <Topbar title="My Dashboard" />
-      <div className="page-container" style={{ paddingBottom: 40 }}>
-
-        {/* Welcome Banner */}
-        <div className="dev-welcome-banner" style={{ marginBottom: 24 }}>
-          <div className="dev-welcome-icon">
-            <Code2 size={22} style={{ color: 'var(--dev-accent)' }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 4 }}>
-              Welcome back, <span style={{ color: 'var(--dev-accent)' }}>{firstName}</span> 👋
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              Here is your engineering overview for today. You have <span style={{ color: 'var(--dev-accent)', fontWeight: 700 }}>{stats.active} active tickets</span> assigned.
-            </p>
-          </div>
-        </div>
+      <Topbar 
+        title="Developer Dashboard" 
+        subtitle={`Welcome back, ${firstName} 👋 — You have ${stats.active} active tickets assigned.`}
+      />
+      <div className="page-container" style={{ paddingBottom: 40, paddingTop: 24 }}>
 
         {/* Metrics Grid */}
         <div style={{

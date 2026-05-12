@@ -11,7 +11,7 @@ const devNavItems = [
 ];
 
 export default function DevSidebar({ unreadCount = 0 }) {
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, logout, branding } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -29,11 +29,15 @@ export default function DevSidebar({ unreadCount = 0 }) {
       <aside className="dev-sidebar">
         {/* Logo */}
         <div className="sidebar-logo">
-          <div className="dev-logo-icon">
-            <img src="/Qapture.png" alt="Qapture" />
+          <div className="dev-logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {branding.logoUrl ? (
+              <img src={branding.logoUrl} alt={branding.portalName} style={{ objectFit: 'contain' }} />
+            ) : (
+              <img src="/Qapture.png" alt="Qapture" />
+            )}
           </div>
           <div className="logo-text">
-            <span className="logo-name">Qapture</span>
+            <span className="logo-name">{branding.portalName || 'Qapture'}</span>
             <span className="logo-tagline">Developer Portal</span>
           </div>
         </div>

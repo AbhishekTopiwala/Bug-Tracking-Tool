@@ -4,7 +4,7 @@ import {
   CheckCircle2, Bug, Filter, X, AlertCircle, ChevronDown, ChevronUp, ArrowLeft
 } from 'lucide-react';
 import Topbar from '../../components/Topbar';
-import { subscribeToBugs, updateBug, createNotification } from '../../services/firestoreService';
+import { subscribeToBugs, updateBug, createNotification, getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { toast } from 'react-hot-toast';
@@ -113,8 +113,10 @@ function KanbanColumn({ status, bugs, children }) {
 export default function DevBugsBoardPage() {
   const [allBugs, setAllBugs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [assignedProjectIds, setAssignedProjectIds] = useState([]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -131,10 +133,20 @@ export default function DevBugsBoardPage() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    setProjectsLoading(true);
+    getProjects(currentUser.uid, userProfile?.role)
+      .then(projs => setAssignedProjectIds(projs.map(p => p.id)))
+      .finally(() => setProjectsLoading(false));
+  }, [currentUser, userProfile?.role]);
+
   const baseBugs = useMemo(() => {
     if (projectFilter) return allBugs.filter(b => b.projectName === projectFilter);
-    return allBugs.filter((b) => b.assigneeId === currentUser?.uid);
-  }, [allBugs, currentUser, projectFilter]);
+    if (projectsLoading) return []; // wait for project data before filtering
+    // Developers see all bugs in projects they are assigned to
+    return allBugs.filter(b => assignedProjectIds.includes(b.projectId));
+  }, [allBugs, assignedProjectIds, projectFilter, projectsLoading]);
 
   const filtered = useMemo(() => {
     return baseBugs.filter((bug) => {
@@ -162,6 +174,15 @@ export default function DevBugsBoardPage() {
     if (!bugToMove) return;
 
     const role = userProfile?.role || 'Developer';
+    const canChangeStatus = userProfile?.role === 'Admin' || 
+                            bugToMove.reportedBy === currentUser?.uid || 
+                            bugToMove.assigneeId === currentUser?.uid;
+
+    if (!canChangeStatus) {
+      toast.error('Only the reporter or assigned developer can change the status');
+      return;
+    }
+
     const validTransitions = getValidStatusTransitions(bugToMove.status, role);
 
     if (!validTransitions.includes(newStatus)) {
@@ -193,7 +214,11 @@ export default function DevBugsBoardPage() {
 
   return (
     <>
-      <Topbar title={projectFilter ? `Project: ${projectFilter}` : 'My Active Bugs'} onSearch={setSearchQuery} />
+      <Topbar 
+        title={projectFilter ? `Project: ${projectFilter}` : 'My Active Bugs'} 
+        subtitle="Manage and update your assigned issues across projects"
+        onSearch={setSearchQuery} 
+      />
       <div className="page-container" style={{ paddingTop: 12 }}>
 
         {/* Project Filter Banner */}
@@ -237,7 +262,7 @@ export default function DevBugsBoardPage() {
             <button 
               className="btn btn-ghost btn-sm" 
               onClick={() => navigate('/dev/projects')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 8px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontWeight: 600, padding: '10px 20px', borderRadius: 12, border: '1px solid var(--border-light)', background: 'var(--bg-secondary)' }}
             >
               <ArrowLeft size={16} />
               Back

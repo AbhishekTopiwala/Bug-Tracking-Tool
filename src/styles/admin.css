@@ -192,14 +192,14 @@
 }
 
 .admin-topbar-title {
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.35rem;
+  font-weight: 800;
   color: var(--text-primary);
-  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .admin-topbar-subtitle {
-  font-size: 0.78rem;
+  font-size: 0.80rem;
   color: var(--text-secondary);
   font-weight: 500;
   margin-top: 2px;

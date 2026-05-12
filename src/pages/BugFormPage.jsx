@@ -1,18 +1,47 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
-  Wand2, Upload, X, Plus, Minus, Loader2, Image,
-  Video, Tag, AlertCircle, Zap, ChevronDown, Trash2
+  Wand2, Upload, X, Plus, Minus, Loader2,
+  Tag, AlertCircle, Zap, ChevronDown, Trash2,
+  Play, Paperclip, ArrowLeft, Monitor, Smartphone, Server, Sparkles
 } from 'lucide-react';
 import Topbar from '../components/Topbar';
 import { generateBugFromNote } from '../services/geminiService';
 import { createBug, updateBug, getBug, getUsers, addAttachmentToBug, createNotification, getProjects } from '../services/firestoreService';
-import { uploadToCloudinary } from '../services/cloudinaryService';
+import { uploadToCloudinary, cld } from '../services/cloudinaryService';
 import { useAuth } from '../contexts/AuthContext';
 import { getValidStatusTransitions } from '../utils/statusRules';
+import { auto } from "@cloudinary/url-gen/actions/resize";
+import { autoGravity } from "@cloudinary/url-gen/qualifiers/gravity";
+import { AdvancedImage } from "@cloudinary/react";
 import toast from 'react-hot-toast';
 
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+const PLATFORMS = ['Web', 'Mobile', 'API'];
+const BROWSERS = ['Chrome', 'Firefox', 'Safari', 'Edge', 'Opera', 'Other'];
+const OS_WEB = ['Windows 11', 'Windows 10', 'macOS', 'Linux', 'ChromeOS'];
+const OS_MOBILE = ['Android 14', 'Android 13', 'Android 12', 'iOS 17', 'iOS 16', 'iOS 15'];
+const NETWORKS = ['WiFi', '4G/LTE', '5G', '3G', 'Other'];
+const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+const RESOLUTIONS = ['1920x1080', '1440x900', '1366x768', '1280x800', '2560x1440', 'Other'];
+
+// Smart tag keyword map
+const TAG_KEYWORDS = {
+  '#frontend': ['button', 'ui', 'layout', 'css', 'style', 'responsive', 'modal', 'dropdown', 'form', 'input', 'display', 'design', 'page', 'screen'],
+  '#backend': ['api', 'server', 'endpoint', 'database', 'query', 'timeout', 'service', 'data', 'fetch', 'response'],
+  '#auth': ['login', 'logout', 'password', 'session', 'token', 'permission', 'access', 'sign', 'auth', 'unauthorized'],
+  '#mobile': ['android', 'ios', 'mobile', 'app', 'phone', 'tablet', 'swipe', 'gesture', 'touch'],
+  '#payment': ['payment', 'checkout', 'stripe', 'invoice', 'billing', 'cart', 'price', 'amount', 'charge'],
+  '#performance': ['slow', 'lag', 'timeout', 'freeze', 'crash', 'memory', 'load', 'speed', 'hang'],
+  '#security': ['xss', 'injection', 'vulnerability', 'exposed', 'leak', 'bypass', 'attack'],
+};
+
+function suggestTags(title, description) {
+  const text = `${title} ${description}`.toLowerCase();
+  return Object.entries(TAG_KEYWORDS)
+    .filter(([, keywords]) => keywords.some(k => text.includes(k)))
+    .map(([tag]) => tag);
+}
 
 const DRAFT_KEY = 'bugtrack_draft';
 
@@ -36,7 +65,21 @@ export default function BugFormPage() {
     tagInput: '',
     projectId: prefilled?.projectId || '',
     projectName: prefilled?.projectName || '',
+    // Device template fields
+    platform: 'Web',
+    browser: '',
+    osWeb: '',
+    screenResolution: '',
+    deviceModel: '',
+    osMobile: '',
+    appVersion: '',
+    network: '',
+    apiEndpoint: '',
+    httpMethod: '',
+    requestPayload: '',
+    responseCode: '',
   });
+  const [tagSuggestions, setTagSuggestions] = useState([]);
 
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
@@ -50,6 +93,8 @@ export default function BugFormPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [existingAttachments, setExistingAttachments] = useState([]);
+  
   const fileRef = useRef(null);
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
@@ -75,7 +120,8 @@ export default function BugFormPage() {
         // Security check for QA role: only edit your own bugs
         if (userProfile?.role === 'QA' && bug.reportedBy !== currentUser?.uid) {
           toast.error('You do not have permission to edit this bug');
-          navigate('/qa/dashboard');
+          const dashboardPath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa/dashboard';
+          navigate(dashboardPath);
           return;
         }
 
@@ -95,11 +141,24 @@ export default function BugFormPage() {
           tagInput: '',
           projectId: bug.projectId || '',
           projectName: bug.projectName || '',
+          platform: bug.platform || 'Web',
+          browser: bug.browser || '',
+          osWeb: bug.osWeb || '',
+          screenResolution: bug.screenResolution || '',
+          deviceModel: bug.deviceModel || '',
+          osMobile: bug.osMobile || '',
+          appVersion: bug.appVersion || '',
+          network: bug.network || '',
+          apiEndpoint: bug.apiEndpoint || '',
+          httpMethod: bug.httpMethod || '',
+          requestPayload: bug.requestPayload || '',
+          responseCode: bug.responseCode || '',
         });
+        setExistingAttachments(bug.attachments || []);
         setInitialLoading(false);
       }).catch(() => {
         toast.error('Failed to load bug for editing');
-        const fallbackPath = userProfile?.role === 'Developer' ? '/dev' : '/qa/bugs';
+        const fallbackPath = userProfile?.role === 'Admin' ? '/admin/bugs' : userProfile?.role === 'Developer' ? '/dev' : '/qa/bugs';
         navigate(fallbackPath);
       });
     }
@@ -144,13 +203,27 @@ export default function BugFormPage() {
     setForm((f) => ({ ...f, stepsToReproduce: f.stepsToReproduce.filter((_, idx) => idx !== i) }));
   };
 
+  // Smart tag suggestion when title/description changes
+  useEffect(() => {
+    const suggested = suggestTags(form.title, form.description)
+      .filter(s => !form.tags.includes(s));
+    setTagSuggestions(suggested);
+  }, [form.title, form.description, form.tags]);
+
   const addTag = (e) => {
     if ((e.key === 'Enter' || e.key === ',') && form.tagInput.trim()) {
       e.preventDefault();
-      const tag = form.tagInput.trim().toLowerCase();
+      const tag = form.tagInput.trim().startsWith('#')
+        ? form.tagInput.trim().toLowerCase()
+        : `#${form.tagInput.trim().toLowerCase()}`;
       if (!form.tags.includes(tag)) {
         setForm((f) => ({ ...f, tags: [...f.tags, tag], tagInput: '' }));
       }
+    }
+  };
+  const addTagDirect = (tag) => {
+    if (!form.tags.includes(tag)) {
+      setForm((f) => ({ ...f, tags: [...f.tags, tag] }));
     }
   };
   const removeTag = (tag) => setForm((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }));
@@ -268,6 +341,10 @@ export default function BugFormPage() {
       tagInput: '',
       projectId: '',
       projectName: '',
+      platform: 'Web',
+      browser: '', osWeb: '', screenResolution: '',
+      deviceModel: '', osMobile: '', appVersion: '', network: '',
+      apiEndpoint: '', httpMethod: '', requestPayload: '', responseCode: '',
     });
     setFiles([]);
     setPreviews([]);
@@ -284,6 +361,24 @@ export default function BugFormPage() {
     setLoading(true);
 
     try {
+      // Build device environment metadata
+      const deviceMeta = { platform: form.platform };
+      if (form.platform === 'Web') {
+        if (form.browser) deviceMeta.browser = form.browser;
+        if (form.osWeb) deviceMeta.osWeb = form.osWeb;
+        if (form.screenResolution) deviceMeta.screenResolution = form.screenResolution;
+      } else if (form.platform === 'Mobile') {
+        if (form.deviceModel) deviceMeta.deviceModel = form.deviceModel;
+        if (form.osMobile) deviceMeta.osMobile = form.osMobile;
+        if (form.appVersion) deviceMeta.appVersion = form.appVersion;
+        if (form.network) deviceMeta.network = form.network;
+      } else if (form.platform === 'API') {
+        if (form.apiEndpoint) deviceMeta.apiEndpoint = form.apiEndpoint;
+        if (form.httpMethod) deviceMeta.httpMethod = form.httpMethod;
+        if (form.requestPayload) deviceMeta.requestPayload = form.requestPayload;
+        if (form.responseCode) deviceMeta.responseCode = form.responseCode;
+      }
+
       const bugData = {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -297,6 +392,8 @@ export default function BugFormPage() {
         tags: form.tags,
         projectId: form.projectId,
         projectName: form.projectName,
+        attachments: existingAttachments,
+        ...deviceMeta,
       };
 
       let finalBugId = id;
@@ -349,7 +446,9 @@ export default function BugFormPage() {
       
       const detailPath = userProfile?.role === 'Developer' 
         ? `/dev/bugs/${finalBugId}` 
-        : `/qa/bugs/${finalBugId}`;
+        : userProfile?.role === 'Admin'
+          ? `/admin/bugs/${finalBugId}`
+          : `/qa/bugs/${finalBugId}`;
       
       navigate(detailPath);
     } catch (err) {
@@ -371,7 +470,10 @@ export default function BugFormPage() {
 
   return (
     <>
-      <Topbar title={isEditing ? 'Edit Bug' : 'Report Bug'} />
+      <Topbar 
+        title={isEditing ? 'Edit Bug' : 'Report Bug'} 
+        subtitle={isEditing ? 'Update the issue tracking details' : 'Document the issue with full details for faster resolution'}
+      />
       {/* Custom Clear Confirmation Modal */}
       {showClearConfirm && (
         <div className="modal-overlay" onClick={() => setShowClearConfirm(false)} style={{ zIndex: 3000 }}>
@@ -438,22 +540,7 @@ export default function BugFormPage() {
           </div>
         </div>
       )}
-      <div className="page-container">
-        <div className="page-header">
-          <div className="page-header-left">
-            <h1 className="page-title">{isEditing ? 'Edit Bug Details' : 'Report a Bug'}</h1>
-            <p className="page-subtitle">
-              {isEditing ? 'Update the issue tracking details' : 'Document the issue with full details for faster resolution'}
-            </p>
-          </div>
-          {prefilled && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', background: 'var(--accent-light)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', color: 'var(--accent)' }}>
-              <Zap size={14} />
-              Pre-filled from AI Generator
-            </div>
-          )}
-        </div>
-
+      <div className="page-container" style={{ paddingTop: 16 }}>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
             {/* Main Form */}
@@ -584,9 +671,21 @@ export default function BugFormPage() {
 
               {/* Attachments */}
               <div className="card">
-                <label className="form-label" style={{ marginBottom: 12, display: 'block' }}>
-                  Attachments (Screenshots / Videos)
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    Attachments (Screenshots / Videos)
+                  </label>
+                  {previews.length > 0 && (
+                    <button 
+                      type="button" 
+                      className="btn btn-ghost btn-sm" 
+                      onClick={() => { setFiles([]); setPreviews([]); }}
+                      style={{ color: 'var(--danger)', height: 'auto', padding: '4px 8px' }}
+                    >
+                      <Trash2 size={14} /> Clear All
+                    </button>
+                  )}
+                </div>
 
                 <div
                   className={`upload-zone ${dragging ? 'dragging' : ''}`}
@@ -611,10 +710,50 @@ export default function BugFormPage() {
                   onChange={(e) => handleFiles(e.target.files)}
                 />
 
+                {existingAttachments.length > 0 && (
+                  <div className="attachment-grid" style={{ marginTop: 16 }}>
+                    {existingAttachments.map((att, i) => (
+                      <div key={`exist-${i}`} className="attachment-item" style={{ position: 'relative' }}>
+                        {att.type?.startsWith('image/') ? (
+                          att.publicId ? (
+                            <AdvancedImage 
+                              cldImg={cld.image(att.publicId).format('auto').quality('auto').resize(auto().gravity(autoGravity()).width(300).height(300))} 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <img src={att.url} alt={att.name} />
+                          )
+                        ) : att.type?.startsWith('video/') ? (
+                          <div style={{ position: 'relative', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Play size={24} style={{ color: '#fff' }} />
+                            <span style={{ position: 'absolute', bottom: 6, left: 6, fontSize: '0.68rem', color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4 }}>
+                              {att.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="attachment-file">
+                            <Paperclip size={20} />
+                            <span>{att.name}</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className="attachment-remove-btn"
+                          onClick={(e) => { e.stopPropagation(); setExistingAttachments(prev => prev.filter((_, idx) => idx !== i)); }}
+                          title="Remove attachment"
+                        >
+                          <X size={14} />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {previews.length > 0 && (
                   <div className="attachment-grid" style={{ marginTop: 16 }}>
                     {previews.map((p, i) => (
-                      <div key={i} className="attachment-item" style={{ position: 'relative' }}>
+                      <div key={`new-${i}`} className="attachment-item" style={{ position: 'relative' }}>
                         {p.type.startsWith('image/') ? (
                           <img src={p.url} alt={p.name} />
                         ) : p.type.startsWith('video/') ? (
@@ -624,16 +763,12 @@ export default function BugFormPage() {
                         )}
                         <button
                           type="button"
-                          onClick={() => removeFile(i)}
-                          style={{
-                            position: 'absolute', top: 6, right: 6,
-                            background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff',
-                            borderRadius: '50%', width: 22, height: 22,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer',
-                          }}
+                          className="attachment-remove-btn"
+                          onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                          title="Remove attachment"
                         >
-                          <X size={12} />
+                          <X size={14} />
+                          <span>Remove</span>
                         </button>
                       </div>
                     ))}
@@ -644,6 +779,22 @@ export default function BugFormPage() {
 
             {/* Sidebar */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 80 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {prefilled && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'var(--accent-light)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 600 }}>
+                    <Zap size={14} />
+                    Pre-filled from AI Generator
+                  </div>
+                )}
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => navigate(-1)}
+                  style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8, width: '100%', justifyContent: 'center' }}
+                >
+                  <ArrowLeft size={16} /> Back
+                </button>
+              </div>
               <div className="card" style={{ padding: 20 }}>
                 <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   Bug Details
@@ -712,9 +863,85 @@ export default function BugFormPage() {
                     ) : null}
                   </div>
 
-                  {/* Tags */}
+                  {/* Platform / Environment Template */}
                   <div className="form-group">
-                    <label className="form-label">Tags</label>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Monitor size={13} /> Platform / Environment
+                    </label>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                      {PLATFORMS.map(p => {
+                        const Icon = p === 'Web' ? Monitor : p === 'Mobile' ? Smartphone : Server;
+                        const active = form.platform === p;
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setForm(f => ({ ...f, platform: p }))}
+                            style={{
+                              flex: 1, padding: '7px 4px', borderRadius: 8, cursor: 'pointer',
+                              border: active ? '2px solid #6366f1' : '1px solid var(--border)',
+                              background: active ? 'rgba(99,102,241,0.08)' : 'var(--bg-secondary)',
+                              color: active ? '#6366f1' : 'var(--text-muted)',
+                              fontWeight: 700, fontSize: '0.72rem',
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            <Icon size={14} />
+                            {p}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {form.platform === 'Web' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <select className="form-control form-select" value={form.browser} onChange={e => setForm(f => ({ ...f, browser: e.target.value }))}>
+                          <option value="">Browser (optional)</option>
+                          {BROWSERS.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                        <select className="form-control form-select" value={form.osWeb} onChange={e => setForm(f => ({ ...f, osWeb: e.target.value }))}>
+                          <option value="">Operating System (optional)</option>
+                          {OS_WEB.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                        <select className="form-control form-select" value={form.screenResolution} onChange={e => setForm(f => ({ ...f, screenResolution: e.target.value }))}>
+                          <option value="">Screen Resolution (optional)</option>
+                          {RESOLUTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {form.platform === 'Mobile' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <input className="form-control" placeholder="Device Model (e.g. iPhone 14, Pixel 7)" value={form.deviceModel} onChange={e => setForm(f => ({ ...f, deviceModel: e.target.value }))} />
+                        <select className="form-control form-select" value={form.osMobile} onChange={e => setForm(f => ({ ...f, osMobile: e.target.value }))}>
+                          <option value="">OS Version (optional)</option>
+                          {OS_MOBILE.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                        <input className="form-control" placeholder="App Version (e.g. 2.1.0)" value={form.appVersion} onChange={e => setForm(f => ({ ...f, appVersion: e.target.value }))} />
+                        <select className="form-control form-select" value={form.network} onChange={e => setForm(f => ({ ...f, network: e.target.value }))}>
+                          <option value="">Network (optional)</option>
+                          {NETWORKS.map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {form.platform === 'API' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <input className="form-control" placeholder="Endpoint (e.g. /api/v1/users)" value={form.apiEndpoint} onChange={e => setForm(f => ({ ...f, apiEndpoint: e.target.value }))} />
+                        <select className="form-control form-select" value={form.httpMethod} onChange={e => setForm(f => ({ ...f, httpMethod: e.target.value }))}>
+                          <option value="">HTTP Method (optional)</option>
+                          {HTTP_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        <input className="form-control" placeholder="Response Code (e.g. 500, 404)" value={form.responseCode} onChange={e => setForm(f => ({ ...f, responseCode: e.target.value }))} />
+                        <textarea className="form-control" placeholder="Request Payload (optional)" value={form.requestPayload} onChange={e => setForm(f => ({ ...f, requestPayload: e.target.value }))} rows={2} style={{ resize: 'vertical' }} />
+                      </div>
+                    )}
+                  </div>
+
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Tag size={13} /> Tags
+                    </label>
                     <input
                       type="text"
                       className="form-control"
@@ -723,10 +950,46 @@ export default function BugFormPage() {
                       onChange={(e) => setForm((f) => ({ ...f, tagInput: e.target.value }))}
                       onKeyDown={addTag}
                     />
+                    {/* AI Suggestions */}
+                    {tagSuggestions.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Sparkles size={11} style={{ color: '#6366f1' }} /> Smart suggestions
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                          {tagSuggestions.map(s => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => addTagDirect(s)}
+                              style={{
+                                fontSize: '0.7rem', padding: '3px 9px', borderRadius: 99,
+                                border: '1px dashed rgba(99,102,241,0.4)',
+                                background: 'rgba(99,102,241,0.06)', color: '#6366f1',
+                                cursor: 'pointer', fontWeight: 600, transition: 'all 0.15s',
+                              }}
+                            >
+                              + {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {form.tags.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                         {form.tags.map((tag) => (
-                          <span key={tag} className="tag" style={{ cursor: 'pointer' }} onClick={() => removeTag(tag)}>
+                          <span
+                            key={tag}
+                            onClick={() => removeTag(tag)}
+                            style={{
+                              fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px',
+                              borderRadius: 99, cursor: 'pointer',
+                              background: 'rgba(99,102,241,0.1)', color: '#6366f1',
+                              border: '1px solid rgba(99,102,241,0.2)',
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              transition: 'all 0.15s',
+                            }}
+                          >
                             {tag} <X size={10} />
                           </span>
                         ))}

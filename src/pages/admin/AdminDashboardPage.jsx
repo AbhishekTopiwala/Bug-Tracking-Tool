@@ -60,26 +60,11 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <AdminTopbar title="Admin Overview" />
-      <div className="page-container" style={{ padding: '40px', maxWidth: '1600px', margin: '0 auto' }}>
-
-        {/* ── Welcome Banner ── */}
-        <div className="admin-welcome-banner">
-          <div className="admin-welcome-glow" />
-          <div className="admin-welcome-content">
-            <div className="admin-welcome-icon">
-              <ShieldCheck size={28} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <h1 className="admin-welcome-title">
-                {greeting}, {currentUser?.displayName?.split(' ')[0] || 'Admin'} 👋
-              </h1>
-              <p className="admin-welcome-sub">
-                Here's your organization overview. Manage your team and monitor activity.
-              </p>
-            </div>
-          </div>
-        </div>
+      <AdminTopbar 
+        title="Admin Overview" 
+        subtitle={`${greeting}, ${currentUser?.displayName?.split(' ')[0] || 'Admin'} 👋 — Here's your organization overview.`}
+      />
+      <div className="page-container" style={{ padding: '40px', maxWidth: '1600px', margin: '0 auto', paddingTop: 24 }}>
 
         {/* ── Stats Grid Redesigned ── */}
         <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 40 }}>

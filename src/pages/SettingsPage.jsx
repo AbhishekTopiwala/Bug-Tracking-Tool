@@ -118,7 +118,6 @@ export default function SettingsPage() {
                       value={userProfile?.role || 'QA'}
                       disabled
                     />
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>Contact an Admin to change your role</p>
                   </div>
 
                   <button

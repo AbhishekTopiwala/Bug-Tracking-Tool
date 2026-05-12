@@ -3,33 +3,32 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Edit3, Trash2, MessageSquare, Paperclip,
   Clock, User, Tag, AlertTriangle, CheckCircle2, Send,
-  ExternalLink, Play
+  ExternalLink, Play, X, Activity, History, Monitor, Smartphone, Server,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import Topbar from '../components/Topbar';
 import {
-  getBug, updateBug, deleteBug, addComment, createNotification
+  getBug, updateBug, deleteBug, addComment, updateComment, deleteComment, createNotification, removeAttachmentFromBug, getProjects
 } from '../services/firestoreService';
+import { cld } from '../services/cloudinaryService';
 import { useAuth } from '../contexts/AuthContext';
 import { getValidStatusTransitions } from '../utils/statusRules';
 import toast from 'react-hot-toast';
-import { Cloudinary } from '@cloudinary/url-gen';
 import { auto } from '@cloudinary/url-gen/actions/resize';
 import { autoGravity } from '@cloudinary/url-gen/qualifiers/gravity';
 import { AdvancedImage } from '@cloudinary/react';
 
-const cld = new Cloudinary({ cloud: { cloudName: 'dhtotljvn' } });
-
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
-const statusClass = { 
-  Open: 'badge-open', 
-  'In Progress': 'badge-inprogress', 
-  Done: 'badge-done', 
-  Resolved: 'badge-resolved', 
-  Reopened: 'badge-reopened', 
-  Reopen: 'badge-reopen', 
-  Reproduced: 'badge-reproduced' 
+const statusClass = {
+  Open: 'badge-open',
+  'In Progress': 'badge-inprogress',
+  Done: 'badge-done',
+  Resolved: 'badge-resolved',
+  Reopened: 'badge-reopened',
+  Reopen: 'badge-reopen',
+  Reproduced: 'badge-reproduced'
 };
 const priorityClass = { Low: 'badge-low', Medium: 'badge-medium', High: 'badge-high', Critical: 'badge-critical' };
 
@@ -46,23 +45,55 @@ export default function BugDetailPage() {
   const [lightbox, setLightbox] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [savingComment, setSavingComment] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: null,
+    isDanger: true,
+  });
+
+  const triggerConfirm = (title, message, onConfirm, isDanger = true) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      confirmText: isDanger ? 'Delete' : 'Confirm',
+      cancelText: 'Cancel',
+      onConfirm,
+      isDanger,
+    });
+  };
 
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await getBug(id);
-        
-        // Security check for QA role: only see your own bugs
-        if (userProfile?.role === 'QA' && data.reportedBy !== currentUser?.uid) {
-          toast.error('You do not have permission to view this bug');
-          navigate('/qa/dashboard');
-          return;
+        const [data, projects] = await Promise.all([
+          getBug(id),
+          getProjects(currentUser.uid, userProfile?.role)
+        ]);
+
+        if (userProfile?.role !== 'Admin') {
+          const isMember = projects.some(p => p.id === data.projectId);
+          if (!isMember) {
+            toast.error('You do not have permission to view this bug');
+            const unauthorizedPath = userProfile?.role === 'Developer' ? '/dev' : '/qa/dashboard';
+            navigate(unauthorizedPath);
+            return;
+          }
         }
 
         setBug(data);
       } catch {
         toast.error('Bug not found');
-        navigate('/qa/dashboard');
+        const errorPath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa/dashboard';
+        navigate(errorPath);
       } finally {
         setLoading(false);
       }
@@ -72,7 +103,7 @@ export default function BugDetailPage() {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      await updateBug(id, { status: newStatus });
+      await updateBug(id, { status: newStatus }, userProfile?.displayName || currentUser?.displayName);
       setBug((b) => ({ ...b, status: newStatus }));
       setEditingStatus(false);
       toast.success(`Status updated to ${newStatus}`);
@@ -86,7 +117,7 @@ export default function BugDetailPage() {
           type: 'status_change',
         });
       }
-      
+
       // Notify assignee
       if (bug.assigneeId && bug.assigneeId !== currentUser.uid) {
         await createNotification({
@@ -107,7 +138,8 @@ export default function BugDetailPage() {
     try {
       await deleteBug(id);
       toast.success('Bug deleted');
-      navigate('/qa/bugs');
+      const bugsPath = userProfile?.role === 'Admin' ? '/admin/bugs' : userProfile?.role === 'Developer' ? '/dev/bugs' : '/qa/bugs';
+      navigate(bugsPath);
     } catch (err) {
       console.error("Error deleting bug:", err);
       toast.error('Failed to delete bug');
@@ -137,8 +169,8 @@ export default function BugDetailPage() {
       const notifyId = bug.assigneeId && bug.assigneeId !== currentUser.uid
         ? bug.assigneeId
         : bug.reportedBy !== currentUser.uid
-        ? bug.reportedBy
-        : null;
+          ? bug.reportedBy
+          : null;
       if (notifyId) {
         await createNotification({
           userId: notifyId,
@@ -153,6 +185,82 @@ export default function BugDetailPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSaveCommentEdit = async (commentId) => {
+    if (!editingCommentText.trim()) return;
+    setSavingComment(true);
+    try {
+      await updateComment(id, commentId, editingCommentText.trim());
+      const updatedBug = await getBug(id);
+      setBug(updatedBug);
+      setEditingCommentId(null);
+      setEditingCommentText('');
+      toast.success('Comment updated successfully');
+    } catch (err) {
+      console.error("Error updating comment:", err);
+      toast.error('Failed to update comment');
+    } finally {
+      setSavingComment(false);
+    }
+  };
+
+  const handleDeleteComment = (commentId) => {
+    triggerConfirm(
+      'Delete Comment',
+      'Are you sure you want to delete this comment? This action is permanent and cannot be undone.',
+      async () => {
+        try {
+          await deleteComment(id, commentId);
+          const updatedBug = await getBug(id);
+          setBug(updatedBug);
+          toast.success('Comment deleted successfully');
+        } catch (err) {
+          console.error("Error deleting comment:", err);
+          toast.error('Failed to delete comment');
+        }
+      },
+      true
+    );
+  };
+
+  const handleRemoveAttachment = (att) => {
+    triggerConfirm(
+      'Remove Attachment',
+      `Are you sure you want to remove the attachment "${att.name || 'this file'}"?`,
+      async () => {
+        try {
+          await removeAttachmentFromBug(id, att);
+          setBug((b) => ({
+            ...b,
+            attachments: b.attachments.filter((a) => a.url !== att.url)
+          }));
+          toast.success('Attachment removed');
+        } catch (err) {
+          console.error("Error removing attachment:", err);
+          toast.error('Failed to remove attachment');
+        }
+      },
+      true
+    );
+  };
+
+  const handleClearAllAttachments = () => {
+    triggerConfirm(
+      'Remove All Attachments',
+      'Are you sure you want to remove ALL attachments from this bug? This action is permanent.',
+      async () => {
+        try {
+          await updateBug(id, { attachments: [] });
+          setBug((b) => ({ ...b, attachments: [] }));
+          toast.success('All attachments removed');
+        } catch (err) {
+          console.error("Error clearing attachments:", err);
+          toast.error('Failed to clear attachments');
+        }
+      },
+      true
+    );
   };
 
   if (loading) {
@@ -176,7 +284,10 @@ export default function BugDetailPage() {
 
   return (
     <>
-      <Topbar title="Bug Details" />
+      <Topbar 
+        title="Bug Details" 
+        subtitle={`Tracking ${bug?.bugKey || 'BUG'} — ${bug?.status}`}
+      />
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="modal-overlay" onClick={() => !deleting && setShowDeleteConfirm(false)}>
@@ -261,6 +372,78 @@ export default function BugDetailPage() {
         </div>
       )}
 
+      {/* Unified Custom Confirmation Modal */}
+      {confirmDialog.isOpen && (
+        <div className="modal-overlay" onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}>
+          <div
+            className="modal"
+            style={{ maxWidth: 400, borderRadius: 20, overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header — centered */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              padding: '32px 32px 20px', gap: 14, background: 'var(--bg-card)',
+              borderBottom: '1px solid var(--border)',
+            }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 16,
+                background: confirmDialog.isDanger ? 'linear-gradient(135deg, #fee2e2, #fecaca)' : 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
+                border: confirmDialog.isDanger ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(99,102,241,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: confirmDialog.isDanger ? '0 4px 14px rgba(239,68,68,0.15)' : '0 4px 14px rgba(99,102,241,0.15)',
+              }}>
+                <Trash2 size={22} style={{ color: confirmDialog.isDanger ? '#dc2626' : 'var(--primary)' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+                  {confirmDialog.title}
+                </h3>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '20px 28px', background: 'var(--bg-secondary)' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.7, textAlign: 'center' }}>
+                {confirmDialog.message}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              display: 'flex', gap: 10, padding: '16px 24px',
+              background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)',
+            }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                style={{ flex: 1, borderRadius: 10, fontWeight: 600, justifyContent: 'center' }}
+              >
+                {confirmDialog.cancelText}
+              </button>
+              <button
+                onClick={async () => {
+                  if (confirmDialog.onConfirm) {
+                    await confirmDialog.onConfirm();
+                  }
+                  setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                }}
+                style={{
+                  flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  gap: 8, padding: '10px 20px', borderRadius: 10,
+                  background: confirmDialog.isDanger ? '#dc2626' : 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: '0.875rem',
+                  border: 'none', cursor: 'pointer',
+                  boxShadow: confirmDialog.isDanger ? '0 4px 14px rgba(220,38,38,0.3)' : '0 4px 14px rgba(99,102,241,0.3)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {confirmDialog.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lightbox */}
       {lightbox && (
         <div
@@ -278,34 +461,7 @@ export default function BugDetailPage() {
         </div>
       )}
 
-      <div className="page-container">
-        {/* Back + Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-          <button className="btn btn-secondary" style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8 }} onClick={() => navigate(-1)}>
-            <ArrowLeft size={18} /> Back
-          </button>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
-              <button
-                className="btn btn-secondary"
-                onClick={() => navigate(`/qa/bugs/${id}/edit`)}
-                style={{ borderRadius: 12, padding: '10px 24px', fontWeight: 600, gap: 8 }}
-              >
-                <Edit3 size={16} /> Edit
-              </button>
-            )}
-            {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
-              <button 
-                className="btn btn-danger" 
-                onClick={() => setShowDeleteConfirm(true)}
-                style={{ borderRadius: 12, padding: '10px 24px', fontWeight: 600, gap: 8 }}
-              >
-                <Trash2 size={16} /> Delete
-              </button>
-            )}
-          </div>
-        </div>
-
+      <div className="page-container" style={{ paddingTop: 16 }}>
         <div className="bug-detail-layout">
           {/* Main Content */}
           <div>
@@ -340,6 +496,121 @@ export default function BugDetailPage() {
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
                 {bug.description || 'No description provided.'}
               </p>
+            </div>
+
+            {/* Platform & Environment */}
+            <div className="detail-section">
+              <p className="detail-section-title">
+                <Monitor size={14} /> Environment & Platform
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Platform</p>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {bug.platform === 'Mobile' ? <Smartphone size={14} /> : bug.platform === 'API' ? <Server size={14} /> : <Monitor size={14} />}
+                    {bug.platform || 'Web'}
+                  </p>
+                </div>
+                {bug.platform === 'Web' && (
+                  <>
+                    {bug.browser && (
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Browser</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{bug.browser}</p>
+                      </div>
+                    )}
+                    {bug.osWeb && (
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>OS</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{bug.osWeb}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+                {bug.platform === 'Mobile' && (
+                  <>
+                    {bug.deviceModel && (
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Device</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{bug.deviceModel}</p>
+                      </div>
+                    )}
+                    {bug.appVersion && (
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>App Version</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>{bug.appVersion}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+                {bug.platform === 'API' && (
+                  <>
+                    {bug.httpMethod && (
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Method</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6366f1' }}>{bug.httpMethod}</p>
+                      </div>
+                    )}
+                    {bug.responseCode && (
+                      <div style={{ background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Status Code</p>
+                        <p style={{ fontSize: '0.85rem', fontWeight: 600, color: bug.responseCode.startsWith('2') ? 'var(--success)' : 'var(--danger)' }}>{bug.responseCode}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              {bug.apiEndpoint && (
+                <div style={{ marginTop: 12, background: 'var(--bg-secondary)', padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Endpoint</p>
+                  <p style={{ fontSize: '0.82rem', fontWeight: 600, fontFamily: 'monospace', wordBreak: 'break-all' }}>{bug.apiEndpoint}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Bug Journey Timeline */}
+            <div className="detail-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <p className="detail-section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <History size={14} /> Bug Journey Timeline
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: '4px 8px', height: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)' }}
+                  onClick={() => setShowHistory(!showHistory)}
+                  title={showHistory ? "Hide history" : "Show history"}
+                >
+                  {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{showHistory ? 'Hide' : 'Show'}</span>
+                </button>
+              </div>
+              {showHistory && (
+                <div style={{ position: 'relative', paddingLeft: 24, marginTop: 10 }}>
+                  <div style={{ position: 'absolute', left: 7, top: 0, bottom: 0, width: 2, background: 'var(--border)', borderRadius: 1 }}></div>
+                  {(bug.history || []).slice().reverse().map((event, i) => (
+                    <div key={i} style={{ position: 'relative', marginBottom: 20 }}>
+                      <div style={{
+                        position: 'absolute', left: -21, top: 4, width: 10, height: 10,
+                        borderRadius: '50%', background: event.type === 'status' ? '#6366f1' : 'var(--border)',
+                        border: '2px solid var(--bg-card)', zIndex: 1
+                      }}></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{event.details}</p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>by <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{event.user}</span></p>
+                        </div>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {event.timestamp ? formatDistanceToNow(new Date(event.timestamp), { addSuffix: true }) : ''}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {!bug.history?.length && (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No history recorded yet.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Steps */}
@@ -385,16 +656,27 @@ export default function BugDetailPage() {
             {/* Attachments */}
             {bug.attachments?.length > 0 && (
               <div className="detail-section">
-                <p className="detail-section-title">
-                  <Paperclip size={14} /> Attachments ({bug.attachments.length})
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <p className="detail-section-title" style={{ margin: 0 }}>
+                    <Paperclip size={14} /> Attachments ({bug.attachments.length})
+                  </p>
+                  {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={handleClearAllAttachments}
+                      style={{ color: 'var(--danger)', height: 'auto', padding: '4px 8px' }}
+                    >
+                      <Trash2 size={14} /> Clear All
+                    </button>
+                  )}
+                </div>
                 <div className="attachment-grid">
                   {bug.attachments.map((att, i) => (
-                    <div key={i} className="attachment-item" onClick={() => setLightbox(att)}>
+                    <div key={i} className="attachment-item" onClick={() => setLightbox(att)} style={{ position: 'relative' }}>
                       {att.type?.startsWith('image/') ? (
                         att.publicId ? (
-                          <AdvancedImage 
-                            cldImg={cld.image(att.publicId).format('auto').quality('auto').resize(auto().gravity(autoGravity()).width(300).height(300))} 
+                          <AdvancedImage
+                            cldImg={cld.image(att.publicId).format('auto').quality('auto').resize(auto().gravity(autoGravity()).width(300).height(300))}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
                         ) : (
@@ -412,6 +694,17 @@ export default function BugDetailPage() {
                           <Paperclip size={20} />
                           <span>{att.name}</span>
                         </div>
+                      )}
+                      {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
+                        <button
+                          type="button"
+                          className="attachment-remove-btn"
+                          onClick={(e) => { e.stopPropagation(); handleRemoveAttachment(att); }}
+                          title="Remove attachment"
+                        >
+                          <X size={14} />
+                          <span>Remove</span>
+                        </button>
                       )}
                     </div>
                   ))}
@@ -434,15 +727,86 @@ export default function BugDetailPage() {
                         alt={c.authorName}
                         className="comment-avatar"
                       />
-                      <div className="comment-body">
-                        <div className="comment-header">
-                          <span className="comment-author">{c.authorName}</span>
-                          <span className={`badge badge-${c.role === 'Developer' ? 'inprogress' : 'open'}`} style={{ fontSize: '0.65rem' }}>{c.role}</span>
-                          <span className="comment-time">
-                            {c.createdAt ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: true }) : 'Just now'}
-                          </span>
+                      <div className="comment-body" style={{ flex: 1 }}>
+                        <div className="comment-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span className="comment-author" style={{ fontWeight: 600 }}>{c.authorName}</span>
+                            <span className={`badge badge-${c.role === 'Developer' ? 'inprogress' : 'open'}`} style={{ fontSize: '0.65rem' }}>{c.role}</span>
+                            <span className="comment-time">
+                              {c.createdAt ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: true }) : 'Just now'}
+                            </span>
+                            {c.updatedAt && (
+                              <span className="comment-time" style={{ fontSize: '0.7rem', fontStyle: 'italic', opacity: 0.8 }}>
+                                (edited)
+                              </span>
+                            )}
+                          </div>
+                          {(c.authorId === currentUser?.uid || userProfile?.role === 'Admin') && editingCommentId !== c.id && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                style={{ padding: '2px 8px', height: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)' }}
+                                onClick={() => {
+                                  setEditingCommentId(c.id);
+                                  setEditingCommentText(c.text);
+                                }}
+                                title="Edit comment"
+                              >
+                                <Edit3 size={11} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 500 }}>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                style={{ padding: '2px 8px', height: 'auto', display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444' }}
+                                onClick={() => handleDeleteComment(c.id)}
+                                title="Delete comment"
+                              >
+                                <Trash2 size={11} />
+                                <span style={{ fontSize: '0.72rem', fontWeight: 500 }}>Delete</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        <p className="comment-text">{c.text}</p>
+                        {editingCommentId === c.id ? (
+                          <div style={{ marginTop: 8 }}>
+                            <textarea
+                              className="form-control"
+                              value={editingCommentText}
+                              onChange={(e) => setEditingCommentText(e.target.value)}
+                              rows={3}
+                              style={{ width: '100%', marginBottom: 8, padding: '8px 12px', fontSize: '0.9rem', borderRadius: 'var(--radius-sm)', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-main)', resize: 'vertical' }}
+                              placeholder="Edit your comment..."
+                              autoFocus
+                            />
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditingCommentText('');
+                                }}
+                                disabled={savingComment}
+                                style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleSaveCommentEdit(c.id)}
+                                disabled={savingComment || !editingCommentText.trim()}
+                                style={{ fontSize: '0.8rem', padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 4 }}
+                              >
+                                {savingComment ? 'Saving...' : 'Save'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="comment-text" style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{c.text}</p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -482,6 +846,39 @@ export default function BugDetailPage() {
 
           {/* Sidebar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
+              <button
+                className="btn btn-secondary"
+                style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8 }}
+                onClick={() => navigate(-1)}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+
+              {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
+                <>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      const basePath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
+                      navigate(`${basePath}/bugs/${id}/edit`);
+                    }}
+                    style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8 }}
+                  >
+                    <Edit3 size={16} /> Edit
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8 }}
+                  >
+                    <Trash2 size={16} /> Delete
+                  </button>
+                </>
+              )}
+            </div>
+
             {/* Status */}
             <div className="card" style={{ padding: 20 }}>
               <h4 style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
@@ -493,9 +890,11 @@ export default function BugDetailPage() {
                   <span className={`badge ${statusClass[bug.status] || 'badge-open'}`} style={{ fontSize: '0.8rem', padding: '6px 14px' }}>
                     {bug.status}
                   </span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setEditingStatus(true)}>
-                    <Edit3 size={13} /> Change
-                  </button>
+                  {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser?.uid || bug.assigneeId === currentUser?.uid) && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEditingStatus(true)}>
+                      <Edit3 size={13} /> Change
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -516,17 +915,17 @@ export default function BugDetailPage() {
                     </button>
                   ))}
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
-                    <button 
-                      style={{ 
-                        background: 'transparent', 
-                        border: 'none', 
-                        color: 'var(--text-muted)', 
-                        fontSize: '0.75rem', 
-                        cursor: 'pointer', 
+                    <button
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
                         fontWeight: 500,
                         padding: '4px 8px',
                         transition: 'color 0.2s'
-                      }} 
+                      }}
                       onClick={() => setEditingStatus(false)}
                       onMouseOver={(e) => e.target.style.color = 'var(--text-primary)'}
                       onMouseOut={(e) => e.target.style.color = 'var(--text-muted)'}

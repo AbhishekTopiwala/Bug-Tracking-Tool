@@ -108,6 +108,7 @@ export default function BugsListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bugs, setBugs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const statusFilter = 'All';
   const [priorityFilter, setPriorityFilter] = useState('All');
   const [projectFilter, setProjectFilter] = useState(searchParams.get('project') || '');
@@ -136,7 +137,10 @@ export default function BugsListPage() {
 
   useEffect(() => {
     if (!currentUser || !userProfile) return;
-    getProjects(currentUser.uid, userProfile.role).then(setProjects);
+    setProjectsLoading(true);
+    getProjects(currentUser.uid, userProfile.role)
+      .then(setProjects)
+      .finally(() => setProjectsLoading(false));
   }, [currentUser, userProfile?.role]);
 
   useEffect(() => {
@@ -149,16 +153,16 @@ export default function BugsListPage() {
 
   // Filter bugs based on role
   const myBugs = useMemo(() => {
-    if (userProfile?.role === 'QA') {
-      // QAs only see bugs they reported
-      return bugs.filter(b => b.reportedBy === currentUser?.uid);
+    // When a specific project is selected from URL, filter directly by name — no need to wait for project list
+    if (projectFilter) {
+      if (userProfile?.role === 'Admin') return bugs.filter(b => b.projectName === projectFilter);
+      return bugs.filter(b => b.projectName === projectFilter);
     }
-    if (userProfile?.role === 'Developer') {
-      // Developers see bugs in projects they are assigned to
-      return bugs.filter(b => projects.some(p => p.id === b.projectId));
-    }
-    return bugs; // Admins see everything
-  }, [bugs, currentUser, userProfile?.role, projects]);
+    // For the "all bugs" view, wait for project membership to load
+    if (projectsLoading) return [];
+    if (userProfile?.role === 'Admin') return bugs;
+    return bugs.filter(b => projects.some(p => p.id === b.projectId));
+  }, [bugs, userProfile?.role, projects, projectsLoading, projectFilter]);
 
   const handleDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
@@ -170,6 +174,16 @@ export default function BugsListPage() {
     if (!bugToMove) return;
 
     const role = userProfile?.role || 'QA';
+    // Only the reporter or assigned dev (by assigneeId) can change status
+    const canChangeStatus = userProfile?.role === 'Admin' || 
+                            bugToMove.reportedBy === currentUser?.uid || 
+                            bugToMove.assigneeId === currentUser?.uid;
+
+    if (!canChangeStatus) {
+      toast.error('Only the reporter or assigned developer can change the status');
+      return;
+    }
+
     const validTransitions = getValidStatusTransitions(bugToMove.status, role);
 
     if (!validTransitions.includes(newStatus)) {
@@ -193,7 +207,6 @@ export default function BugsListPage() {
     return myBugs.filter((bug) => {
       if (statusFilter !== 'All' && bug.status !== statusFilter) return false;
       if (priorityFilter !== 'All' && bug.priority !== priorityFilter) return false;
-      if (bug.projectName !== projectFilter) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         return (
@@ -205,22 +218,40 @@ export default function BugsListPage() {
       }
       return true;
     });
-  }, [bugs, statusFilter, priorityFilter, searchQuery, projectFilter]);
+  }, [myBugs, statusFilter, priorityFilter, searchQuery]);
 
   const isAdmin = userProfile?.role === 'Admin';
 
   return (
     <>
       {isAdmin ? (
-        <AdminTopbar title={`${projectFilter || 'Project'} Bugs`} onSearch={setSearchQuery} />
+        <AdminTopbar 
+          title={`${projectFilter || 'Project'} Bugs`} 
+          subtitle={`Monitoring ${filtered.length} active issues in ${projectFilter || 'all projects'}`}
+          onSearch={setSearchQuery} 
+        />
       ) : (
-        <Topbar title={`${projectFilter || 'Project'} Bugs`} onSearch={setSearchQuery} />
+        <Topbar 
+          title={`${projectFilter || 'Project'} Bugs`} 
+          subtitle={`Monitoring ${filtered.length} active issues in ${projectFilter || 'all projects'}`}
+          onSearch={setSearchQuery} 
+        />
       )}
       <div className="page-container" style={{ paddingTop: 12 }}>
 
         {/* Filters & Bug Count Row — uses responsive CSS class */}
         <div className="filters-bar">
           <div className="filters-bar-left" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <FilterDropdown
+              icon={AlertCircle}
+              label="Priority"
+              value={priorityFilter}
+              options={PRIORITIES}
+              onChange={setPriorityFilter}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button 
               className="btn btn-ghost btn-sm" 
               onClick={() => {
@@ -233,29 +264,18 @@ export default function BugsListPage() {
                   navigate('/qa/projects');
                 }
               }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontWeight: 700, padding: '8px 12px', background: 'var(--bg-secondary)', borderRadius: 10, border: '1px solid var(--border-light)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontWeight: 600, padding: '10px 20px', background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-light)' }}
             >
               <ArrowLeft size={16} />
               Back
             </button>
-
-            <FilterDropdown
-              icon={AlertCircle}
-              label="Priority"
-              value={priorityFilter}
-              options={PRIORITIES}
-              onChange={setPriorityFilter}
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
               {filtered.length} bugs found
             </span>
           </div>
         </div>
 
-        {loading ? (
+        {(loading || (!projectFilter && projectsLoading)) ? (
           <div className="grid-auto">
             {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 180 }} />)}
           </div>

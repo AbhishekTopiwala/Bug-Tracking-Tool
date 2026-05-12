@@ -15,6 +15,11 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [branding, setBranding] = useState({
+    logoUrl: '',
+    primaryColor: '#6366f1',
+    portalName: 'Qapture',
+  });
   const [loading, setLoading] = useState(true);
 
   async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1') {
@@ -72,44 +77,85 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let unsubscribeProfile = null;
 
+    console.log("AuthContext: Initializing...");
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
+      console.log("AuthContext: Auth state changed", user ? user.uid : "no user");
+      try {
+        setCurrentUser(user);
 
-      if (unsubscribeProfile) {
-        unsubscribeProfile();
-        unsubscribeProfile = null;
-      }
-
-      if (user) {
-        // Fetch profile initially to have it in context and check if deactivated
-        const profile = await fetchUserProfile(user.uid);
-        if (profile && profile.isActive === false) {
-          await logout();
-          toast.error('Your account has been deactivated.');
-          setLoading(false);
-          return;
+        if (unsubscribeProfile) {
+          unsubscribeProfile();
+          unsubscribeProfile = null;
         }
 
-        // Setup real-time listener to automatically log out the user if an Admin deactivates them
-        const docRef = doc(db, 'users', user.uid);
-        unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setUserProfile(data);
-            if (data.isActive === false) {
-              await logout();
-              toast.error('Your account has been deactivated.');
-            }
+        if (user) {
+          // Fetch profile initially to have it in context and check if deactivated
+          console.log("AuthContext: Fetching user profile...");
+          const profile = await fetchUserProfile(user.uid);
+          console.log("AuthContext: Profile fetched", profile);
+          if (profile && profile.isActive === false) {
+            await logout();
+            toast.error('Your account has been deactivated.');
+            setLoading(false);
+            return;
           }
-        });
-      } else {
-        setUserProfile(null);
+
+          // Setup real-time listener to automatically log out the user if an Admin deactivates them
+          const docRef = doc(db, 'users', user.uid);
+          unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              setUserProfile(data);
+              if (data.isActive === false) {
+                await logout();
+                toast.error('Your account has been deactivated.');
+              }
+            }
+          }, (err) => {
+            console.error("AuthContext: Profile listener error", err);
+          });
+        } else {
+          setUserProfile(null);
+        }
+      } catch (error) {
+        console.error("AuthContext: Error in onAuthStateChanged", error);
+      } finally {
+        setLoading(false);
+        console.log("AuthContext: Loading set to false");
       }
-      setLoading(false);
     });
 
+    // Fetch branding settings real-time
+    console.log("AuthContext: Setting up branding listener...");
+    const brandingUnsub = onSnapshot(doc(db, 'settings', 'branding'), (snap) => {
+      console.log("AuthContext: Branding settings updated");
+      if (snap.exists()) {
+        const data = snap.data();
+        setBranding(data);
+        // Apply primary color to CSS variables
+        if (data.primaryColor) {
+          document.documentElement.style.setProperty('--accent', data.primaryColor);
+          document.documentElement.style.setProperty('--dev-accent', data.primaryColor);
+        }
+      }
+    }, (err) => {
+      console.error("AuthContext: Branding listener error", err);
+    });
+
+    // Safety timeout: if auth takes more than 5 seconds, force loading to false
+    // to prevent a permanent blank page if Firebase hangs.
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn("AuthContext: Initialization timed out. Forcing loading to false.");
+        setLoading(false);
+      }
+    }, 5000);
+
     return () => {
+      clearTimeout(timeoutId);
       unsubscribeAuth();
+      brandingUnsub();
       if (unsubscribeProfile) unsubscribeProfile();
     };
   }, []);
@@ -121,12 +167,38 @@ export function AuthProvider({ children }) {
     login,
     logout,
     fetchUserProfile,
+    branding,
     loading,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {!loading ? children : (
+        <div style={{ 
+          height: '100vh', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          background: '#F5F7FB',
+          color: '#64748B',
+          fontFamily: 'Inter, sans-serif'
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            border: '3px solid #E2E8F0',
+            borderTopColor: '#5B6CFF',
+            borderRadius: '50%',
+            animation: 'auth-spin 0.8s linear infinite',
+            marginBottom: 20
+          }} />
+          <p style={{ fontWeight: 500, fontSize: '0.9rem' }}>Initializing secure session...</p>
+          <style>{`
+            @keyframes auth-spin { to { transform: rotate(360deg); } }
+          `}</style>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

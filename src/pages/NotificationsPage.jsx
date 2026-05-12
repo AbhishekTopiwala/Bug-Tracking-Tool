@@ -50,29 +50,22 @@ export default function NotificationsPage() {
           subtitle={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
         />
       ) : (
-        <Topbar title="Notifications" />
+        <Topbar 
+          title="Notifications" 
+          subtitle={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
+        />
       )}
       <div className="page-container">
-        {!isAdmin && (
-          <div className="page-header">
-            <div className="page-header-left">
-              <h1 className="page-title">Notifications</h1>
-              <p className="page-subtitle">
-                {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {unreadCount > 0 && (
-                <button className="btn btn-secondary" onClick={markAllRead}>
-                  <CheckCheck size={15} /> Mark all read
-                </button>
-              )}
-              {notifications.length > 0 && (
-                <button className="btn btn-danger" onClick={handleClearAll}>
-                  <Trash2 size={15} /> Clear All
-                </button>
-              )}
-            </div>
+        {!isAdmin && notifications.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 24 }}>
+            {unreadCount > 0 && (
+              <button className="btn btn-secondary" onClick={markAllRead} style={{ borderRadius: 12 }}>
+                <CheckCheck size={16} /> Mark all read
+              </button>
+            )}
+            <button className="btn btn-danger" onClick={handleClearAll} style={{ borderRadius: 12 }}>
+              <Trash2 size={16} /> Clear All
+            </button>
           </div>
         )}
 

@@ -81,7 +81,7 @@ export default function Topbar({ title, subtitle, onSearch, onBack }) {
           <button
             className="btn btn-primary btn-sm"
             onClick={() => {
-              const path = userProfile?.role === 'Developer' ? '/dev/bugs/new' : '/qa/bugs/new';
+              const path = userProfile?.role === 'Developer' ? '/dev/projects' : '/qa/projects';
               navigate(path);
             }}
           >

@@ -42,6 +42,8 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import TeamManagementPage from './pages/admin/TeamManagementPage';
 import ProjectOverviewPage from './pages/admin/ProjectOverviewPage';
 import ProjectTeamPage from './pages/admin/ProjectTeamPage';
+import BrandingSettingsPage from './pages/admin/BrandingSettingsPage';
+import PublicProjectPage from './pages/PublicProjectPage';
 import { Loader2 } from 'lucide-react';
 
 // ── Root redirect based on role ──────────────────────────────────────────────
@@ -164,7 +166,11 @@ function AdminPortal() {
           <Route path="projects/:projectId" element={<ProjectOverviewPage />} />
           <Route path="projects/:projectId/team" element={<ProjectTeamPage />} />
           <Route path="bugs" element={<BugsListPage />} />
+          <Route path="bugs/new" element={<BugFormPage />} />
+          <Route path="bugs/:id" element={<BugDetailPage />} />
+          <Route path="bugs/:id/edit" element={<BugFormPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="branding" element={<BrandingSettingsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
@@ -190,6 +196,9 @@ function AppLayout() {
 
   return (
     <Routes>
+      {/* Public View (No Auth) */}
+      <Route path="/public/:projectId" element={<PublicProjectPage />} />
+
       {/* Root → role-based redirect */}
       <Route path="/" element={<PrivateRoute><RootRedirect /></PrivateRoute>} />
 

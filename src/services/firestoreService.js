@@ -12,8 +12,10 @@ import {
   onSnapshot,
   serverTimestamp,
   arrayUnion,
+  arrayRemove,
   writeBatch,
   limit,
+  setDoc,
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
@@ -61,13 +63,37 @@ export async function createBug(bugData) {
     comments: [],
     attachments: [],
     tags: bugData.tags || [],
+    history: [{
+      type: 'event',
+      user: bugData.reportedByName || 'QA',
+      timestamp: new Date().toISOString(),
+      details: 'Bug reported'
+    }]
   });
   return docRef.id;
 }
 
-export async function updateBug(id, data) {
+export async function updateBug(id, data, userName = 'Someone') {
   const ref = doc(db, 'bugs', id);
-  await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
+  const updateData = { ...data, updatedAt: serverTimestamp() };
+  
+  if (data.status) {
+    updateData.history = arrayUnion({
+      type: 'status',
+      user: userName,
+      timestamp: new Date().toISOString(),
+      details: `Status changed to ${data.status}`
+    });
+  } else {
+    updateData.history = arrayUnion({
+      type: 'event',
+      user: userName,
+      timestamp: new Date().toISOString(),
+      details: 'Bug updated'
+    });
+  }
+
+  await updateDoc(ref, updateData);
 }
 
 export async function deleteBug(id) {
@@ -106,6 +132,43 @@ export async function addComment(bugId, comment) {
       id: `comment_${Date.now()}`,
       createdAt: new Date().toISOString(),
     }),
+    history: arrayUnion({
+      type: 'comment',
+      user: comment.authorName || 'User',
+      timestamp: new Date().toISOString(),
+      details: 'Added a comment'
+    }),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateComment(bugId, commentId, newText) {
+  const bugRef = doc(db, 'bugs', bugId);
+  const snap = await getDoc(bugRef);
+  if (!snap.exists()) return;
+  const bugData = snap.data();
+  const comments = bugData.comments || [];
+  const updatedComments = comments.map(c => {
+    if (c.id === commentId) {
+      return { ...c, text: newText, updatedAt: new Date().toISOString() };
+    }
+    return c;
+  });
+  await updateDoc(bugRef, {
+    comments: updatedComments,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteComment(bugId, commentId) {
+  const bugRef = doc(db, 'bugs', bugId);
+  const snap = await getDoc(bugRef);
+  if (!snap.exists()) return;
+  const bugData = snap.data();
+  const comments = bugData.comments || [];
+  const updatedComments = comments.filter(c => c.id !== commentId);
+  await updateDoc(bugRef, {
+    comments: updatedComments,
     updatedAt: serverTimestamp(),
   });
 }
@@ -145,6 +208,14 @@ export async function addAttachmentToBug(bugId, attachment) {
   const bugRef = doc(db, 'bugs', bugId);
   await updateDoc(bugRef, {
     attachments: arrayUnion(attachment),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function removeAttachmentFromBug(bugId, attachment) {
+  const bugRef = doc(db, 'bugs', bugId);
+  await updateDoc(bugRef, {
+    attachments: arrayRemove(attachment),
     updatedAt: serverTimestamp(),
   });
 }
@@ -227,4 +298,38 @@ export async function updateProject(id, data) {
 
 export async function deleteProject(id) {
   await deleteDoc(doc(db, 'projects', id));
+}
+
+// ── BRANDING & PUBLIC ────────────────────────────────────────────────────────
+export async function getBrandingSettings() {
+  const snap = await getDoc(doc(db, 'settings', 'branding'));
+  return snap.exists() ? snap.data() : {
+    logoUrl: '',
+    primaryColor: '#6366f1',
+    portalName: 'Qapture',
+  };
+}
+
+export async function updateBrandingSettings(data) {
+  await setDoc(doc(db, 'settings', 'branding'), data, { merge: true });
+}
+
+export async function getPublicProjectData(projectId) {
+  const projectSnap = await getDoc(doc(db, 'projects', projectId));
+  if (!projectSnap.exists()) throw new Error('Project not found');
+  
+  const bugsQuery = query(collection(db, 'bugs'), where('projectId', '==', projectId));
+  const bugsSnap = await getDocs(bugsQuery);
+  const bugs = bugsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  
+  return {
+    project: { id: projectSnap.id, ...projectSnap.data() },
+    bugs: bugs.map(b => ({
+      status: b.status,
+      priority: b.priority,
+      bugKey: b.bugKey,
+      title: b.title, // Maybe hide this if public? No, user asked for "Project Status View"
+      createdAt: b.createdAt
+    }))
+  };
 }

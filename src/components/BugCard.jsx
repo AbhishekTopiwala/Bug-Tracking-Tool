@@ -7,8 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function BugCard({ bug, hideStatus = false }) {
   const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();
-  const isDeveloper = userProfile?.role === 'Developer';
-  const basePath = isDeveloper ? '/dev' : '/qa';
+  const basePath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
 
   const timeAgo = bug.createdAt?.seconds
     ? formatDistanceToNow(new Date(bug.createdAt.seconds * 1000), { addSuffix: true })

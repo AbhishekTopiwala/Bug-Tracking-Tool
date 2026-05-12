@@ -118,18 +118,8 @@ export default function TestCasesPage() {
 
   return (
     <>
-      <Topbar title="Test Case Generator" />
+      <Topbar title="Test Case Generator" subtitle="AI-powered test case generation for positive, negative, and edge cases" />
       <div className="page-container">
-        <div className="page-header">
-          <div className="page-header-left">
-            <h1 className="page-title">
-              <span className="text-gradient">Test Case</span> Generator
-            </h1>
-            <p className="page-subtitle">
-              AI-powered test case generation for positive, negative, and edge cases
-            </p>
-          </div>
-        </div>
 
         {/* Input */}
         <div className="ai-panel" style={{ marginBottom: 28 }}>

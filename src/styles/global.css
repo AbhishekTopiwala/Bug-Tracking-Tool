@@ -9,7 +9,7 @@
 :root {
   /* Backgrounds — clean SaaS palette */
   --bg-primary: #F5F7FB;
-  --bg-secondary: #EEF2FF;
+  --bg-secondary: #FFFFFF;
   --bg-card: #FFFFFF;
   --bg-card-hover: #F9FBFF;
   --bg-glass: rgba(255, 255, 255, 0.9);
@@ -816,14 +816,14 @@ textarea.form-control {
   }
 
   .topbar-title {
-    font-size: 1.15rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1.2;
   }
 
   .topbar-subtitle {
-    font-size: 0.78rem;
+    font-size: 0.80rem;
     color: var(--text-secondary);
     font-weight: 500;
     margin-top: 2px;

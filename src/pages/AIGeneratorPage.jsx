@@ -57,18 +57,8 @@ export default function AIGeneratorPage() {
 
   return (
     <>
-      <Topbar title="AI Bug Generator" />
+      <Topbar title="AI Bug Generator" subtitle="Turn your quick QA notes into structured, professional bug reports instantly" />
       <div className="page-container">
-        <div className="page-header">
-          <div className="page-header-left">
-            <h1 className="page-title">
-              <span className="text-gradient">AI</span> Bug Generator
-            </h1>
-            <p className="page-subtitle">
-              Turn your quick QA notes into structured, professional bug reports instantly
-            </p>
-          </div>
-        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
           {/* Input Panel */}

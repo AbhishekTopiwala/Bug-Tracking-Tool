@@ -192,13 +192,13 @@ export default function ProjectTeamPage() {
               onClick={() => navigate(`/admin/projects/${project?.id}`)}
               style={{
                 background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)',
-                fontWeight: 700, padding: '12px 24px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+                fontWeight: 600, padding: '10px 20px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8,
                 boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
               }}
               onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
               onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
             >
-              <ArrowLeft size={18} /> Back to Project
+              <ArrowLeft size={16} /> Back to Project
             </button>
             <button
               className="btn"

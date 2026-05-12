@@ -6,7 +6,7 @@ import {
   TrendingUp, Activity, ArrowLeft, AlertCircle,
   CheckCircle2, Clock, Calendar, Shield,
   ChevronRight, ExternalLink, Filter, Search,
-  AlertTriangle, CheckCircle, Info, Loader2
+  AlertTriangle, CheckCircle, Info, Loader2, Link, Copy, Share2
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminTopbar from '../../components/AdminTopbar';
@@ -66,6 +66,12 @@ export default function ProjectOverviewPage() {
     loadData();
   }, [projectId]);
 
+  const handleCopyPublicLink = () => {
+    const url = `${window.location.origin}/public/${project.id}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Public status link copied to clipboard!');
+  };
+
 
   // Removed handleToggleUser and saveAssignments as they are now on the dedicated page
 
@@ -121,8 +127,8 @@ export default function ProjectOverviewPage() {
             </div>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 12 }}>Project Missing</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>We couldn't find the project you're looking for. It might have been deleted or the URL is incorrect.</p>
-            <button className="btn btn-primary" onClick={() => navigate('/admin/projects')}>
-              Back to Projects
+            <button className="btn btn-primary" onClick={() => navigate('/admin/projects')} style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8, display: 'flex', alignItems: 'center', margin: '0 auto' }}>
+              <ArrowLeft size={16} /> Back to Projects
             </button>
           </motion.div>
         </div>
@@ -175,13 +181,13 @@ export default function ProjectOverviewPage() {
                 onClick={() => navigate('/admin/projects')}
                 style={{ 
                   background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', 
-                  fontWeight: 700, padding: '12px 24px', borderRadius: 14, display: 'flex', alignItems: 'center', gap: 10,
+                  fontWeight: 600, padding: '10px 20px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8,
                   boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
                 onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
               >
-                <ArrowLeft size={18} /> Back to Projects
+                <ArrowLeft size={16} /> Back to Projects
               </button>
               <button 
                 className="btn" 
@@ -445,6 +451,19 @@ export default function ProjectOverviewPage() {
                   onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                 >
                   <Search size={18} /> Audit All Issues
+                </button>
+                <button
+                  className="btn"
+                  style={{ 
+                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', 
+                    color: 'white', textAlign: 'left', padding: '16px', borderRadius: 16,
+                    display: 'flex', alignItems: 'center', gap: 12, fontWeight: 600, transition: 'all 0.2s'
+                  }}
+                  onClick={handleCopyPublicLink}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                >
+                  <Share2 size={18} /> Share Public Status
                 </button>
                 <button
                   className="btn"

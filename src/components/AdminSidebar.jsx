@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Bell, Settings, LogOut,
-  ShieldCheck, BarChart3, Folder,
+  ShieldCheck, BarChart3, Folder, Palette,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -13,11 +13,12 @@ const adminNavItems = [
 
 const accountItems = [
   { to: '/admin/notifications', icon: Bell, label: 'Notifications', exact: false },
+  { to: '/admin/branding', icon: Palette, label: 'Branding', exact: false },
   { to: '/admin/settings', icon: Settings, label: 'Settings', exact: false },
 ];
 
 export default function AdminSidebar({ unreadCount = 0 }) {
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, logout, branding } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -37,11 +38,15 @@ export default function AdminSidebar({ unreadCount = 0 }) {
     <>
       <aside className="admin-sidebar">
         <NavLink to="/admin" className="sidebar-logo" onClick={closeSidebar}>
-          <div className="logo-icon">
-            <img src="/Qapture.png" alt="Qapture" />
+          <div className="logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {branding.logoUrl ? (
+              <img src={branding.logoUrl} alt={branding.portalName} style={{ objectFit: 'contain' }} />
+            ) : (
+              <img src="/Qapture.png" alt="Qapture" />
+            )}
           </div>
           <div className="logo-text">
-            <span className="logo-name">Qapture</span>
+            <span className="logo-name">{branding.portalName || 'Qapture'}</span>
             <span className="logo-tagline" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <ShieldCheck size={12} />
               Admin Portal
