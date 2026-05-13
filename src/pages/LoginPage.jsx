@@ -46,9 +46,9 @@ export default function LoginPage() {
         {/* Left Branding Section */}
         <div className="auth-left">
         <div className="auth-brand-header">
-          <div className="auth-logo-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', background: 'var(--accent-light)', borderRadius: 'var(--radius)', padding: '6px' }}>
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="15" cy="15" r="11" stroke="url(#qualia-grad)" strokeWidth="3" strokeLinecap="round" strokeDasharray="52 14" />
+          <div className="auth-logo-container">
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="15" cy="15" r="11" stroke="url(#qualia-grad)" strokeWidth="3.2" strokeLinecap="round" strokeDasharray="52 14" />
               <path d="M22 22L29 29" stroke="url(#qualia-grad-prism)" strokeWidth="3.5" strokeLinecap="round" />
               <path d="M19 19L23 23" stroke="#5B6CFF" strokeWidth="3.5" strokeLinecap="round" />
               <defs>
@@ -64,12 +64,12 @@ export default function LoginPage() {
             </svg>
           </div>
           <div className="auth-brand-text">
-            <div className="auth-brand-name" style={{ fontFamily: "'Outfit', 'Inter', sans-serif", letterSpacing: '-0.03em', fontWeight: 700 }}>Qualia</div>
+            <div className="auth-brand-name">Qualia</div>
             <div className="auth-brand-tagline">From visual glance to structured resolution</div>
           </div>
         </div>
 
-        <h2 className="auth-marketing-title">Modern bug tracking for QA teams and Developers</h2>
+        <h2 className="auth-marketing-title">Modern <span className="text-gradient">bug tracking</span> for QA teams and Developers</h2>
         <p className="auth-marketing-subtitle">Create, assign and resolve bugs faster with AI powered workflows.</p>
 
         <div className="auth-features">

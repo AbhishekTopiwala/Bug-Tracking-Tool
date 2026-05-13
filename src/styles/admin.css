@@ -27,26 +27,36 @@
 
 /* ── Branding / Logo Area ─────────────────────────────────────────────────── */
 .sidebar-logo {
-  height: 96px;
-  padding: 10px 16px;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--border-light);
+  height: 80px;
+  box-sizing: border-box;
+  padding: 16px 20px;
+  gap: 12px;
   text-decoration: none;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+}
+
+.sidebar-logo:hover .logo-icon {
+  transform: scale(1.05) translateY(-1px);
+  border-color: rgba(91, 108, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(91, 108, 255, 0.15);
 }
 
 .logo-icon {
-  width: 72px;
-  height: 72px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
+  width: 32px;
+  height: 32px;
+  background: var(--admin-accent-light);
+  border: 1px solid rgba(91, 108, 255, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   overflow: visible;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logo-icon img {
@@ -57,11 +67,14 @@
 }
 
 .logo-tagline {
+  font-family: 'Inter', sans-serif;
   font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 800;
   color: var(--admin-accent);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -71,39 +84,42 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 9px 12px;
   margin: 2px 12px;
-  border-radius: 12px;
+  border-radius: 8px;
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
 }
 
 .admin-nav-link:hover {
-  background: var(--admin-accent-light);
-  color: var(--admin-accent);
+  color: var(--text-primary);
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.01);
 }
 
 .admin-nav-link.active {
-  background: var(--admin-accent);
-  color: white;
-  box-shadow: 0 10px 20px -5px rgba(91, 108, 255, 0.3);
+  color: var(--admin-accent);
+  background: rgba(91, 108, 255, 0.06);
+  font-weight: 600;
+  border-color: rgba(91, 108, 255, 0.12);
 }
 
 .admin-nav-link.active svg {
-  color: white !important;
+  color: var(--admin-accent) !important;
 }
 
 .admin-nav-badge {
   margin-left: auto;
-  background: var(--admin-accent);
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
+  background: var(--admin-accent-light);
+  color: var(--admin-accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 100px;
 }
 
 /* ── Admin Sidebar Footer ── */
@@ -172,7 +188,7 @@
 
 /* ── Admin Topbar ── */
 .admin-topbar {
-  height: 96px;
+  height: 80px;
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-light);

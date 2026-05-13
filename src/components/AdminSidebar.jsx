@@ -37,7 +37,7 @@ export default function AdminSidebar({ unreadCount = 0 }) {
     <>
       <aside className="admin-sidebar">
         <NavLink to="/admin" className="sidebar-logo" onClick={closeSidebar}>
-          <div className="logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)', padding: '4px', width: '28px', height: '28px' }}>
+          <div className="logo-icon">
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt={branding.portalName} style={{ objectFit: 'contain' }} />
             ) : (
@@ -59,8 +59,8 @@ export default function AdminSidebar({ unreadCount = 0 }) {
             )}
           </div>
           <div className="logo-text">
-            <span className="logo-name" style={{ fontFamily: "'Outfit', 'Inter', sans-serif", letterSpacing: '-0.02em', fontWeight: 700 }}>{branding.portalName || 'Qualia'}</span>
-            <span className="logo-tagline" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span className="logo-name">{branding.portalName || 'Qualia'}</span>
+            <span className="logo-tagline">
               <ShieldCheck size={12} />
               Admin Portal
             </span>

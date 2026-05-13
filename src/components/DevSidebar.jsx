@@ -28,8 +28,8 @@ export default function DevSidebar({ unreadCount = 0 }) {
     <>
       <aside className="dev-sidebar">
         {/* Logo */}
-        <div className="sidebar-logo">
-          <div className="dev-logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--dev-accent-light)', borderRadius: 'var(--radius-sm)', padding: '4px', width: '28px', height: '28px' }}>
+        <NavLink to="/dev" className="sidebar-logo" onClick={closeSidebar}>
+          <div className="dev-logo-icon">
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt={branding.portalName} style={{ objectFit: 'contain' }} />
             ) : (
@@ -51,10 +51,10 @@ export default function DevSidebar({ unreadCount = 0 }) {
             )}
           </div>
           <div className="logo-text">
-            <span className="logo-name" style={{ fontFamily: "'Outfit', 'Inter', sans-serif", letterSpacing: '-0.02em', fontWeight: 700 }}>{branding.portalName || 'Qualia'}</span>
+            <span className="logo-name">{branding.portalName || 'Qualia'}</span>
             <span className="logo-tagline">Developer Portal</span>
           </div>
-        </div>
+        </NavLink>
 
         {/* Nav */}
         <nav className="sidebar-nav">
