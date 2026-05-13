@@ -9,7 +9,7 @@ const navItems = [
   { to: '/qa', icon: LayoutDashboard, label: 'Dashboard', exact: true },
   { to: '/qa/projects', icon: Folder, label: 'Projects' },
   { to: '/qa/bugs/new', icon: Plus, label: 'Report Bug' },
-  { to: '/qa/ai-generator', icon: Zap, label: 'AI Generator' },
+  { to: '/qa/ai-generator', icon: Zap, label: 'AI Bug Generator' },
   { to: '/qa/test-cases', icon: TestTube2, label: 'Test Cases' },
 ];
 
@@ -58,7 +58,7 @@ export default function Sidebar({ unreadCount = 0 }) {
                 const isReportBug = label === 'Report Bug';
                 const isBugsPath = location.pathname.includes('/bugs');
                 const isProjectPath = location.pathname.includes('/projects');
-                
+
                 // Projects is active for project list, project detail, and bug detail/edit
                 // But NOT for the global "Report Bug" context if it's separate (though here they share same target now)
                 let shouldBeActive = isActive;
@@ -68,7 +68,7 @@ export default function Sidebar({ unreadCount = 0 }) {
                     shouldBeActive = true;
                   }
                 }
-                
+
                 // Report Bug is only active if the label matches and we are actually on a "new bug" path 
                 // or if the user just clicked it (target is projects)
                 if (isReportBug) {
