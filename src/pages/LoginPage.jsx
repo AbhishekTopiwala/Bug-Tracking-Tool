@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bug, Eye, EyeOff, Loader2, Code2, Sparkles, CheckCircle2, Mail, Lock, BarChart3 } from 'lucide-react';
+import { Bug, Eye, EyeOff, Loader2, Code2, Sparkles, CheckCircle2, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -9,7 +9,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('qa'); // 'qa' or 'dev'
   const [rememberMe, setRememberMe] = useState(false);
 
   const { login, fetchUserProfile } = useAuth();
@@ -39,7 +38,7 @@ export default function LoginPage() {
     }
   }
 
-  const isDev = selectedRole === 'dev';
+  const isDev = false;
 
   return (
     <div className="auth-page">

@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { getPublicProjectData, getBrandingSettings } from '../services/firestoreService';
 import { formatDistanceToNow } from 'date-fns';
+import { toSafeDate } from '../utils/dateUtils';
+
 
 export default function PublicProjectPage() {
   const { projectId } = useParams();
@@ -161,7 +163,7 @@ export default function PublicProjectPage() {
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b', marginBottom: 2 }}>{bug.title}</p>
                   <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                    <span style={{ fontWeight: 600, color: '#64748b' }}>{bug.bugKey}</span> · {bug.createdAt ? formatDistanceToNow(bug.createdAt.toDate ? bug.createdAt.toDate() : new Date(bug.createdAt), { addSuffix: true }) : 'N/A'}
+                    <span style={{ fontWeight: 600, color: '#64748b' }}>{bug.bugKey}</span> · {bug.createdAt ? formatDistanceToNow(toSafeDate(bug.createdAt) || new Date(), { addSuffix: true }) : 'N/A'}
                   </p>
                 </div>
                 <div style={{ 

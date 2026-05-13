@@ -12,8 +12,6 @@ import {
   deactivateUser,
   activateUser,
   inviteUser,
-  checkUserHasBugs,
-  checkUserHasProjects,
 } from '../../services/teamService';
 import { getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';

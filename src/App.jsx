@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
@@ -16,34 +16,52 @@ import AdminSidebar from './components/AdminSidebar';
 import PrivateRoute from './components/PrivateRoute';
 import RoleRoute from './components/RoleRoute';
 
-// Auth pages
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import CloudinaryDemo from './pages/CloudinaryDemo';
+// Lazy-loaded Auth pages
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SignupPage = lazy(() => import('./pages/SignupPage'));
 
-// QA Portal pages
-import DashboardPage from './pages/DashboardPage';
-import BugsListPage from './pages/BugsListPage';
-import BugFormPage from './pages/BugFormPage';
-import BugDetailPage from './pages/BugDetailPage';
-import AIGeneratorPage from './pages/AIGeneratorPage';
-import TestCasesPage from './pages/TestCasesPage';
-import NotificationsPage from './pages/NotificationsPage';
-import SettingsPage from './pages/SettingsPage';
-import ProjectsPage from './pages/ProjectsPage';
+// Lazy-loaded QA Portal pages
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const BugsListPage = lazy(() => import('./pages/BugsListPage'));
+const BugFormPage = lazy(() => import('./pages/BugFormPage'));
+const BugDetailPage = lazy(() => import('./pages/BugDetailPage'));
+const AIGeneratorPage = lazy(() => import('./pages/AIGeneratorPage'));
+const TestCasesPage = lazy(() => import('./pages/TestCasesPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 
-// Developer Portal pages
-import DevDashboardPage from './pages/dev/DevDashboardPage';
-import DevBugsBoardPage from './pages/dev/DevBugsBoardPage';
-import DevBugDetailPage from './pages/dev/DevBugDetailPage';
+// Lazy-loaded Developer Portal pages
+const DevDashboardPage = lazy(() => import('./pages/dev/DevDashboardPage'));
+const DevBugsBoardPage = lazy(() => import('./pages/dev/DevBugsBoardPage'));
+const DevBugDetailPage = lazy(() => import('./pages/dev/DevBugDetailPage'));
 
-// Admin Portal pages
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import TeamManagementPage from './pages/admin/TeamManagementPage';
-import ProjectOverviewPage from './pages/admin/ProjectOverviewPage';
-import ProjectTeamPage from './pages/admin/ProjectTeamPage';
-import PublicProjectPage from './pages/PublicProjectPage';
+// Lazy-loaded Admin Portal pages
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const TeamManagementPage = lazy(() => import('./pages/admin/TeamManagementPage'));
+const ProjectOverviewPage = lazy(() => import('./pages/admin/ProjectOverviewPage'));
+const ProjectTeamPage = lazy(() => import('./pages/admin/ProjectTeamPage'));
+const PublicProjectPage = lazy(() => import('./pages/PublicProjectPage'));
+
 import { Loader2 } from 'lucide-react';
+
+function PageLoader() {
+  return (
+    <div style={{ 
+      height: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      background: 'var(--bg-primary)',
+      color: 'var(--text-secondary)'
+    }}>
+      <div className="spinner spinner-lg" style={{ marginBottom: 16 }} />
+      <p style={{ fontWeight: 600, fontSize: '0.95rem', letterSpacing: '0.02em', color: 'var(--text-muted)' }}>Loading Workspace...</p>
+    </div>
+  );
+}
+
 
 // ── Root redirect based on role ──────────────────────────────────────────────
 function RootRedirect() {
@@ -187,7 +205,6 @@ function AppLayout() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
-        <Route path="/cloudinary-demo" element={<CloudinaryDemo />} />
       </Routes>
     );
   }
@@ -242,7 +259,7 @@ function AppLayout() {
       <Route path="/test-cases" element={<Navigate to="/qa/test-cases" replace />} />
       <Route path="/notifications" element={<Navigate to="/qa/notifications" replace />} />
       <Route path="/settings" element={<Navigate to="/qa/settings" replace />} />
-      <Route path="/cloudinary-demo" element={<CloudinaryDemo />} />
+
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -253,7 +270,9 @@ function AppLayout() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppLayout />
+      <Suspense fallback={<PageLoader />}>
+        <AppLayout />
+      </Suspense>
       <Toaster
         position="top-right"
         toastOptions={{
