@@ -46,12 +46,26 @@ export default function LoginPage() {
         {/* Left Branding Section */}
         <div className="auth-left">
         <div className="auth-brand-header">
-          <div className="auth-logo-container">
-            <img src="/Qapture.png" alt="Qapture" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div className="auth-logo-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', background: 'var(--accent-light)', borderRadius: 'var(--radius)', padding: '6px' }}>
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="15" cy="15" r="11" stroke="url(#qualia-grad)" strokeWidth="3" strokeLinecap="round" strokeDasharray="52 14" />
+              <path d="M22 22L29 29" stroke="url(#qualia-grad-prism)" strokeWidth="3.5" strokeLinecap="round" />
+              <path d="M19 19L23 23" stroke="#5B6CFF" strokeWidth="3.5" strokeLinecap="round" />
+              <defs>
+                <linearGradient id="qualia-grad" x1="4" y1="4" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#5B6CFF" />
+                  <stop offset="1" stopColor="#8F9BFF" />
+                </linearGradient>
+                <linearGradient id="qualia-grad-prism" x1="22" y1="22" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#5B6CFF" />
+                  <stop offset="1" stopColor="#3B82F6" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
           <div className="auth-brand-text">
-            <div className="auth-brand-name">Qapture</div>
-            <div className="auth-brand-tagline">Capture Bugs Smarter</div>
+            <div className="auth-brand-name" style={{ fontFamily: "'Outfit', 'Inter', sans-serif", letterSpacing: '-0.03em', fontWeight: 700 }}>Qualia</div>
+            <div className="auth-brand-tagline">From visual glance to structured resolution</div>
           </div>
         </div>
 
@@ -95,7 +109,7 @@ export default function LoginPage() {
       <div className="auth-right">
         <div className="auth-card">
           <h1 className="auth-title">Welcome back</h1>
-          <p className="auth-subtitle">Sign in to your Qapture account to continue</p>
+          <p className="auth-subtitle">Sign in to your Qualia account to continue</p>
 
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

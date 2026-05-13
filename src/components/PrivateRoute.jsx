@@ -8,7 +8,7 @@ export default function PrivateRoute({ children }) {
     return (
       <div className="loading-screen">
         <div className="spinner spinner-lg" />
-        <span>Loading Qapture...</span>
+        <span>Loading Qualia...</span>
       </div>
     );
   }

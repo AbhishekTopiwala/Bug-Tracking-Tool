@@ -79,15 +79,29 @@ export default function PublicProjectPage() {
       <nav style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '16px 0', position: 'sticky', top: 0, zIndex: 100 }}>
         <div className="container" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {branding.logoUrl ? (
                 <img src={branding.logoUrl} alt={branding.portalName} style={{ width: 28, height: 28, objectFit: 'contain' }} />
               ) : (
-                <ShieldCheck size={24} />
+                <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="15" cy="15" r="11" stroke="url(#qualia-grad-pub)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="52 14" />
+                  <path d="M22 22L29 29" stroke="url(#qualia-grad-pub-prism)" strokeWidth="3.5" strokeLinecap="round" />
+                  <path d="M19 19L23 23" stroke="#5B6CFF" strokeWidth="3.5" strokeLinecap="round" />
+                  <defs>
+                    <linearGradient id="qualia-grad-pub" x1="4" y1="4" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#5B6CFF" />
+                      <stop offset="1" stopColor="#8F9BFF" />
+                    </linearGradient>
+                    <linearGradient id="qualia-grad-pub-prism" x1="22" y1="22" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#5B6CFF" />
+                      <stop offset="1" stopColor="#3B82F6" />
+                    </linearGradient>
+                  </defs>
+                </svg>
               )}
             </div>
             <div>
-              <h1 style={{ fontSize: '1.1rem', fontWeight: 900, margin: 0, color: '#1e293b' }}>{branding.portalName || 'Qapture'}</h1>
+              <h1 style={{ fontSize: '1.15rem', fontWeight: 900, margin: 0, color: '#0F172A', fontFamily: "'Outfit', 'Inter', sans-serif", letterSpacing: '-0.02em' }}>{branding.portalName || 'Qualia'}</h1>
               <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', margin: 0 }}>Client Status Portal</p>
             </div>
           </div>
@@ -183,10 +197,9 @@ export default function PublicProjectPage() {
         </div>
       </div>
 
-      {/* Footer */}
       <footer style={{ marginTop: 80, textAlign: 'center', padding: '40px 0', borderTop: '1px solid #e2e8f0' }}>
         <p style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-          Secure Portal by <span style={{ fontWeight: 800, color: '#64748b' }}>{branding.portalName || 'Qapture'}</span> · © {new Date().getFullYear()}
+          Secure Portal by <span style={{ fontWeight: 800, color: '#64748b' }}>{branding.portalName || 'Qualia'}</span> · © {new Date().getFullYear()}
         </p>
       </footer>
     </div>

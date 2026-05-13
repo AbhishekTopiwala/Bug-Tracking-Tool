@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
   const [branding, setBranding] = useState({
     logoUrl: '',
     primaryColor: '#6366f1',
-    portalName: 'Qapture',
+    portalName: 'Qualia',
   });
   const [loading, setLoading] = useState(true);
 
@@ -131,7 +131,7 @@ export function AuthProvider({ children }) {
 
     // Preload instantly from localStorage fallback so it loads without any latency
     try {
-      const cached = localStorage.getItem('qapture_branding');
+      const cached = localStorage.getItem('qualia_branding');
       if (cached) {
         const localData = JSON.parse(cached);
         setBranding(localData);
@@ -150,7 +150,7 @@ export function AuthProvider({ children }) {
         const data = snap.data();
         setBranding(data);
         try {
-          localStorage.setItem('qapture_branding', JSON.stringify(data));
+          localStorage.setItem('qualia_branding', JSON.stringify(data));
         } catch (e) {}
         // Apply primary color to CSS variables
         if (data.primaryColor) {

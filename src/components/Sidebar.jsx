@@ -32,15 +32,29 @@ export default function Sidebar({ unreadCount = 0 }) {
       <aside className="sidebar">
         {/* Logo */}
         <NavLink to="/qa" className="sidebar-logo" onClick={closeSidebar}>
-          <div className="logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="logo-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)', padding: '4px', width: '28px', height: '28px' }}>
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt={branding.portalName} style={{ objectFit: 'contain' }} />
             ) : (
-              <img src="/Qapture.png" alt="Qapture" />
+              <svg width="18" height="18" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="15" cy="15" r="11" stroke="url(#qualia-grad-side)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="52 14" />
+                <path d="M22 22L29 29" stroke="url(#qualia-grad-side-prism)" strokeWidth="3.5" strokeLinecap="round" />
+                <path d="M19 19L23 23" stroke="#5B6CFF" strokeWidth="3.5" strokeLinecap="round" />
+                <defs>
+                  <linearGradient id="qualia-grad-side" x1="4" y1="4" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#5B6CFF" />
+                    <stop offset="1" stopColor="#8F9BFF" />
+                  </linearGradient>
+                  <linearGradient id="qualia-grad-side-prism" x1="22" y1="22" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#5B6CFF" />
+                    <stop offset="1" stopColor="#3B82F6" />
+                  </linearGradient>
+                </defs>
+              </svg>
             )}
           </div>
           <div className="logo-text">
-            <span className="logo-name">{branding.portalName || 'Qapture'}</span>
+            <span className="logo-name" style={{ fontFamily: "'Outfit', 'Inter', sans-serif", letterSpacing: '-0.02em', fontWeight: 700 }}>{branding.portalName || 'Qualia'}</span>
             <span className="logo-tagline">QA Portal</span>
           </div>
         </NavLink>

@@ -304,7 +304,7 @@ export async function deleteProject(id) {
 export async function getBrandingSettings() {
   let localData = null;
   try {
-    const cached = localStorage.getItem('qapture_branding');
+    const cached = localStorage.getItem('qualia_branding');
     if (cached) {
       localData = JSON.parse(cached);
     }
@@ -317,7 +317,7 @@ export async function getBrandingSettings() {
     if (snap.exists()) {
       const dbData = snap.data();
       try {
-        localStorage.setItem('qapture_branding', JSON.stringify(dbData));
+        localStorage.setItem('qualia_branding', JSON.stringify(dbData));
       } catch (e) {}
       return dbData;
     }
@@ -328,13 +328,13 @@ export async function getBrandingSettings() {
   return localData || {
     logoUrl: '',
     primaryColor: '#6366f1',
-    portalName: 'Qapture',
+    portalName: 'Qualia',
   };
 }
 
 export async function updateBrandingSettings(data) {
   try {
-    localStorage.setItem('qapture_branding', JSON.stringify(data));
+    localStorage.setItem('qualia_branding', JSON.stringify(data));
   } catch (e) {
     console.warn("updateBrandingSettings: Local cache save error:", e);
   }
