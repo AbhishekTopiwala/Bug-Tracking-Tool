@@ -118,11 +118,13 @@ export async function activateUser(userId) {
  */
 export async function inviteUser({ email, name, role, invitedBy = 'Admin', invitedByEmail = '' }) {
   const docRef = await addDoc(collection(db, 'users'), {
-    email,
+    email: email.toLowerCase(),
     name,
     role,
     isActive: true,
     invited: true,
+    invitedBy,
+    invitedByEmail,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

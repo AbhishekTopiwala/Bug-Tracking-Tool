@@ -227,7 +227,13 @@ function MemberRow({ user, onToggle }) {
             <p className="tm-member-name">
               {user.name || (user.email ? user.email.split('@')[0] : '—')}
             </p>
-            <p className="tm-member-uid">UID: {user.uid?.slice(0, 8)}…</p>
+            <p className="tm-member-uid">
+              {user.invited ? (
+                <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Invited (Pending)</span>
+              ) : (
+                <>UID: {user.uid?.slice(0, 8)}…</>
+              )}
+            </p>
           </div>
         </div>
       </td>
@@ -239,11 +245,15 @@ function MemberRow({ user, onToggle }) {
       </td>
       <td><RoleBadge role={user.role} /></td>
       <td className="tm-date-cell">
-        {user.createdAt?.seconds
-          ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('en-IN', {
+        {(() => {
+          if (!user.createdAt) return '—';
+          const date = user.createdAt.seconds 
+            ? new Date(user.createdAt.seconds * 1000) 
+            : new Date(user.createdAt);
+          return isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-IN', {
             day: '2-digit', month: 'short', year: 'numeric',
-          })
-          : '—'}
+          });
+        })()}
       </td>
       <td style={{ textAlign: 'center' }}>
         <ActiveToggle user={user} onToggle={onToggle} />

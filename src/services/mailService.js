@@ -26,7 +26,7 @@ export async function sendInviteEmail(toEmail, name, role, invitedBy, invitedByE
       role: role,
       invited_by: invitedBy,
       invited_by_email: invitedByEmail,
-      app_url: window.location.origin,
+      app_url: `${window.location.origin}/signup`,
     };
 
     const response = await emailjs.send(

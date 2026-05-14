@@ -19,7 +19,7 @@ export default function LoginPage() {
     if (!email || !password) return toast.error('Please fill in all fields');
     setLoading(true);
     try {
-      const { user } = await login(email, password);
+      const { user } = await login(email.toLowerCase(), password);
       // Fetch role from Firestore and redirect accordingly
       const profile = await fetchUserProfile(user.uid);
       toast.success('Welcome back!');

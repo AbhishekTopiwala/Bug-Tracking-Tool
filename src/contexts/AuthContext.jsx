@@ -6,7 +6,17 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { 
+  doc, 
+  setDoc, 
+  getDoc, 
+  onSnapshot,
+  query,
+  collection,
+  where,
+  getDocs,
+  deleteDoc
+} from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import toast from 'react-hot-toast';
 
@@ -23,31 +33,56 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1') {
-    const { user } = await createUserWithEmailAndPassword(auth, email, password);
+    let user;
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
+      user = result.user;
+    } catch (err) {
+      if (err.code === 'auth/email-already-in-use') {
+        // If account exists, try to sign in to continue the process
+        console.log("[AuthContext] Account already exists, attempting sign-in to complete profile...");
+        const result = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+        user = result.user;
+      } else {
+        throw err;
+      }
+    }
+
     await updateProfile(user, { displayName });
     
-    // Check for existing invited user with same email and remove to avoid duplicates
+    // Check for existing invited user with same email and merge data
+    let invitedData = {};
     try {
-      const { query, collection, where, getDocs, deleteDoc } = await import('firebase/firestore');
-      const q = query(collection(db, 'users'), where('email', '==', email));
+      const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
       const snap = await getDocs(q);
-      const batch = [];
-      snap.docs.forEach(d => {
-        if (d.id !== user.uid) batch.push(deleteDoc(d.ref));
-      });
-      if (batch.length > 0) await Promise.all(batch);
+      
+      for (const d of snap.docs) {
+        if (d.id !== user.uid) {
+          invitedData = d.data();
+          try {
+            await deleteDoc(d.ref);
+            console.log(`[AuthContext] Cleaned up invited placeholder: ${d.id}`);
+          } catch (deleteError) {
+            console.warn(`[AuthContext] Could not delete placeholder ${d.id}:`, deleteError);
+          }
+        }
+      }
     } catch (e) {
       console.error("Error cleaning up invited user docs:", e);
     }
 
     const userData = {
       uid: user.uid,
-      email,
-      displayName,
-      role,
+      email: email.toLowerCase(),
+      displayName: displayName || invitedData.name || '',
+      role: invitedData.role || role,
       isActive: true,
-      createdAt: new Date().toISOString(),
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=${avatarBg}&color=fff`,
+      invited: false,
+      createdAt: invitedData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || invitedData.name || 'User')}&background=${avatarBg}&color=fff`,
+      invitedBy: invitedData.invitedBy || null,
+      invitedByEmail: invitedData.invitedByEmail || null,
     };
     await setDoc(doc(db, 'users', user.uid), userData);
     setUserProfile(userData);
