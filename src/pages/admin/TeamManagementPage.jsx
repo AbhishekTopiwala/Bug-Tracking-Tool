@@ -97,6 +97,7 @@ function ActiveToggle({ user, onToggle }) {
 // ─── Invite Modal ─────────────────────────────────────────────────────────────
 
 function InviteModal({ onClose, onSuccess }) {
+  const { userProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('QA');
@@ -107,7 +108,13 @@ function InviteModal({ onClose, onSuccess }) {
     if (!email.trim()) return toast.error('Email is required');
     setLoading(true);
     try {
-      await inviteUser({ email: email.trim(), name: name.trim() || email.split('@')[0], role });
+      await inviteUser({ 
+        email: email.trim(), 
+        name: name.trim() || email.split('@')[0], 
+        role,
+        invitedBy: userProfile?.displayName || 'Admin',
+        invitedByEmail: userProfile?.email || ''
+      });
       toast.success(`Invite sent to ${email}!`);
       onSuccess?.();
       onClose();

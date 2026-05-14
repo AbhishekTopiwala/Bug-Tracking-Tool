@@ -16,6 +16,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { sendInviteEmail } from './mailService';
 
 // ── Fetch all users ───────────────────────────────────────────────────────────
 
@@ -109,17 +110,13 @@ export async function activateUser(userId) {
 }
 
 
-// ── Invite a new user ─────────────────────────────────────────────────────────
-
 /**
- * Create a placeholder user document in the `users` collection.
- * In production you would pair this with a Firebase Auth invite email
- * (e.g. via a Cloud Function or Firebase Auth's `generateSignInWithEmailLink`).
+ * Create a placeholder user document in the `users` collection and send an invitation email.
  *
- * @param {{ email: string, name: string, role: string }} inviteData
+ * @param {{ email: string, name: string, role: string, invitedBy?: string, invitedByEmail?: string }} inviteData
  * @returns {Promise<string>} The new document ID.
  */
-export async function inviteUser({ email, name, role }) {
+export async function inviteUser({ email, name, role, invitedBy = 'Admin', invitedByEmail = '' }) {
   const docRef = await addDoc(collection(db, 'users'), {
     email,
     name,
@@ -129,6 +126,10 @@ export async function inviteUser({ email, name, role }) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  // Send invitation email
+  await sendInviteEmail(email, name, role, invitedBy, invitedByEmail);
+
   return docRef.id;
 }
 
