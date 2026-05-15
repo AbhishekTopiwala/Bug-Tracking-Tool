@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { sendInviteEmail } from './mailService';
+import { getCurrentOrgId } from './firestoreService';
 
 // ── Fetch all users ───────────────────────────────────────────────────────────
 
@@ -25,7 +26,9 @@ import { sendInviteEmail } from './mailService';
  * @returns {Promise<Array>}  Array of user objects (with `id` field injected).
  */
 export async function fetchAllUsers() {
-  const q = query(collection(db, 'users'), orderBy('email', 'asc'));
+  const orgId = getCurrentOrgId();
+  // We should also filter fetchAllUsers by orgId for true multi-tenancy!
+  const q = query(collection(db, 'users'), where('organizationId', '==', orgId), orderBy('email', 'asc'));
   const snap = await getDocs(q);
   // Ensure the document ID (id) takes precedence over any 'id' field in the data
   return snap.docs.map((d) => ({ ...d.data(), id: d.id }));
@@ -125,6 +128,7 @@ export async function inviteUser({ email, name, role, invitedBy = 'Admin', invit
     invited: true,
     invitedBy,
     invitedByEmail,
+    organizationId: getCurrentOrgId(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

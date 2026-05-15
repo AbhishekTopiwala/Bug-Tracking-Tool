@@ -18,19 +18,19 @@ export default function DevDashboardPage() {
   const { currentUser, userProfile } = useAuth();
 
   useEffect(() => {
+    if (!currentUser || !userProfile) return;
+
     const unsub = subscribeToBugs((bugs) => {
       setAllBugs(bugs);
       setLoading(false);
     });
-
-    if (!currentUser) return;
 
     getProjects(currentUser.uid, userProfile?.role).then(projs => {
       setAssignedProjectIds(projs.map(p => p.id));
     });
 
     return () => unsub();
-  }, [currentUser, userProfile?.role]);
+  }, [currentUser, userProfile]);
 
   const baseBugs = useMemo(() => {
     // Developers see all bugs in projects they are assigned to

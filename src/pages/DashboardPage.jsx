@@ -548,12 +548,13 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!userProfile) return;
     const unsub = subscribeToBugs((data) => {
       setBugs(data);
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [userProfile]);
 
   useEffect(() => {
     if (!currentUser || !userProfile) return;

@@ -130,12 +130,13 @@ export default function DevBugsBoardPage() {
   const basePath = '/dev';
 
   useEffect(() => {
+    if (!userProfile) return;
     const unsub = subscribeToBugs((bugs) => {
       setAllBugs(bugs);
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [userProfile]);
 
   useEffect(() => {
     if (!currentUser) return;

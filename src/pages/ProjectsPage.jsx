@@ -5,7 +5,7 @@ import {
   Search, ArrowRight, Activity, Shield, CheckCircle2, CheckCircle, Info, ChevronRight, MoreVertical, LayoutGrid, List
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getProjects, createProject, deleteProject, subscribeToBugs, updateProject, getUsers } from '../services/firestoreService';
+import { getProjects, createProject, deleteProject, subscribeToBugs, updateProject, getUsers, subscribeToProjects } from '../services/firestoreService';
 import Topbar from '../components/Topbar';
 import AdminTopbar from '../components/AdminTopbar';
 import { toast } from 'react-hot-toast';
@@ -83,13 +83,20 @@ export default function ProjectsPage() {
   const isQA = userProfile?.role === 'QA';
 
   useEffect(() => {
-    fetchProjects();
+    if (!currentUser || !userProfile) return;
+
+    const unsubscribeProjects = subscribeToProjects(currentUser.uid, userProfile.role, (data) => {
+      setProjects(data);
+      setLoading(false);
+    });
+
     if (isAdmin) {
       getUsers().then(users => {
         setAllTeam(users.filter(u => ['Developer', 'QA'].includes(u.role)));
       });
     }
-    const unsubscribe = subscribeToBugs((data) => {
+
+    const unsubscribeBugs = subscribeToBugs((data) => {
       // Filter bugs based on role: QA only sees their own bugs
       if (userProfile?.role === 'QA') {
         const filteredBugs = data.filter(b => b.reportedBy === currentUser?.uid);
@@ -98,21 +105,12 @@ export default function ProjectsPage() {
         setBugs(data);
       }
     });
-    return () => unsubscribe();
-  }, [currentUser, userProfile?.role]);
 
-  const fetchProjects = async () => {
-    if (!currentUser || !userProfile) return;
-    try {
-      const data = await getProjects(currentUser.uid, userProfile.role);
-      setProjects(data);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      toast.error('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      unsubscribeProjects();
+      unsubscribeBugs();
+    };
+  }, [currentUser, userProfile]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -128,7 +126,6 @@ export default function ProjectsPage() {
       toast.success('Project created successfully');
       setNewProject({ name: '', description: '' });
       setShowModal(false);
-      fetchProjects();
     } catch (error) {
       console.error('Error creating project:', error);
       toast.error('Failed to create project');
@@ -146,7 +143,6 @@ export default function ProjectsPage() {
       await deleteProject(deleteTarget.id);
       toast.success('Project deleted');
       setDeleteTarget(null);
-      fetchProjects();
     } catch (error) {
       toast.error('Failed to delete project');
     } finally {

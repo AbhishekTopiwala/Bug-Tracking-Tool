@@ -28,7 +28,7 @@ const ROLES = [
 ];
 
 export default function SignupPage() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', role: 'QA' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', role: 'QA', workspaceName: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
@@ -40,12 +40,12 @@ export default function SignupPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name || !form.email || !form.password) return toast.error('Please fill in all fields');
+    if (!form.name || !form.email || !form.password || !form.workspaceName) return toast.error('Please fill in all fields');
     if (form.password !== form.confirm) return toast.error('Passwords do not match');
     if (form.password.length < 6) return toast.error('Password must be at least 6 characters');
     setLoading(true);
     try {
-      await signup(form.email, form.password, form.name, form.role, selectedRole.avatarBg);
+      await signup(form.email, form.password, form.name, form.role, selectedRole.avatarBg, form.workspaceName);
       toast.success(`Welcome to Qualia! ${form.role === 'Developer' ? '👨‍💻' : '🧪'}`);
       navigate(form.role === 'Developer' ? '/dev' : '/');
     } catch (err) {
@@ -149,6 +149,21 @@ export default function SignupPage() {
             </div>
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Workspace Name</label>
+                <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                  <BarChart3 size={18} className="auth-input-icon" />
+                  <input
+                    id="signup-workspace"
+                    type="text"
+                    className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                    placeholder="e.g. Acme Corp"
+                    value={form.workspaceName}
+                    onChange={update('workspaceName')}
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
                 <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Full Name</label>
                 <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>

@@ -154,12 +154,13 @@ export default function BugsListPage() {
   }, [currentUser, userProfile]);
 
   useEffect(() => {
+    if (!userProfile) return;
     const unsub = subscribeToBugs((data) => {
       setBugs(data);
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [userProfile]);
 
   // Filter bugs based on role and project membership
   const myBugs = useMemo(() => {

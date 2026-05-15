@@ -18,6 +18,7 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import { setGlobalOrgId } from '../services/firestoreService';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
@@ -32,7 +33,7 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(true);
 
-  async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1') {
+  async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1', workspaceName = '') {
     let user;
     try {
       const result = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
@@ -71,11 +72,38 @@ export function AuthProvider({ children }) {
       console.error("Error cleaning up invited user docs:", e);
     }
 
+    let orgId = "default_org_id";
+    let finalRole = role;
+
+    if (Object.keys(invitedData).length > 0) {
+      orgId = invitedData.organizationId || "default_org_id";
+      finalRole = invitedData.role || role;
+    } else {
+      // Cold Signup - Create Organization
+      finalRole = 'org_admin'; // First user is the org admin
+      const orgRef = doc(collection(db, 'organizations'));
+      orgId = orgRef.id;
+      await setDoc(orgRef, {
+        name: workspaceName || 'My Workspace',
+        domain: email.split('@')[1] || '',
+        subscription: {
+          planId: 'free',
+          status: 'active'
+        },
+        aiUsage: {
+          monthlyLimit: 100,
+          currentUsage: 0,
+        },
+        createdAt: new Date().toISOString()
+      });
+    }
+
     const userData = {
       uid: user.uid,
       email: email.toLowerCase(),
       displayName: displayName || invitedData.name || '',
-      role: invitedData.role || role,
+      role: finalRole,
+      organizationId: orgId,
       isActive: true,
       invited: false,
       createdAt: invitedData.createdAt || new Date().toISOString(),
@@ -129,11 +157,14 @@ export function AuthProvider({ children }) {
           console.log("AuthContext: Fetching user profile...");
           const profile = await fetchUserProfile(user.uid);
           console.log("AuthContext: Profile fetched", profile);
-          if (profile && profile.isActive === false) {
-            await logout();
-            toast.error('Your account has been deactivated.');
-            setLoading(false);
-            return;
+          if (profile) {
+            setGlobalOrgId(profile.organizationId || 'default_org_id');
+            if (profile.isActive === false) {
+              await logout();
+              toast.error('Your account has been deactivated.');
+              setLoading(false);
+              return;
+            }
           }
 
           // Setup real-time listener to automatically log out the user if an Admin deactivates them
@@ -142,6 +173,7 @@ export function AuthProvider({ children }) {
             if (docSnap.exists()) {
               const data = docSnap.data();
               setUserProfile(data);
+              setGlobalOrgId(data.organizationId || 'default_org_id');
               if (data.isActive === false) {
                 await logout();
                 toast.error('Your account has been deactivated.');

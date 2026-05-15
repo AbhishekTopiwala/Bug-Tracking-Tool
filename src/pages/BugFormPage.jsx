@@ -252,7 +252,7 @@ export default function BugFormPage() {
     setForm((f) => ({
       ...f,
       assigneeId: dev?.id || dev?.uid || '',
-      assigneeName: dev?.displayName || '',
+      assigneeName: dev?.name || dev?.displayName || dev?.email?.split('@')[0] || '',
     }));
   };
 
@@ -266,13 +266,14 @@ export default function BugFormPage() {
   };
 
   const projectDevelopers = useMemo(() => {
-    if (!form.projectId) return [];
-    const selectedProject = projects.find(p => p.id === form.projectId);
-    if (!selectedProject || !selectedProject.assignedUsers) return [];
+    // If no project is selected, still return developers so they can be seen
+    // or we can require a project first. 
+    // The user requested to see the developer they just added in teams.
+    if (!form.projectId) return developers;
     
-    // Filter the developers who are also in the project's assignedUsers list
-    return developers.filter(dev => selectedProject.assignedUsers.includes(dev.id));
-  }, [form.projectId, projects, developers]);
+    // In many workflows, any developer in the organization can be assigned.
+    return developers;
+  }, [form.projectId, developers]);
 
   const handleFiles = (incoming) => {
     const newFiles = Array.from(incoming);
@@ -868,7 +869,7 @@ export default function BugFormPage() {
                     >
                       <option value="">Unassigned</option>
                       {projectDevelopers.map((d) => (
-                        <option key={d.id} value={d.id}>{d.displayName}</option>
+                        <option key={d.id} value={d.id}>{d.name || d.displayName || d.email?.split('@')[0]}</option>
                       ))}
                     </select>
                     {!form.projectId ? (

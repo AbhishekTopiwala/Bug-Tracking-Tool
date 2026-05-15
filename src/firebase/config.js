@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 // Replace with your Firebase project configuration
 const firebaseConfig = {
@@ -18,9 +19,15 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app);
 
 if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   connectStorageEmulator(storage, 'localhost', 9199);
+}
+
+if (import.meta.env.DEV) {
+  console.log('Running in DEV mode, connecting to local Functions emulator');
+  connectFunctionsEmulator(functions, 'localhost', 5001);
 }
 
 export default app;

@@ -21,6 +21,14 @@ import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { uploadToCloudinary } from './cloudinaryService';
 
+let currentOrgId = 'default_org_id';
+export function setGlobalOrgId(orgId) {
+  currentOrgId = orgId;
+}
+export function getCurrentOrgId() {
+  return currentOrgId;
+}
+
 // ── BUGS ──────────────────────────────────────────────────────────────────────
 
 export async function createBug(bugData) {
@@ -41,6 +49,7 @@ export async function createBug(bugData) {
   if (bugData.projectId) {
     const q = query(
       collection(db, 'bugs'),
+      where('organizationId', '==', currentOrgId),
       where('projectId', '==', bugData.projectId),
       orderBy('bugNumber', 'desc'),
       limit(1)
@@ -56,6 +65,7 @@ export async function createBug(bugData) {
 
   const docRef = await addDoc(collection(db, 'bugs'), {
     ...bugData,
+    organizationId: currentOrgId,
     bugNumber: nextNumber,
     bugKey: bugKey,
     createdAt: serverTimestamp(),
@@ -105,19 +115,43 @@ export async function getBug(id) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+let activeBugsListener = null;
+let activeBugsSubscribers = [];
+let cachedBugs = null;
+
 export function subscribeToBugs(callback) {
-  const q = query(collection(db, 'bugs'), orderBy('createdAt', 'desc'));
-  return onSnapshot(q, (snap) => {
-    const bugs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(bugs);
-  }, (error) => {
-    console.error("Error subscribing to bugs:", error);
-    callback([]);
-  });
+  // Return cached data immediately if available for smooth transitions
+  if (cachedBugs !== null) {
+    callback(cachedBugs);
+  }
+
+  activeBugsSubscribers.push(callback);
+
+  if (!activeBugsListener) {
+    const q = query(collection(db, 'bugs'), where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
+    activeBugsListener = onSnapshot(q, (snap) => {
+      cachedBugs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      activeBugsSubscribers.forEach(cb => cb(cachedBugs));
+    }, (error) => {
+      console.error("Error subscribing to bugs:", error);
+      activeBugsSubscribers.forEach(cb => cb([]));
+    });
+  }
+
+  // Cleanup function for this specific subscriber
+  return () => {
+    activeBugsSubscribers = activeBugsSubscribers.filter(cb => cb !== callback);
+    // If no more subscribers, kill the Firestore stream to save memory/reads
+    if (activeBugsSubscribers.length === 0 && activeBugsListener) {
+      activeBugsListener();
+      activeBugsListener = null;
+      cachedBugs = null;
+    }
+  };
 }
 
 export async function getAllBugs() {
-  const q = query(collection(db, 'bugs'), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'bugs'), where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
@@ -178,9 +212,9 @@ export async function deleteComment(bugId, commentId) {
 export async function getUsers(role) {
   let q;
   if (role) {
-    q = query(collection(db, 'users'), where('role', '==', role));
+    q = query(collection(db, 'users'), where('organizationId', '==', currentOrgId), where('role', '==', role));
   } else {
-    q = query(collection(db, 'users'));
+    q = query(collection(db, 'users'), where('organizationId', '==', currentOrgId));
   }
   const snap = await getDocs(q);
   // Filter out deactivated users (isActive === false)
@@ -225,6 +259,7 @@ export async function removeAttachmentFromBug(bugId, attachment) {
 export async function createNotification(data) {
   await addDoc(collection(db, 'notifications'), {
     ...data,
+    organizationId: currentOrgId,
     read: false,
     createdAt: serverTimestamp(),
   });
@@ -270,13 +305,14 @@ export async function deleteNotification(id) {
 export async function createProject(projectData) {
   const docRef = await addDoc(collection(db, 'projects'), {
     ...projectData,
+    organizationId: currentOrgId,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
 }
 
 export async function getProjects(userId, role) {
-  const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+  const q = query(collection(db, 'projects'), where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
   const allProjects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
@@ -286,6 +322,20 @@ export async function getProjects(userId, role) {
   }
   
   return allProjects;
+}
+
+export function subscribeToProjects(userId, role, callback) {
+  const q = query(collection(db, 'projects'), where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snap) => {
+    let allProjects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    if (role && role !== 'Admin' && userId) {
+      allProjects = allProjects.filter(p => p.assignedUsers?.includes(userId));
+    }
+    callback(allProjects);
+  }, (error) => {
+    console.error("Error subscribing to projects:", error);
+    callback([]);
+  });
 }
 
 export async function updateProject(id, data) {
