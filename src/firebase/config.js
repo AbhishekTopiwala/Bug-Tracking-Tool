@@ -21,6 +21,8 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 
+
+
 if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   connectStorageEmulator(storage, 'localhost', 9199);
 }

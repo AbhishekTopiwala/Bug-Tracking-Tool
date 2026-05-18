@@ -16,8 +16,9 @@ export async function sendInviteEmail(toEmail, name, role, invitedBy, invitedByE
     const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
     if (!serviceId || !templateId || !publicKey) {
-      console.warn('[mailService] EmailJS credentials missing. Email not sent.');
-      return;
+      const errorMsg = 'EmailJS credentials are missing in your .env file. Please set VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, and VITE_EMAILJS_PUBLIC_KEY.';
+      console.warn(`[mailService] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     const templateParams = {
@@ -39,5 +40,6 @@ export async function sendInviteEmail(toEmail, name, role, invitedBy, invitedByE
     console.log('[mailService] Invitation email sent via EmailJS:', response.status, response.text);
   } catch (error) {
     console.error('[mailService] EmailJS Error:', error);
+    throw new Error(error.message || 'Failed to send invitation email via EmailJS.');
   }
 }

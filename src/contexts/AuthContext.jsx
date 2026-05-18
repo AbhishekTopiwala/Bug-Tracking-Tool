@@ -24,6 +24,8 @@ import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
+let isSigningUp = false;
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -35,128 +37,133 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1', workspaceName = '') {
-    let user;
-    
-    // Phase 1: Authentication
+    isSigningUp = true;
     try {
-      const result = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
-      user = result.user;
-    } catch (err) {
-      console.error("[AuthContext] Signup phase 1 error:", err);
+      let user;
       
-      const errCode = err.code || err.error?.code;
-      const errMsg = err.message || err.error?.message || "";
-      
-      const isEmailInUse = errCode === 'auth/email-already-in-use' || 
-                          errCode === 'EMAIL_EXISTS' ||
-                          errMsg.includes('EMAIL_EXISTS') ||
-                          errMsg.includes('email-already-in-use');
-
-      if (isEmailInUse) {
-        console.log("[AuthContext] Account already exists, attempting sign-in...");
-        try {
-          const result = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
-          user = result.user;
-          console.log("[AuthContext] Sign-in successful for existing account:", user.uid);
-        } catch (signInErr) {
-          console.error("[AuthContext] Sign-in failed for existing account:", signInErr);
-          const finalErr = new Error("An account with this email already exists. Please sign in with the correct password.");
-          finalErr.code = 'auth/email-already-in-use';
-          throw finalErr;
-        }
-      } else {
-        throw err;
-      }
-    }
-
-    // Phase 2: User Initialization
-    try {
-      console.log("[AuthContext] Phase 2: Updating profile...");
-      await updateProfile(user, { displayName });
-      
-      console.log("[AuthContext] Phase 3: Checking for invites...");
-      let invitedData = {};
+      // Phase 1: Authentication
       try {
-        const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
-        const snap = await getDocs(q);
+        const result = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
+        user = result.user;
+      } catch (err) {
+        console.error("[AuthContext] Signup phase 1 error:", err);
         
-        for (const d of snap.docs) {
-          const data = d.data();
-          if (data.invited) {
-            invitedData = data;
-            if (d.id !== user.uid) {
-              await deleteDoc(doc(db, 'users', d.id));
-            }
-            break;
+        const errCode = err.code || err.error?.code;
+        const errMsg = err.message || err.error?.message || "";
+        
+        const isEmailInUse = errCode === 'auth/email-already-in-use' || 
+                            errCode === 'EMAIL_EXISTS' ||
+                            errMsg.includes('EMAIL_EXISTS') ||
+                            errMsg.includes('email-already-in-use');
+
+        if (isEmailInUse) {
+          console.log("[AuthContext] Account already exists, attempting sign-in...");
+          try {
+            const result = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+            user = result.user;
+            console.log("[AuthContext] Sign-in successful for existing account:", user.uid);
+          } catch (signInErr) {
+            console.error("[AuthContext] Sign-in failed for existing account:", signInErr);
+            const finalErr = new Error("An account with this email already exists. Please sign in with the correct password.");
+            finalErr.code = 'auth/email-already-in-use';
+            throw finalErr;
           }
+        } else {
+          throw err;
         }
-      } catch (inviteErr) {
-        console.warn("[AuthContext] Failed to check for invites (non-critical):", inviteErr);
       }
 
-      console.log("[AuthContext] Phase 4: Initializing data...");
-      let orgId = '';
-      let finalRole = role;
-
-      if (Object.keys(invitedData).length > 0) {
-        orgId = invitedData.organizationId || "default_org_id";
-        finalRole = invitedData.role || role;
-      } else {
-        const orgRef = doc(collection(db, 'organizations'));
-        orgId = orgRef.id;
-        console.log("[AuthContext] Calling setDoc for organization...");
+      // Phase 2: User Initialization
+      try {
+        console.log("[AuthContext] Phase 2: Updating profile...");
+        await updateProfile(user, { displayName });
+        
+        console.log("[AuthContext] Phase 3: Checking for invites...");
+        let invitedData = {};
         try {
-          await setDoc(orgRef, {
-            name: workspaceName || 'My Workspace',
-            ownerId: user.uid,
-            createdAt: serverTimestamp(),
-            subscription: {
-              plan: 'free',
-              status: 'active',
-              aiQuota: 100,
-              aiUsed: 0,
-              resetDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString()
+          const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
+          const snap = await getDocs(q);
+          
+          for (const d of snap.docs) {
+            const data = d.data();
+            if (data.invited) {
+              invitedData = data;
+              if (d.id !== user.uid) {
+                await deleteDoc(doc(db, 'users', d.id));
+              }
+              break;
             }
-          });
-        } catch (orgErr) {
-          console.error("[AuthContext] Error creating organization:", orgErr);
-          throw orgErr;
+          }
+        } catch (inviteErr) {
+          console.warn("[AuthContext] Failed to check for invites (non-critical):", inviteErr);
         }
-        finalRole = 'Admin'; // Creator is Admin
-      }
 
-      console.log("[AuthContext] Phase 5: Saving user profile...");
-      const userData = {
-        uid: user.uid,
-        email: email.toLowerCase(),
-        displayName,
-        role: finalRole,
-        organizationId: orgId,
-        avatarBg,
-        isActive: true,
-        createdAt: serverTimestamp(),
-        lastLogin: serverTimestamp(),
-      };
+        console.log("[AuthContext] Phase 4: Initializing data...");
+        let orgId = '';
+        let finalRole = role;
 
-      try {
-        await setDoc(doc(db, 'users', user.uid), userData);
-      } catch (userErr) {
-        console.error("[AuthContext] Error creating user document:", userErr);
-        throw userErr;
+        if (Object.keys(invitedData).length > 0) {
+          orgId = invitedData.organizationId || "default_org_id";
+          finalRole = invitedData.role || role;
+        } else {
+          const orgRef = doc(collection(db, 'organizations'));
+          orgId = orgRef.id;
+          console.log("[AuthContext] Calling setDoc for organization...");
+          try {
+            await setDoc(orgRef, {
+              name: workspaceName || 'My Workspace',
+              ownerId: user.uid,
+              createdAt: serverTimestamp(),
+              subscription: {
+                plan: 'free',
+                status: 'active',
+                aiQuota: 100,
+                aiUsed: 0,
+                resetDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString()
+              }
+            });
+          } catch (orgErr) {
+            console.error("[AuthContext] Error creating organization:", orgErr);
+            throw orgErr;
+          }
+          finalRole = 'Admin'; // Creator is Admin
+        }
+
+        console.log("[AuthContext] Phase 5: Saving user profile...");
+        const userData = {
+          uid: user.uid,
+          email: email.toLowerCase(),
+          displayName,
+          role: finalRole,
+          organizationId: orgId,
+          avatarBg,
+          isActive: true,
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+        };
+
+        try {
+          await setDoc(doc(db, 'users', user.uid), userData);
+        } catch (userErr) {
+          console.error("[AuthContext] Error creating user document:", userErr);
+          throw userErr;
+        }
+        
+        try {
+          setUserProfile(userData);
+          setGlobalUserContext(orgId, finalRole);
+        } catch (ctxErr) {
+          console.error("[AuthContext] Error setting context:", ctxErr);
+        }
+        
+        console.log("[AuthContext] Signup process complete for UID:", user.uid);
+        return user;
+      } catch (finalErr) {
+        console.error("[AuthContext] Critical error during signup post-auth:", finalErr);
+        throw finalErr;
       }
-      
-      try {
-        setUserProfile(userData);
-        setGlobalUserContext(orgId, finalRole);
-      } catch (ctxErr) {
-        console.error("[AuthContext] Error setting context:", ctxErr);
-      }
-      
-      console.log("[AuthContext] Signup process complete for UID:", user.uid);
-      return user;
-    } catch (finalErr) {
-      console.error("[AuthContext] Critical error during signup post-auth:", finalErr);
-      throw finalErr;
+    } finally {
+      isSigningUp = false;
     }
   }
 
@@ -181,6 +188,78 @@ export function AuthProvider({ children }) {
     return null;
   }
 
+  async function healUserProfile(user) {
+    const email = user.email.toLowerCase();
+    const displayName = user.displayName || email.split('@')[0] || 'User';
+    console.log("[AuthContext] Healing profile for:", email);
+
+    let invitedData = {};
+    try {
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const snap = await getDocs(q);
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (data.invited) {
+          invitedData = data;
+          if (d.id !== user.uid) {
+            await deleteDoc(doc(db, 'users', d.id));
+          }
+          break;
+        }
+      }
+    } catch (inviteErr) {
+      console.warn("[AuthContext] Failed to check for invites during healing:", inviteErr);
+    }
+
+    let orgId = '';
+    let finalRole = 'QA';
+
+    if (Object.keys(invitedData).length > 0) {
+      orgId = invitedData.organizationId || "default_org_id";
+      finalRole = invitedData.role || 'QA';
+    } else {
+      const orgRef = doc(collection(db, 'organizations'));
+      orgId = orgRef.id;
+      console.log("[AuthContext] Healing: Creating default organization...");
+      try {
+        await setDoc(orgRef, {
+          name: 'My Workspace',
+          ownerId: user.uid,
+          createdAt: serverTimestamp(),
+          subscription: {
+            plan: 'free',
+            status: 'active',
+            aiQuota: 100,
+            aiUsed: 0,
+            resetDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString()
+          }
+        });
+      } catch (orgErr) {
+        console.error("[AuthContext] Healing: Error creating organization:", orgErr);
+        throw orgErr;
+      }
+      finalRole = 'Admin';
+    }
+
+    const userData = {
+      uid: user.uid,
+      email: email,
+      displayName,
+      role: finalRole,
+      organizationId: orgId,
+      avatarBg: '6366f1',
+      isActive: true,
+      createdAt: serverTimestamp(),
+      lastLogin: serverTimestamp(),
+    };
+
+    console.log("[AuthContext] Healing: Saving user profile...");
+    await setDoc(doc(db, 'users', user.uid), userData);
+    setUserProfile(userData);
+    setGlobalUserContext(orgId, finalRole);
+    return userData;
+  }
+
   useEffect(() => {
     let unsubscribeProfile = null;
 
@@ -194,7 +273,16 @@ export function AuthProvider({ children }) {
         }
 
         if (user) {
-          const profile = await fetchUserProfile(user.uid);
+          let profile = await fetchUserProfile(user.uid);
+          if (!profile) {
+            console.log("[AuthContext] Firestore profile missing for authenticated user. Attempting self-healing...");
+            try {
+              profile = await healUserProfile(user);
+            } catch (healErr) {
+              console.error("[AuthContext] Self-healing failed:", healErr);
+            }
+          }
+
           if (profile) {
             setGlobalUserContext(profile.organizationId || 'default_org_id', profile.role);
             if (profile.isActive === false) {
@@ -203,6 +291,11 @@ export function AuthProvider({ children }) {
               setLoading(false);
               return;
             }
+          } else {
+            await logout();
+            toast.error('User account not found in database. Please contact your administrator.');
+            setLoading(false);
+            return;
           }
 
           const docRef = doc(db, 'users', user.uid);

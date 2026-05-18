@@ -48,6 +48,9 @@ export default function LoginPage() {
     try {
       const { user } = await login(email.toLowerCase(), password);
       const profile = await fetchUserProfile(user.uid);
+      if (!profile || profile.isActive === false) {
+        return;
+      }
       toast.success('Welcome back!');
       if (profile?.role === 'Developer') {
         navigate('/dev');
