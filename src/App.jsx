@@ -5,6 +5,7 @@ import './styles/global.css';
 import './styles/components.css';
 import './styles/developer.css';
 import './styles/admin.css';
+import './styles/super-admin.css';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { subscribeToNotifications } from './services/firestoreService';
@@ -47,6 +48,10 @@ const PublicProjectPage = lazy(() => import('./pages/PublicProjectPage'));
 // Lazy-loaded Super Admin Portal pages
 const SuperAdminDashboardPage = lazy(() => import('./pages/super-admin/SuperAdminDashboardPage'));
 const OrganizationsManagementPage = lazy(() => import('./pages/super-admin/OrganizationsManagementPage'));
+const SubscriptionsManagementPage = lazy(() => import('./pages/super-admin/SubscriptionsManagementPage'));
+const AIAnalyticsPage = lazy(() => import('./pages/super-admin/AIAnalyticsPage'));
+const SystemHealthPage = lazy(() => import('./pages/super-admin/SystemHealthPage'));
+const GlobalSettingsPage = lazy(() => import('./pages/super-admin/GlobalSettingsPage'));
 
 import { Loader2 } from 'lucide-react';
 
@@ -210,10 +215,10 @@ function SuperAdminPortal() {
         <Routes>
           <Route index element={<SuperAdminDashboardPage />} />
           <Route path="organizations" element={<OrganizationsManagementPage />} />
-          <Route path="subscriptions" element={<div className="admin-container"><h1>Subscriptions Management</h1><p style={{ color: 'var(--text-muted)' }}>Coming Soon</p></div>} />
-          <Route path="ai-usage" element={<div className="admin-container"><h1>AI Analytics</h1><p style={{ color: 'var(--text-muted)' }}>Coming Soon</p></div>} />
-          <Route path="health" element={<div className="admin-container"><h1>System Health</h1><p style={{ color: 'var(--text-muted)' }}>Coming Soon</p></div>} />
-          <Route path="settings" element={<div className="admin-container"><h1>Global Settings</h1><p style={{ color: 'var(--text-muted)' }}>Coming Soon</p></div>} />
+          <Route path="subscriptions" element={<SubscriptionsManagementPage />} />
+          <Route path="ai-usage" element={<AIAnalyticsPage />} />
+          <Route path="health" element={<SystemHealthPage />} />
+          <Route path="settings" element={<GlobalSettingsPage />} />
           <Route path="*" element={<Navigate to="/super-admin" replace />} />
         </Routes>
       </div>
