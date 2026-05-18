@@ -119,7 +119,7 @@ export default function Sidebar({ unreadCount = 0 }) {
               <Settings size={16} />
               Settings
             </NavLink>
-            {userProfile?.role === 'Admin' && (
+            {['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role) && (
               <NavLink
                 to="/qa/team"
                 className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}

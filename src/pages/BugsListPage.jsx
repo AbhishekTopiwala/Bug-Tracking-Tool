@@ -119,7 +119,8 @@ export default function BugsListPage() {
   const [allUsers, setAllUsers] = useState([]);
   
   const navigate = useNavigate();
-  const basePath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
+  const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
+  const basePath = isAdmin ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
 
   // If the URL changes, update the filter
   useEffect(() => {
@@ -168,7 +169,7 @@ export default function BugsListPage() {
       return bugs.filter(b => b.projectName === projectFilter);
     }
     if (projectsLoading) return [];
-    if (userProfile?.role === 'Admin') return bugs;
+    if (['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role)) return bugs;
     return bugs.filter(b => projects.some(p => p.id === b.projectId));
   }, [bugs, userProfile?.role, projects, projectsLoading, projectFilter]);
 
@@ -371,7 +372,7 @@ export default function BugsListPage() {
     }
   };
 
-  const isAdmin = userProfile?.role === 'Admin';
+  const isActualAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
 
   return (
     <>

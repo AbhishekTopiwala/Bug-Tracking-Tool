@@ -22,11 +22,23 @@ import { db, storage } from '../firebase/config';
 import { uploadToCloudinary } from './cloudinaryService';
 
 let currentOrgId = 'default_org_id';
+let currentUserRole = 'QA';
+
+export function setGlobalUserContext(orgId, role) {
+  currentOrgId = orgId;
+  currentUserRole = role;
+}
+
 export function setGlobalOrgId(orgId) {
   currentOrgId = orgId;
 }
+
 export function getCurrentOrgId() {
   return currentOrgId;
+}
+
+export function isSuperAdminContext() {
+  return currentUserRole === 'super_admin' || currentUserRole === 'Superadmin';
 }
 
 // ── BUGS ──────────────────────────────────────────────────────────────────────
@@ -128,7 +140,15 @@ export function subscribeToBugs(callback) {
   activeBugsSubscribers.push(callback);
 
   if (!activeBugsListener) {
-    const q = query(collection(db, 'bugs'), where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
+    const bugsRef = collection(db, 'bugs');
+    let q;
+    
+    if (isSuperAdminContext()) {
+      q = query(bugsRef, orderBy('createdAt', 'desc'));
+    } else {
+      q = query(bugsRef, where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
+    }
+    
     activeBugsListener = onSnapshot(q, (snap) => {
       cachedBugs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       activeBugsSubscribers.forEach(cb => cb(cachedBugs));
@@ -325,7 +345,15 @@ export async function getProjects(userId, role) {
 }
 
 export function subscribeToProjects(userId, role, callback) {
-  const q = query(collection(db, 'projects'), where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
+  const projectsRef = collection(db, 'projects');
+  let q;
+  
+  if (role === 'super_admin' || role === 'Superadmin') {
+    q = query(projectsRef, orderBy('createdAt', 'desc'));
+  } else {
+    q = query(projectsRef, where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
+  }
+  
   return onSnapshot(q, (snap) => {
     let allProjects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     if (role && role !== 'Admin' && userId) {

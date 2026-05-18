@@ -79,7 +79,7 @@ export default function BugDetailPage() {
           getProjects(currentUser.uid, userProfile?.role)
         ]);
 
-        if (userProfile?.role !== 'Admin') {
+        if (!['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role)) {
           const isMember = projects.some(p => p.id === data.projectId);
           if (!isMember) {
             toast.error('You do not have permission to view this bug');
@@ -92,7 +92,8 @@ export default function BugDetailPage() {
         setBug(data);
       } catch {
         toast.error('Bug not found');
-        const errorPath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa/dashboard';
+        const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
+        const errorPath = isAdmin ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa/dashboard';
         navigate(errorPath);
       } finally {
         setLoading(false);
@@ -138,7 +139,8 @@ export default function BugDetailPage() {
     try {
       await deleteBug(id);
       toast.success('Bug deleted');
-      const bugsPath = userProfile?.role === 'Admin' ? '/admin/bugs' : userProfile?.role === 'Developer' ? '/dev/bugs' : '/qa/bugs';
+      const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
+      const bugsPath = isAdmin ? '/admin/bugs' : userProfile?.role === 'Developer' ? '/dev/bugs' : '/qa/bugs';
       navigate(bugsPath);
     } catch (err) {
       console.error("Error deleting bug:", err);
@@ -660,7 +662,7 @@ export default function BugDetailPage() {
                   <p className="detail-section-title" style={{ margin: 0 }}>
                     <Paperclip size={14} /> Attachments ({bug.attachments.length})
                   </p>
-                  {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
+                  {((['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role)) || bug.reportedBy === currentUser.uid) && (
                     <button
                       className="btn btn-ghost btn-sm"
                       onClick={handleClearAllAttachments}
@@ -695,7 +697,7 @@ export default function BugDetailPage() {
                           <span>{att.name}</span>
                         </div>
                       )}
-                      {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
+                      {((['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role)) || bug.reportedBy === currentUser.uid) && (
                         <button
                           type="button"
                           className="attachment-remove-btn"
@@ -741,7 +743,7 @@ export default function BugDetailPage() {
                               </span>
                             )}
                           </div>
-                          {(c.authorId === currentUser?.uid || userProfile?.role === 'Admin') && editingCommentId !== c.id && (
+                          {(c.authorId === currentUser?.uid || (['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role))) && editingCommentId !== c.id && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <button
                                 type="button"
@@ -856,12 +858,13 @@ export default function BugDetailPage() {
                 <ArrowLeft size={16} /> Back
               </button>
 
-              {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser.uid) && (
+              {((['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role)) || bug.reportedBy === currentUser.uid) && (
                 <>
                   <button
                     className="btn btn-secondary"
                     onClick={() => {
-                      const basePath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
+                      const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
+                      const basePath = isAdmin ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
                       navigate(`${basePath}/bugs/${id}/edit`);
                     }}
                     style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8 }}
@@ -890,7 +893,7 @@ export default function BugDetailPage() {
                   <span className={`badge ${statusClass[bug.status] || 'badge-open'}`} style={{ fontSize: '0.8rem', padding: '6px 14px' }}>
                     {bug.status}
                   </span>
-                  {(userProfile?.role === 'Admin' || bug.reportedBy === currentUser?.uid || bug.assigneeId === currentUser?.uid) && (
+                  {((['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role)) || bug.reportedBy === currentUser?.uid || bug.assigneeId === currentUser?.uid) && (
                     <button className="btn btn-ghost btn-sm" onClick={() => setEditingStatus(true)}>
                       <Edit3 size={13} /> Change
                     </button>

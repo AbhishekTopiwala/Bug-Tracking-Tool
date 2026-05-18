@@ -7,55 +7,109 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
     function isSuperAdmin() {
-      return request.auth != null && getUserData().role == 'super_admin';
+      return isSignedIn() && getUserData().role in ['super_admin', 'Superadmin'];
     }
 
     // Helper to verify tenant isolation
     function isSameOrg(resourceOrgId) {
-      return request.auth != null && getUserData().organizationId == resourceOrgId;
+      return isSignedIn() && getUserData().organizationId == resourceOrgId;
+    }
+
+    function isOrgAdmin() {
+      return isSignedIn() && getUserData().role in ['org_admin', 'super_admin', 'Admin', 'Superadmin', 'Manager'];
     }
 
     match /organizations/{orgId} {
-      allow read: if isSuperAdmin() || (request.auth != null && getUserData().organizationId == orgId);
-      allow write: if isSuperAdmin(); // Only backend or Super Admins can write billing/quota data
+      allow read: if isSuperAdmin() || (isSignedIn() && getUserData().organizationId == orgId);
+      // Allow any signed-in user to create an organization (Cold Signup)
+      allow create: if isSignedIn();
+      // Org admins can update their own org; only super admins can delete
+      allow update: if isSuperAdmin() || (isSignedIn() && getUserData().organizationId == orgId && isOrgAdmin());
+      allow delete: if isSuperAdmin();
     }
 
     match /users/{userId} {
-      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
-      // A user can edit their own basic info. Org admins can edit anyone in their org.
-      allow write: if isSuperAdmin() || 
-                      (request.auth != null && request.auth.uid == userId) || 
-                      (isSameOrg(resource.data.organizationId) && getUserData().role == 'org_admin') ||
-                      // Allow initial creation (since the user doc might not exist yet)
-                      (request.method == 'create' && request.auth != null);
-      allow delete: if request.auth != null && (request.auth.uid == userId || isSuperAdmin() || (isSameOrg(resource.data.organizationId) && getUserData().role == 'org_admin'));
+      // Allow initial creation if authenticated
+      allow create: if isSignedIn();
+      
+      // A user can read their own document, or if it matches their email (for invite lookups)
+      // Super admin can read any. Same-org users can read team members.
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        (resource != null && resource.data.email == request.auth.token.email) ||
+        (resource != null && isSameOrg(resource.data.organizationId))
+      );
+
+      // A user can update their own document, org admins can manage their org's users,
+      // super admins can manage anyone.
+      allow update: if isSignedIn() && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        (isOrgAdmin() && isSameOrg(resource.data.organizationId))
+      );
+
+      allow delete: if isSignedIn() && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        (isOrgAdmin() && isSameOrg(resource.data.organizationId))
+      );
     }
 
     match /bugs/{bugId} {
-      // Enforce organization isolation upon read
+      // Super admin sees all; others see only their org's bugs
       allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
-      // Enforce organization isolation upon write (prevent forging orgId)
-      allow create: if isSameOrg(request.resource.data.organizationId);
-      allow update: if isSameOrg(resource.data.organizationId) && isSameOrg(request.resource.data.organizationId);
-      allow delete: if isSameOrg(resource.data.organizationId) && (getUserData().role in ['org_admin', 'qa']);
+      // Only create bugs in your own org
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      // Only update bugs in your own org (can't change org)
+      allow update: if isSuperAdmin() || (
+        isSameOrg(resource.data.organizationId) && 
+        isSameOrg(request.resource.data.organizationId)
+      );
+      allow delete: if isSuperAdmin() || (
+        isSameOrg(resource.data.organizationId) && 
+        isOrgAdmin()
+      );
     }
     
     match /projects/{projectId} {
       allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
-      allow create: if isSameOrg(request.resource.data.organizationId);
-      allow update: if isSameOrg(resource.data.organizationId) && isSameOrg(request.resource.data.organizationId);
-      allow delete: if isSuperAdmin() || (isSameOrg(resource.data.organizationId) && getUserData().role in ['org_admin', 'qa']);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow update: if isSuperAdmin() || (
+        isSameOrg(resource.data.organizationId) && 
+        isSameOrg(request.resource.data.organizationId)
+      );
+      allow delete: if isSuperAdmin() || (
+        isSameOrg(resource.data.organizationId) && 
+        isOrgAdmin()
+      );
     }
 
     match /notifications/{notifId} {
-      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null;
+      // Users can read and create their own notifications
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isSuperAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isSuperAdmin()
+      );
     }
 
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isSuperAdmin();
+    }
+
+    match /invitations/{inviteId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isOrgAdmin();
+      allow update, delete: if isSignedIn() && (isOrgAdmin() || request.auth.uid == resource.data.invitedBy);
     }
   }
 }

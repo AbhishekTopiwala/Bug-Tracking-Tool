@@ -139,7 +139,8 @@ export default function BugFormPage() {
         // Security check for QA role: only edit your own bugs
         if (userProfile?.role === 'QA' && bug.reportedBy !== currentUser?.uid) {
           toast.error('You do not have permission to edit this bug');
-          const dashboardPath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa/dashboard';
+          const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
+          const dashboardPath = isAdmin ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa/dashboard';
           navigate(dashboardPath);
           return;
         }
@@ -466,7 +467,7 @@ export default function BugFormPage() {
       
       const detailPath = userProfile?.role === 'Developer' 
         ? `/dev/bugs/${finalBugId}` 
-        : userProfile?.role === 'Admin'
+        : (['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role))
           ? `/admin/bugs/${finalBugId}`
           : `/qa/bugs/${finalBugId}`;
       

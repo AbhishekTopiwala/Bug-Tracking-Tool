@@ -12,19 +12,26 @@ import {
   deactivateUser,
   activateUser,
   inviteUser,
+  deleteUser,
 } from '../../services/teamService';
 import { getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const ROLES = ['QA', 'Developer', 'Admin'];
+const ROLES = ['QA', 'Developer', 'Admin', 'Superadmin'];
 
 const ROLE_META = {
+  super_admin: { label: 'Superadmin', icon: Crown, cls: 'role-badge--superadmin' },
+  Superadmin: { label: 'Superadmin', icon: Crown, cls: 'role-badge--superadmin' },
+  org_admin: { label: 'Admin', icon: Crown, cls: 'role-badge--admin' },
   Admin: { label: 'Admin', icon: Crown, cls: 'role-badge--admin' },
+  Manager: { label: 'Admin', icon: Crown, cls: 'role-badge--admin' },
   Developer: { label: 'Developer', icon: Code2, cls: 'role-badge--developer' },
   QA: { label: 'QA', icon: TestTube2, cls: 'role-badge--qa' },
 };
+
+const DB_ROLES = ['QA', 'Developer', 'org_admin', 'super_admin'];
 
 function getInitials(name = '', email = '') {
   const source = name || email || '?';
@@ -111,7 +118,7 @@ function InviteModal({ onClose, onSuccess }) {
       await inviteUser({ 
         email: email.trim(), 
         name: name.trim() || email.split('@')[0], 
-        role,
+        role: role === 'Admin' ? 'org_admin' : role === 'Superadmin' ? 'super_admin' : role,
         invitedBy: userProfile?.displayName || 'Admin',
         invitedByEmail: userProfile?.email || ''
       });
@@ -211,8 +218,20 @@ function InviteModal({ onClose, onSuccess }) {
 
 // ─── Member Row (shared) ──────────────────────────────────────────────────────
 
-function MemberRow({ user, onToggle }) {
+function MemberRow({ user, onToggle, onRoleChange, onDelete }) {
+  const { isSuperAdmin } = useAuth();
   const isActive = user.isActive !== false;
+  const [showRoles, setShowRoles] = useState(false);
+
+  const handleRoleSelect = async (newRole) => {
+    if (newRole === user.role) return setShowRoles(false);
+    try {
+      await onRoleChange(user, newRole);
+    } finally {
+      setShowRoles(false);
+    }
+  };
+
   return (
     <tr className={`tm-table-row${isActive ? '' : ' tm-row-inactive'}`}>
       <td>
@@ -243,7 +262,30 @@ function MemberRow({ user, onToggle }) {
           {user.email}
         </a>
       </td>
-      <td><RoleBadge role={user.role} /></td>
+      <td style={{ position: 'relative' }}>
+        <div 
+          onClick={() => setShowRoles(!showRoles)} 
+          style={{ cursor: 'pointer', display: 'inline-block' }}
+        >
+          <RoleBadge role={user.role} />
+        </div>
+        
+        {showRoles && (
+          <div className="tm-actions-menu" style={{ top: '100%', left: 0, width: 160 }}>
+            <div className="tm-actions-label">Change Role</div>
+            {DB_ROLES.map(r => (
+              <button 
+                key={r}
+                className={`tm-action-item ${user.role === r ? 'tm-action-item--active' : ''} tm-action-item--${r.replace('_', '')}`}
+                onClick={() => handleRoleSelect(r)}
+              >
+                {ROLE_META[r]?.label || r}
+                {user.role === r && <Check size={12} className="tm-action-check" />}
+              </button>
+            ))}
+          </div>
+        )}
+      </td>
       <td className="tm-date-cell">
         {(() => {
           if (!user.createdAt) return '—';
@@ -258,13 +300,39 @@ function MemberRow({ user, onToggle }) {
       <td style={{ textAlign: 'center' }}>
         <ActiveToggle user={user} onToggle={onToggle} />
       </td>
+      {isSuperAdmin && (
+        <td style={{ textAlign: 'center' }}>
+          <button
+            className="btn-delete-user"
+            onClick={() => onDelete && onDelete(user)}
+            title="Permanently delete user"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#EF4444',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '6px',
+              transition: 'background-color 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEE2E2'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <Trash2 size={15} />
+          </button>
+        </td>
+      )}
     </tr>
   );
 }
 
 // ─── Project Team Group Card ──────────────────────────────────────────────────
 
-function ProjectGroupCard({ project, members, onToggle }) {
+function ProjectGroupCard({ project, members, onToggle, onRoleChange, onDelete }) {
+  const { isSuperAdmin } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -314,6 +382,7 @@ function ProjectGroupCard({ project, members, onToggle }) {
                   <th>Role</th>
                   <th>Joined</th>
                   <th style={{ textAlign: 'center' }}>Active</th>
+                  {isSuperAdmin && <th style={{ textAlign: 'center' }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -322,6 +391,8 @@ function ProjectGroupCard({ project, members, onToggle }) {
                     key={user.id}
                     user={user}
                     onToggle={onToggle}
+                    onRoleChange={onRoleChange}
+                    onDelete={onDelete}
                   />
                 ))}
               </tbody>
@@ -336,7 +407,7 @@ function ProjectGroupCard({ project, members, onToggle }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TeamManagementPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, isSuperAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -426,10 +497,47 @@ export default function TeamManagementPage() {
     }
   };
 
+  const handleRoleChange = async (user, newRole) => {
+    const targetId = user.id || user.uid;
+    if (!targetId) return toast.error("Cannot update role: Missing identifier.");
+
+    try {
+      await updateUserRole(targetId, newRole);
+      setUsers(prev => prev.map(u => (u.id === targetId || u.uid === targetId) ? { ...u, role: newRole } : u));
+      toast.success(`${user.name || user.email}'s role updated to ${ROLE_META[newRole]?.label || newRole}.`);
+    } catch (err) {
+      console.error('[TeamManagement] Role change error:', err);
+      toast.error(`Failed to update role: ${err.message || 'Permission denied'}`);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    const targetId = user.id || user.uid;
+    if (!targetId) return toast.error("Cannot delete user: Missing identifier.");
+
+    if (targetId === currentUser?.uid) {
+      return toast.error("You cannot delete your own account.");
+    }
+
+    if (!window.confirm(`Are you absolutely sure you want to permanently delete user "${user.name || user.email}"? This action is irreversible.`)) {
+      return;
+    }
+
+    try {
+      await deleteUser(targetId);
+      setUsers(prev => prev.filter(u => u.id !== targetId && u.uid !== targetId));
+      toast.success(`${user.name || user.email} has been permanently deleted.`);
+    } catch (err) {
+      console.error('[TeamManagement] Delete error:', err);
+      toast.error(`Failed to delete user: ${err.message || 'Permission denied'}`);
+    }
+  };
+
   // ── Stats (active only for counts) ──
   const activeUsers = users.filter(u => u.isActive !== false);
   const total = activeUsers.length;
-  const admins = activeUsers.filter((u) => u.role === 'Admin').length;
+  const superadmins = activeUsers.filter((u) => u.role === 'super_admin' || u.role === 'Superadmin').length;
+  const admins = activeUsers.filter((u) => u.role === 'org_admin' || u.role === 'Admin' || u.role === 'Manager').length;
   const devs = activeUsers.filter((u) => u.role === 'Developer').length;
   const qas = activeUsers.filter((u) => u.role === 'QA').length;
 
@@ -473,6 +581,7 @@ export default function TeamManagementPage() {
         <div className="admin-stats-grid tm-stats-grid">
           {[
             { label: 'Total Members', value: total, icon: Users, color: 'var(--admin-accent)' },
+            { label: 'Superadmins', value: superadmins, icon: Crown, color: '#8B5CF6' },
             { label: 'Admins', value: admins, icon: Crown, color: '#5B6CFF' },
             { label: 'Developers', value: devs, icon: Code2, color: 'var(--info)' },
             { label: 'QA Engineers', value: qas, icon: TestTube2, color: 'var(--success)' },
@@ -503,13 +612,13 @@ export default function TeamManagementPage() {
           </div>
 
           <div className="filter-bar">
-            {['All', ...ROLES].map((r) => (
+            {['All', ...DB_ROLES].map((r) => (
               <button
                 key={r}
                 className={`filter-chip ${filterRole === r ? 'active' : ''}`}
                 onClick={() => setFilterRole(r)}
               >
-                {r}
+                {ROLE_META[r]?.label || r}
               </button>
             ))}
           </div>
@@ -543,6 +652,7 @@ export default function TeamManagementPage() {
                       <th>Role</th>
                       <th>Joined</th>
                       <th style={{ textAlign: 'center' }}>Active</th>
+                      {isSuperAdmin && <th style={{ textAlign: 'center' }}>Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -551,6 +661,8 @@ export default function TeamManagementPage() {
                         key={user.id}
                         user={user}
                         onToggle={handleToggle}
+                        onRoleChange={handleRoleChange}
+                        onDelete={handleDeleteUser}
                       />
                     ))}
                   </tbody>
@@ -592,6 +704,8 @@ export default function TeamManagementPage() {
                     project={project}
                     members={members}
                     onToggle={handleToggle}
+                    onRoleChange={handleRoleChange}
+                    onDelete={handleDeleteUser}
                   />
                 ))}
                 <div style={{ textAlign: 'right', fontSize: '0.82rem', color: 'var(--text-muted)', paddingRight: 4 }}>

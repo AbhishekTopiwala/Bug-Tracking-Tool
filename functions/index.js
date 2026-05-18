@@ -1,7 +1,10 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, HttpsError, onRequest } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { getFirestore } = require("firebase-admin/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
 
 initializeApp();
 const db = getFirestore();
@@ -180,4 +183,97 @@ If no existing bugs are similar, return: []`
     console.error("Gemini Error:", error);
     throw new HttpsError("internal", "Failed to suggest similar bugs.");
   }
+});
+
+// ── RAZORPAY & BILLING ──────────────────────────────────────────────────────
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_SECRET = process.env.RAZORPAY_SECRET;
+const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+exports.createRazorpayOrder = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be logged in.");
+  }
+
+  const { amount, currency = "INR" } = request.data;
+
+  if (!RAZORPAY_KEY_ID || !RAZORPAY_SECRET) {
+    throw new HttpsError("internal", "Razorpay not configured.");
+  }
+
+  const razorpay = new Razorpay({
+    key_id: RAZORPAY_KEY_ID,
+    key_secret: RAZORPAY_SECRET,
+  });
+
+  try {
+    const order = await razorpay.orders.create({
+      amount: amount * 100, // Amount in paise
+      currency,
+      receipt: `receipt_${Date.now()}`,
+    });
+    return order;
+  } catch (error) {
+    console.error("Razorpay Order Error:", error);
+    throw new HttpsError("internal", "Failed to create Razorpay order.");
+  }
+});
+
+exports.razorpayWebhook = onRequest(async (req, res) => {
+  const signature = req.headers["x-razorpay-signature"];
+  const body = JSON.stringify(req.body);
+
+  if (!RAZORPAY_WEBHOOK_SECRET) {
+    console.error("WEBHOOK_SECRET not configured");
+    return res.status(500).send("Internal Configuration Error");
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", RAZORPAY_WEBHOOK_SECRET)
+    .update(body)
+    .digest("hex");
+
+  if (signature !== expectedSignature) {
+    console.warn("Invalid webhook signature");
+    return res.status(400).send("Invalid Signature");
+  }
+
+  const event = req.body.event;
+  console.log(`Received Razorpay event: ${event}`);
+
+  if (event === "payment.captured") {
+    const payment = req.body.payload.payment.entity;
+    const { order_id, email, notes } = payment;
+    const orgId = notes?.organizationId;
+
+    if (orgId) {
+      // Update subscription in Firestore
+      await db.collection("organizations").doc(orgId).update({
+        "subscription.status": "active",
+        "subscription.lastPaymentId": payment.id,
+        "subscription.updatedAt": new Date().toISOString(),
+      });
+      console.log(`Successfully updated subscription for org: ${orgId}`);
+    }
+  }
+
+  res.json({ status: "ok" });
+});
+
+// ── SCHEDULERS ──────────────────────────────────────────────────────────────
+// Reset AI quota on the 1st of every month at midnight
+exports.resetMonthlyQuota = onSchedule("0 0 1 * *", async (event) => {
+  console.log("Starting monthly quota reset...");
+  const orgsSnap = await db.collection("organizations").get();
+  
+  const batch = db.batch();
+  orgsSnap.docs.forEach((doc) => {
+    batch.update(doc.ref, {
+      "aiUsage.currentUsage": 0,
+      "aiUsage.lastResetAt": new Date().toISOString()
+    });
+  });
+
+  await batch.commit();
+  console.log(`Successfully reset quotas for ${orgsSnap.size} organizations.`);
 });

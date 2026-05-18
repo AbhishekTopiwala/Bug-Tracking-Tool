@@ -78,7 +78,7 @@ export default function ProjectsPage() {
   const [assignSearch, setAssignSearch] = useState('');
   const navigate = useNavigate();
 
-  const isAdmin = userProfile?.role === 'Admin';
+  const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
   const isDeveloper = userProfile?.role === 'Developer';
   const isQA = userProfile?.role === 'QA';
 

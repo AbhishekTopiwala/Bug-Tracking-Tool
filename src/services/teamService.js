@@ -12,8 +12,8 @@ import {
   addDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { sendInviteEmail } from './mailService';
@@ -27,11 +27,12 @@ import { getCurrentOrgId } from './firestoreService';
  */
 export async function fetchAllUsers() {
   const orgId = getCurrentOrgId();
-  // We should also filter fetchAllUsers by orgId for true multi-tenancy!
-  const q = query(collection(db, 'users'), where('organizationId', '==', orgId), orderBy('email', 'asc'));
+  const q = query(collection(db, 'users'), where('organizationId', '==', orgId));
   const snap = await getDocs(q);
   // Ensure the document ID (id) takes precedence over any 'id' field in the data
-  return snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+  // Sort in-memory to avoid needing a composite Firestore index on (organizationId + email)
+  const users = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+  return users.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
 }
 
 // ── Update a user's role ──────────────────────────────────────────────────────
@@ -110,6 +111,19 @@ export async function activateUser(userId) {
     console.error(`[teamService] Error activating user ${userId}:`, error);
     throw error;
   }
+}
+
+/**
+ * Permanently delete a user document from Firestore.
+ * ONLY Superadmin is allowed to call this function.
+ * @param {string} userId  Firestore document ID of the user.
+ */
+export async function deleteUser(userId) {
+  if (!userId) throw new Error('User ID is required for deletion');
+  console.log(`[teamService] Attempting to permanently delete user: ${userId}`);
+  const userRef = doc(db, 'users', userId);
+  await deleteDoc(userRef);
+  console.log(`[teamService] User ${userId} successfully deleted from Firestore.`);
 }
 
 

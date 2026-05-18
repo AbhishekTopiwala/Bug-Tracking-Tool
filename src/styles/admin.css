@@ -681,6 +681,11 @@
   color: #10B981;
 }
 
+.role-badge--superadmin {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8B5CF6;
+}
+
 /* Action Menu Trigger */
 .tm-actions-trigger {
   width: 36px;
@@ -788,6 +793,11 @@
 .tm-action-item--admin.tm-action-item--active {
   color: var(--admin-accent);
   background: var(--admin-accent-light);
+}
+
+.tm-action-item--superadmin.tm-action-item--active {
+  color: #8B5CF6;
+  background: rgba(139, 92, 246, 0.1);
 }
 
 .tm-action-item--developer.tm-action-item--active {

@@ -2,7 +2,7 @@ export const STATUSES = ['Open', 'In Progress', 'Done', 'Resolved', 'Reopen', 'R
 
 export const getValidStatusTransitions = (currentStatus, role) => {
   // Admin can move any bug to any status
-  if (role === 'Admin') return STATUSES;
+  if (['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(role)) return STATUSES;
 
   if (role === 'Developer') {
     switch (currentStatus) {

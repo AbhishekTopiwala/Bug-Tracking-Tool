@@ -1,42 +1,17 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bug, Eye, EyeOff, Loader2, Code2, Sparkles, CheckCircle2, FlaskConical, User, Mail, Lock, BarChart3 } from 'lucide-react';
+import { Loader2, CheckCircle2, User, Mail, Lock, BarChart3, Building2, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
-const ROLES = [
-  {
-    key: 'QA',
-    icon: FlaskConical,
-    label: 'QA Engineer',
-    desc: 'Create & manage bugs, use AI tools, assign to developers',
-    accent: 'var(--accent)',
-    accentBg: 'var(--accent-light)',
-    accentBorder: 'rgba(99,102,241,0.3)',
-    avatarBg: '6366f1',
-  },
-  {
-    key: 'Developer',
-    icon: Code2,
-    label: 'Developer',
-    desc: 'View assigned bugs, update status, collaborate with QA',
-    accent: 'var(--dev-accent)',
-    accentBg: 'var(--dev-accent-light)',
-    accentBorder: 'rgba(16,185,129,0.3)',
-    avatarBg: '10b981',
-  },
-];
-
 export default function SignupPage() {
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', role: 'QA', workspaceName: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', workspaceName: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
 
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-  const selectedRole = ROLES.find((r) => r.key === form.role);
-  const isDev = form.role === 'Developer';
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -45,12 +20,12 @@ export default function SignupPage() {
     if (form.password.length < 6) return toast.error('Password must be at least 6 characters');
     setLoading(true);
     try {
-      await signup(form.email, form.password, form.name, form.role, selectedRole.avatarBg, form.workspaceName);
-      toast.success(`Welcome to Qualia! ${form.role === 'Developer' ? '👨‍💻' : '🧪'}`);
-      navigate(form.role === 'Developer' ? '/dev' : '/');
+      await signup(form.email, form.password, form.name, 'Admin', '6366f1', form.workspaceName);
+      toast.success(`Welcome to Qualia! Your workspace is ready.`);
+      navigate('/');
     } catch (err) {
       const msg = err.code === 'auth/email-already-in-use'
-        ? 'An account with this email already exists'
+        ? (err.message.includes('password') ? err.message : 'An account with this email already exists')
         : err.message || 'Signup failed';
       toast.error(msg);
     } finally {
@@ -83,80 +58,60 @@ export default function SignupPage() {
             </div>
             <div className="auth-brand-text">
               <div className="auth-brand-name">Qualia</div>
-              <div className="auth-brand-tagline">From visual glance to structured resolution</div>
+              <div className="auth-brand-tagline">Enterprise Bug Tracking Platform</div>
             </div>
           </div>
 
-          <h2 className="auth-marketing-title">Modern <span className="text-gradient">bug tracking</span> for QA teams and Developers</h2>
-          <p className="auth-marketing-subtitle">Create, assign and resolve bugs faster with AI powered workflows.</p>
+          <h2 className="auth-marketing-title">Create your <span className="text-gradient">Organization Workspace</span></h2>
+          <p className="auth-marketing-subtitle">Set up your company's dedicated bug tracking environment and invite your team.</p>
 
           <div className="auth-features">
             <div className="auth-feature-item">
-              <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Sparkles size={16} /></div>
+              <div className="auth-feature-icon" style={{ color: 'var(--accent)', background: 'rgba(99, 102, 241, 0.1)' }}><Building2 size={16} /></div>
               <div className="auth-feature-text">
-                <span className="auth-feature-title">AI Bug Generator</span>
-                <span className="auth-feature-desc">Automatically generate titles and steps</span>
+                <span className="auth-feature-title">Isolated Workspaces</span>
+                <span className="auth-feature-desc">Secure, multi-tenant environment for your company</span>
               </div>
             </div>
             <div className="auth-feature-item">
-              <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Bug size={16} /></div>
+              <div className="auth-feature-icon" style={{ color: 'var(--accent)', background: 'rgba(99, 102, 241, 0.1)' }}><Users size={16} /></div>
               <div className="auth-feature-text">
-                <span className="auth-feature-title">Smart QA Workflow</span>
-                <span className="auth-feature-desc">Assign and track bugs efficiently</span>
+                <span className="auth-feature-title">Role-Based Access</span>
+                <span className="auth-feature-desc">Manage QA, Developers, and Managers with ease</span>
               </div>
             </div>
             <div className="auth-feature-item">
-              <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)' }}><Code2 size={16} /></div>
+              <div className="auth-feature-icon" style={{ color: 'var(--accent)', background: 'rgba(99, 102, 241, 0.1)' }}><ShieldCheck size={16} /></div>
               <div className="auth-feature-text">
-                <span className="auth-feature-title">Developer Collaboration</span>
-                <span className="auth-feature-desc">Seamlessly integrate with dev tools</span>
+                <span className="auth-feature-title">Enterprise Security</span>
+                <span className="auth-feature-desc">Data isolation and strict permission controls</span>
               </div>
             </div>
             <div className="auth-feature-item">
-              <div className="auth-feature-icon" style={{ color: isDev ? 'var(--dev-accent)' : 'var(--accent)', background: isDev ? 'rgba(16, 185, 129, 0.1)' : 'rgba(91, 108, 255, 0.1)' }}><CheckCircle2 size={16} /></div>
+              <div className="auth-feature-icon" style={{ color: 'var(--accent)', background: 'rgba(99, 102, 241, 0.1)' }}><CheckCircle2 size={16} /></div>
               <div className="auth-feature-text">
-                <span className="auth-feature-title">Screenshot & Video Uploads</span>
-                <span className="auth-feature-desc">Attach visual proofs instantly</span>
+                <span className="auth-feature-title">Subscription Ready</span>
+                <span className="auth-feature-desc">Flexible plans scaling with your team's growth</span>
               </div>
             </div>
           </div>
-
-
         </div>
 
         {/* Right Auth Section */}
         <div className="auth-right">
           <div className="auth-card" style={{ maxWidth: 500, padding: '40px 48px' }}>
-            <h1 className="auth-title">Create your account</h1>
-            <p className="auth-subtitle">Choose your role to get started</p>
+            <h1 className="auth-title">Create Organization</h1>
+            <p className="auth-subtitle">Set up your admin account and workspace</p>
 
-            {/* Interactive Role Toggle */}
-            <div className="role-toggle">
-              <button
-                type="button"
-                className={`role-btn ${!isDev ? 'active-qa' : ''}`}
-                onClick={() => setForm((f) => ({ ...f, role: 'QA' }))}
-              >
-                <FlaskConical size={16} /> QA Engineer
-              </button>
-              <button
-                type="button"
-                className={`role-btn ${isDev ? 'active-dev' : ''}`}
-                onClick={() => setForm((f) => ({ ...f, role: 'Developer' }))}
-              >
-                <Code2 size={16} /> Developer
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '24px' }}>
               <div className="form-group">
-                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Workspace Name</label>
-                <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Organization Name</label>
+                <div className="auth-input-wrapper">
                   <BarChart3 size={18} className="auth-input-icon" />
                   <input
                     id="signup-workspace"
                     type="text"
-                    className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                    className="auth-input"
                     placeholder="e.g. Acme Corp"
                     value={form.workspaceName}
                     onChange={update('workspaceName')}
@@ -165,13 +120,13 @@ export default function SignupPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Full Name</label>
-                <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Admin Full Name</label>
+                <div className="auth-input-wrapper">
                   <User size={18} className="auth-input-icon" />
                   <input
                     id="signup-name"
                     type="text"
-                    className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                    className="auth-input"
                     placeholder="e.g. Alex Johnson"
                     value={form.name}
                     onChange={update('name')}
@@ -180,13 +135,13 @@ export default function SignupPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Email Address</label>
-                <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Admin Email</label>
+                <div className="auth-input-wrapper">
                   <Mail size={18} className="auth-input-icon" />
                   <input
                     id="signup-email"
                     type="email"
-                    className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                    className="auth-input"
                     placeholder="you@company.com"
                     value={form.email}
                     onChange={update('email')}
@@ -197,36 +152,28 @@ export default function SignupPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div className="form-group">
                   <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Password</label>
-                  <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                  <div className="auth-input-wrapper">
                     <Lock size={18} className="auth-input-icon" />
                     <input
                       id="signup-password"
                       type={showPass ? 'text' : 'password'}
-                      className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                      className="auth-input"
                       placeholder="Min 6 chars"
                       value={form.password}
                       onChange={update('password')}
                       style={{ paddingRight: 36 }}
                     />
-                    <button
-                      type="button"
-                      className="btn-icon"
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
-                      onClick={() => setShowPass((v) => !v)}
-                    >
-                      {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Confirm</label>
-                  <div className={`auth-input-wrapper ${isDev ? 'dev-wrapper' : ''}`}>
+                  <label className="form-label" style={{ marginBottom: 6, display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>Confirm Password</label>
+                  <div className="auth-input-wrapper">
                     <Lock size={18} className="auth-input-icon" />
                     <input
                       id="signup-confirm"
                       type="password"
-                      className={`auth-input ${isDev ? 'dev-focus' : ''}`}
+                      className="auth-input"
                       placeholder="Repeat pass"
                       value={form.confirm}
                       onChange={update('confirm')}
@@ -238,18 +185,18 @@ export default function SignupPage() {
               <button
                 id="signup-submit"
                 type="submit"
-                className={`auth-btn ${isDev ? 'dev-btn' : ''}`}
+                className="auth-btn"
                 disabled={loading}
                 style={{ marginTop: 8 }}
               >
                 {loading ? <Loader2 size={18} className="spin" /> : null}
-                {loading ? 'Creating account...' : `Join as ${selectedRole.label}`}
+                {loading ? 'Creating Organization...' : 'Create Organization Workspace'}
               </button>
             </form>
 
             <div className="auth-footer">
               Already have an account?{' '}
-              <Link to="/login" className={isDev ? 'dev-link' : ''}>
+              <Link to="/login">
                 Sign in
               </Link>
             </div>
@@ -259,3 +206,4 @@ export default function SignupPage() {
     </div>
   );
 }
+

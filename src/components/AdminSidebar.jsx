@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Bell, Settings, LogOut,
-  ShieldCheck, BarChart3, Folder, Palette,
+  ShieldCheck, BarChart3, Folder, Palette, CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -13,6 +13,7 @@ const adminNavItems = [
 
 const accountItems = [
   { to: '/admin/notifications', icon: Bell, label: 'Notifications', exact: false },
+  { to: '/admin/billing', icon: CreditCard, label: 'Billing', exact: false, adminOnly: true },
   { to: '/admin/settings', icon: Settings, label: 'Settings', exact: false },
 ];
 
@@ -91,7 +92,7 @@ export default function AdminSidebar({ unreadCount = 0 }) {
 
           <div className="nav-section">
             <p className="nav-section-label">Account</p>
-            {accountItems.map(({ to, icon: Icon, label }) => (
+             {accountItems.filter(item => !item.adminOnly || ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role)).map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
                 to={to}

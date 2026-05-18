@@ -15,10 +15,11 @@ import {
   collection,
   where,
   getDocs,
-  deleteDoc
+  deleteDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
-import { setGlobalOrgId } from '../services/firestoreService';
+import { setGlobalOrgId, setGlobalUserContext } from '../services/firestoreService';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
@@ -35,86 +36,128 @@ export function AuthProvider({ children }) {
 
   async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1', workspaceName = '') {
     let user;
+    
+    // Phase 1: Authentication
     try {
       const result = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
       user = result.user;
     } catch (err) {
-      if (err.code === 'auth/email-already-in-use') {
-        // If account exists, try to sign in to continue the process
-        console.log("[AuthContext] Account already exists, attempting sign-in to complete profile...");
-        const result = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
-        user = result.user;
+      console.error("[AuthContext] Signup phase 1 error:", err);
+      
+      const errCode = err.code || err.error?.code;
+      const errMsg = err.message || err.error?.message || "";
+      
+      const isEmailInUse = errCode === 'auth/email-already-in-use' || 
+                          errCode === 'EMAIL_EXISTS' ||
+                          errMsg.includes('EMAIL_EXISTS') ||
+                          errMsg.includes('email-already-in-use');
+
+      if (isEmailInUse) {
+        console.log("[AuthContext] Account already exists, attempting sign-in...");
+        try {
+          const result = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+          user = result.user;
+          console.log("[AuthContext] Sign-in successful for existing account:", user.uid);
+        } catch (signInErr) {
+          console.error("[AuthContext] Sign-in failed for existing account:", signInErr);
+          const finalErr = new Error("An account with this email already exists. Please sign in with the correct password.");
+          finalErr.code = 'auth/email-already-in-use';
+          throw finalErr;
+        }
       } else {
         throw err;
       }
     }
 
-    await updateProfile(user, { displayName });
-    
-    // Check for existing invited user with same email and merge data
-    let invitedData = {};
+    // Phase 2: User Initialization
     try {
-      const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
-      const snap = await getDocs(q);
+      console.log("[AuthContext] Phase 2: Updating profile...");
+      await updateProfile(user, { displayName });
       
-      for (const d of snap.docs) {
-        if (d.id !== user.uid) {
-          invitedData = d.data();
-          try {
-            await deleteDoc(d.ref);
-            console.log(`[AuthContext] Cleaned up invited placeholder: ${d.id}`);
-          } catch (deleteError) {
-            console.warn(`[AuthContext] Could not delete placeholder ${d.id}:`, deleteError);
+      console.log("[AuthContext] Phase 3: Checking for invites...");
+      let invitedData = {};
+      try {
+        const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
+        const snap = await getDocs(q);
+        
+        for (const d of snap.docs) {
+          const data = d.data();
+          if (data.invited) {
+            invitedData = data;
+            if (d.id !== user.uid) {
+              await deleteDoc(doc(db, 'users', d.id));
+            }
+            break;
           }
         }
+      } catch (inviteErr) {
+        console.warn("[AuthContext] Failed to check for invites (non-critical):", inviteErr);
       }
-    } catch (e) {
-      console.error("Error cleaning up invited user docs:", e);
+
+      console.log("[AuthContext] Phase 4: Initializing data...");
+      let orgId = '';
+      let finalRole = role;
+
+      if (Object.keys(invitedData).length > 0) {
+        orgId = invitedData.organizationId || "default_org_id";
+        finalRole = invitedData.role || role;
+      } else {
+        const orgRef = doc(collection(db, 'organizations'));
+        orgId = orgRef.id;
+        console.log("[AuthContext] Calling setDoc for organization...");
+        try {
+          await setDoc(orgRef, {
+            name: workspaceName || 'My Workspace',
+            ownerId: user.uid,
+            createdAt: serverTimestamp(),
+            subscription: {
+              plan: 'free',
+              status: 'active',
+              aiQuota: 100,
+              aiUsed: 0,
+              resetDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString()
+            }
+          });
+        } catch (orgErr) {
+          console.error("[AuthContext] Error creating organization:", orgErr);
+          throw orgErr;
+        }
+        finalRole = 'Admin'; // Creator is Admin
+      }
+
+      console.log("[AuthContext] Phase 5: Saving user profile...");
+      const userData = {
+        uid: user.uid,
+        email: email.toLowerCase(),
+        displayName,
+        role: finalRole,
+        organizationId: orgId,
+        avatarBg,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      };
+
+      try {
+        await setDoc(doc(db, 'users', user.uid), userData);
+      } catch (userErr) {
+        console.error("[AuthContext] Error creating user document:", userErr);
+        throw userErr;
+      }
+      
+      try {
+        setUserProfile(userData);
+        setGlobalUserContext(orgId, finalRole);
+      } catch (ctxErr) {
+        console.error("[AuthContext] Error setting context:", ctxErr);
+      }
+      
+      console.log("[AuthContext] Signup process complete for UID:", user.uid);
+      return user;
+    } catch (finalErr) {
+      console.error("[AuthContext] Critical error during signup post-auth:", finalErr);
+      throw finalErr;
     }
-
-    let orgId = "default_org_id";
-    let finalRole = role;
-
-    if (Object.keys(invitedData).length > 0) {
-      orgId = invitedData.organizationId || "default_org_id";
-      finalRole = invitedData.role || role;
-    } else {
-      // Cold Signup - Create Organization
-      finalRole = 'org_admin'; // First user is the org admin
-      const orgRef = doc(collection(db, 'organizations'));
-      orgId = orgRef.id;
-      await setDoc(orgRef, {
-        name: workspaceName || 'My Workspace',
-        domain: email.split('@')[1] || '',
-        subscription: {
-          planId: 'free',
-          status: 'active'
-        },
-        aiUsage: {
-          monthlyLimit: 100,
-          currentUsage: 0,
-        },
-        createdAt: new Date().toISOString()
-      });
-    }
-
-    const userData = {
-      uid: user.uid,
-      email: email.toLowerCase(),
-      displayName: displayName || invitedData.name || '',
-      role: finalRole,
-      organizationId: orgId,
-      isActive: true,
-      invited: false,
-      createdAt: invitedData.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || invitedData.name || 'User')}&background=${avatarBg}&color=fff`,
-      invitedBy: invitedData.invitedBy || null,
-      invitedByEmail: invitedData.invitedByEmail || null,
-    };
-    await setDoc(doc(db, 'users', user.uid), userData);
-    setUserProfile(userData);
-    return user;
   }
 
   async function login(email, password) {
@@ -131,6 +174,7 @@ export function AuthProvider({ children }) {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
+      setGlobalUserContext(data.organizationId, data.role);
       setUserProfile(data);
       return data;
     }
@@ -140,10 +184,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let unsubscribeProfile = null;
 
-    console.log("AuthContext: Initializing...");
-
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      console.log("AuthContext: Auth state changed", user ? user.uid : "no user");
       try {
         setCurrentUser(user);
 
@@ -153,12 +194,9 @@ export function AuthProvider({ children }) {
         }
 
         if (user) {
-          // Fetch profile initially to have it in context and check if deactivated
-          console.log("AuthContext: Fetching user profile...");
           const profile = await fetchUserProfile(user.uid);
-          console.log("AuthContext: Profile fetched", profile);
           if (profile) {
-            setGlobalOrgId(profile.organizationId || 'default_org_id');
+            setGlobalUserContext(profile.organizationId || 'default_org_id', profile.role);
             if (profile.isActive === false) {
               await logout();
               toast.error('Your account has been deactivated.');
@@ -167,13 +205,12 @@ export function AuthProvider({ children }) {
             }
           }
 
-          // Setup real-time listener to automatically log out the user if an Admin deactivates them
           const docRef = doc(db, 'users', user.uid);
           unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
             if (docSnap.exists()) {
               const data = docSnap.data();
+              setGlobalUserContext(data.organizationId || 'default_org_id', data.role);
               setUserProfile(data);
-              setGlobalOrgId(data.organizationId || 'default_org_id');
               if (data.isActive === false) {
                 await logout();
                 toast.error('Your account has been deactivated.');
@@ -189,14 +226,25 @@ export function AuthProvider({ children }) {
         console.error("AuthContext: Error in onAuthStateChanged", error);
       } finally {
         setLoading(false);
-        console.log("AuthContext: Loading set to false");
       }
     });
 
-    // Fetch branding settings real-time
-    console.log("AuthContext: Setting up branding listener...");
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+      }
+    }, 5000);
 
-    // Preload instantly from localStorage fallback so it loads without any latency
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
+  }, []);
+
+  useEffect(() => {
+    let brandingUnsub = null;
+
     try {
       const cached = localStorage.getItem('qualia_branding');
       if (cached) {
@@ -207,44 +255,41 @@ export function AuthProvider({ children }) {
           document.documentElement.style.setProperty('--dev-accent', localData.primaryColor);
         }
       }
-    } catch (e) {
-      console.warn("AuthContext: Initial local cache read warning:", e);
+    } catch (e) {}
+
+    if (userProfile && !['super_admin', 'Superadmin'].includes(userProfile.role) && userProfile.organizationId) {
+      brandingUnsub = onSnapshot(doc(db, 'organizations', userProfile.organizationId), (snap) => {
+        if (snap.exists()) {
+          const orgData = snap.data();
+          if (orgData.branding) {
+            setBranding(orgData.branding);
+            if (orgData.branding.primaryColor) {
+              document.documentElement.style.setProperty('--accent', orgData.branding.primaryColor);
+              document.documentElement.style.setProperty('--dev-accent', orgData.branding.primaryColor);
+            }
+          }
+        }
+      });
+    } else {
+      brandingUnsub = onSnapshot(doc(db, 'settings', 'branding'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setBranding(data);
+          try {
+            localStorage.setItem('qualia_branding', JSON.stringify(data));
+          } catch (e) {}
+          if (data.primaryColor) {
+            document.documentElement.style.setProperty('--accent', data.primaryColor);
+            document.documentElement.style.setProperty('--dev-accent', data.primaryColor);
+          }
+        }
+      });
     }
 
-    const brandingUnsub = onSnapshot(doc(db, 'settings', 'branding'), (snap) => {
-      console.log("AuthContext: Branding settings updated");
-      if (snap.exists()) {
-        const data = snap.data();
-        setBranding(data);
-        try {
-          localStorage.setItem('qualia_branding', JSON.stringify(data));
-        } catch (e) {}
-        // Apply primary color to CSS variables
-        if (data.primaryColor) {
-          document.documentElement.style.setProperty('--accent', data.primaryColor);
-          document.documentElement.style.setProperty('--dev-accent', data.primaryColor);
-        }
-      }
-    }, (err) => {
-      console.warn("AuthContext: Live branding listener rejected (this is expected if cloud Firestore rules are not yet deployed):", err);
-    });
-
-    // Safety timeout: if auth takes more than 5 seconds, force loading to false
-    // to prevent a permanent blank page if Firebase hangs.
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn("AuthContext: Initialization timed out. Forcing loading to false.");
-        setLoading(false);
-      }
-    }, 5000);
-
     return () => {
-      clearTimeout(timeoutId);
-      unsubscribeAuth();
-      brandingUnsub();
-      if (unsubscribeProfile) unsubscribeProfile();
+      if (brandingUnsub) brandingUnsub();
     };
-  }, []);
+  }, [userProfile?.organizationId, userProfile?.role]);
 
   const value = {
     currentUser,
@@ -255,6 +300,8 @@ export function AuthProvider({ children }) {
     fetchUserProfile,
     branding,
     loading,
+    isSuperAdmin: userProfile?.role === 'super_admin' || userProfile?.role === 'Superadmin',
+    isAdmin: ['org_admin', 'Admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role),
   };
 
   return (

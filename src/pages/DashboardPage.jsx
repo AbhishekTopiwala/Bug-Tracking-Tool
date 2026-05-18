@@ -574,7 +574,8 @@ export default function DashboardPage() {
 
   const myBugs = useMemo(() => {
     const myProjectIds = projects.map(p => p.id);
-    if (userProfile?.role === 'Admin') return bugs;
+    const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
+    if (isAdmin) return bugs;
     return bugs.filter(b => myProjectIds.includes(b.projectId));
   }, [bugs, projects, userProfile?.role]);
 

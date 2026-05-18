@@ -13,6 +13,7 @@ import { subscribeToNotifications } from './services/firestoreService';
 import Sidebar from './components/Sidebar';
 import DevSidebar from './components/DevSidebar';
 import AdminSidebar from './components/AdminSidebar';
+import SuperAdminSidebar from './components/super-admin/SuperAdminSidebar';
 import PrivateRoute from './components/PrivateRoute';
 import RoleRoute from './components/RoleRoute';
 
@@ -43,6 +44,10 @@ const ProjectOverviewPage = lazy(() => import('./pages/admin/ProjectOverviewPage
 const ProjectTeamPage = lazy(() => import('./pages/admin/ProjectTeamPage'));
 const PublicProjectPage = lazy(() => import('./pages/PublicProjectPage'));
 
+// Lazy-loaded Super Admin Portal pages
+const SuperAdminDashboardPage = lazy(() => import('./pages/super-admin/SuperAdminDashboardPage'));
+const OrganizationsManagementPage = lazy(() => import('./pages/super-admin/OrganizationsManagementPage'));
+
 import { Loader2 } from 'lucide-react';
 
 function PageLoader() {
@@ -65,7 +70,7 @@ function PageLoader() {
 
 // ── Root redirect based on role ──────────────────────────────────────────────
 function RootRedirect() {
-  const { currentUser, userProfile, loading } = useAuth();
+  const { currentUser, userProfile, loading, isSuperAdmin, isAdmin } = useAuth();
 
   if (loading) return null;
   if (!currentUser) return <Navigate to="/login" replace />;
@@ -87,8 +92,9 @@ function RootRedirect() {
     );
   }
 
+  if (isSuperAdmin) return <Navigate to="/super-admin" replace />;
   if (userProfile.role === 'Developer') return <Navigate to="/dev" replace />;
-  if (userProfile.role === 'Admin')     return <Navigate to="/admin" replace />;
+  if (isAdmin) return <Navigate to="/admin" replace />;
   return <Navigate to="/qa" replace />;
 }
 
@@ -195,6 +201,26 @@ function AdminPortal() {
   );
 }
 
+// ── Super Admin Portal Layout ───────────────────────────────────────────────────
+function SuperAdminPortal() {
+  return (
+    <div className="app-layout">
+      <SuperAdminSidebar />
+      <div className="main-content">
+        <Routes>
+          <Route index element={<SuperAdminDashboardPage />} />
+          <Route path="organizations" element={<OrganizationsManagementPage />} />
+          <Route path="subscriptions" element={<div className="admin-container"><h1>Subscriptions Management</h1><p style={{ color: 'var(--text-muted)' }}>Coming Soon</p></div>} />
+          <Route path="ai-usage" element={<div className="admin-container"><h1>AI Analytics</h1><p style={{ color: 'var(--text-muted)' }}>Coming Soon</p></div>} />
+          <Route path="health" element={<div className="admin-container"><h1>System Health</h1><p style={{ color: 'var(--text-muted)' }}>Coming Soon</p></div>} />
+          <Route path="settings" element={<div className="admin-container"><h1>Global Settings</h1><p style={{ color: 'var(--text-muted)' }}>Coming Soon</p></div>} />
+          <Route path="*" element={<Navigate to="/super-admin" replace />} />
+        </Routes>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ─────────────────────────────────────────────────────────────────
 function AppLayout() {
   const location = useLocation();
@@ -246,8 +272,20 @@ function AppLayout() {
         path="/admin/*"
         element={
           <PrivateRoute>
-            <RoleRoute allowedRoles={['Admin']} redirectTo="/">
+            <RoleRoute allowedRoles={['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager']} redirectTo="/">
               <AdminPortal />
+            </RoleRoute>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Super Admin Portal — /super-admin/* */}
+      <Route
+        path="/super-admin/*"
+        element={
+          <PrivateRoute>
+            <RoleRoute allowedRoles={['super_admin', 'Superadmin']} redirectTo="/">
+              <SuperAdminPortal />
             </RoleRoute>
           </PrivateRoute>
         }

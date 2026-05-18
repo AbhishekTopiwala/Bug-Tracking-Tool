@@ -6,7 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 export default function BugCard({ bug, hideStatus = false }) {
   const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();
-  const basePath = userProfile?.role === 'Admin' ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
+  const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
+  const basePath = isAdmin ? '/admin' : userProfile?.role === 'Developer' ? '/dev' : '/qa';
 
   const timeAgo = bug.createdAt?.seconds
     ? formatDistanceToNow(new Date(bug.createdAt.seconds * 1000), { addSuffix: true })
@@ -14,7 +15,7 @@ export default function BugCard({ bug, hideStatus = false }) {
 
   const bugKey = bug.bugKey || (bug.id?.slice(-6).toUpperCase() || 'BUG');
 
-  const canEdit = userProfile?.role === 'Admin' || bug.reportedBy === currentUser?.uid;
+  const canEdit = isAdmin || bug.reportedBy === currentUser?.uid;
 
   // Map status to glow colors
   const statusGlow = {
