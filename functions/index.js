@@ -9,7 +9,7 @@ const crypto = require("crypto");
 initializeApp();
 const db = getFirestore();
 
-// Helper to check org quota (Placeholder for actual billing logic)
+// Helper to check org quota
 async function checkAndIncrementQuota(orgId) {
   if (!orgId) throw new HttpsError("unauthenticated", "Organization ID missing");
 
@@ -17,20 +17,23 @@ async function checkAndIncrementQuota(orgId) {
   const orgDoc = await orgRef.get();
   
   if (!orgDoc.exists) {
-    // For migration purposes, if org doesn't exist, we allow it to pass or create it.
-    // In production, throw error if not found.
     return true; 
   }
 
   const data = orgDoc.data();
-  const usage = data.aiUsage || { currentUsage: 0, monthlyLimit: 50 };
+  // Reconcile and synchronize both subscription and legacy aiUsage schemas
+  const sub = data.subscription || {};
+  const currentUsage = typeof sub.aiUsed === 'number' ? sub.aiUsed : (data.aiUsage?.currentUsage || 0);
+  const monthlyLimit = typeof sub.aiQuota === 'number' ? sub.aiQuota : (data.aiUsage?.monthlyLimit || 50);
 
-  if (usage.currentUsage >= usage.monthlyLimit) {
+  if (currentUsage >= monthlyLimit) {
     throw new HttpsError("resource-exhausted", "AI Generation quota exceeded for this organization.");
   }
 
   await orgRef.update({
-    "aiUsage.currentUsage": usage.currentUsage + 1,
+    "subscription.aiUsed": currentUsage + 1,
+    "aiUsage.currentUsage": currentUsage + 1,
+    "aiUsage.monthlyLimit": monthlyLimit
   });
 
   return true;
@@ -269,6 +272,7 @@ exports.resetMonthlyQuota = onSchedule("0 0 1 * *", async (event) => {
   const batch = db.batch();
   orgsSnap.docs.forEach((doc) => {
     batch.update(doc.ref, {
+      "subscription.aiUsed": 0,
       "aiUsage.currentUsage": 0,
       "aiUsage.lastResetAt": new Date().toISOString()
     });

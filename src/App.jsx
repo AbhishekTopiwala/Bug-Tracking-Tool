@@ -21,6 +21,7 @@ import RoleRoute from './components/RoleRoute';
 // Lazy-loaded Auth pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
+const InvitePage = lazy(() => import('./pages/InvitePage'));
 
 // Lazy-loaded QA Portal pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -229,13 +230,14 @@ function SuperAdminPortal() {
 // ── Main App ─────────────────────────────────────────────────────────────────
 function AppLayout() {
   const location = useLocation();
-  const isAuthPage = ['/login', '/signup'].includes(location.pathname);
+  const isAuthPage = ['/login', '/signup', '/invite'].includes(location.pathname);
 
   if (isAuthPage) {
     return (
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/invite" element={<InvitePage />} />
       </Routes>
     );
   }

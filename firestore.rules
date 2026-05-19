@@ -2,40 +2,53 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to get the current user's data
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
     function isSignedIn() {
       return request.auth != null;
     }
 
+    function hasUserData() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Helper function to get the current user's data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isUserActive() {
+      return isSignedIn() && 
+             (!hasUserData() || getUserData().isActive == true);
+    }
+
     function isSuperAdmin() {
-      return isSignedIn() && getUserData().role in ['super_admin', 'Superadmin'];
+      return isSignedIn() && hasUserData() && isUserActive() && getUserData().role in ['super_admin', 'Superadmin'];
     }
 
     // Helper to verify tenant isolation
     function isSameOrg(resourceOrgId) {
-      return isSignedIn() && getUserData().organizationId == resourceOrgId;
+      return isSignedIn() && hasUserData() && isUserActive() && getUserData().organizationId == resourceOrgId;
     }
 
     function isOrgAdmin() {
-      return isSignedIn() && getUserData().role in ['org_admin', 'super_admin', 'Admin', 'Superadmin', 'Manager'];
+      return isSignedIn() && hasUserData() && isUserActive() && getUserData().role in ['org_admin', 'super_admin', 'Admin', 'Superadmin', 'Manager'];
     }
 
     match /organizations/{orgId} {
-      allow read: if isSuperAdmin() || (isSignedIn() && getUserData().organizationId == orgId);
+      allow read: if isSuperAdmin() || (hasUserData() && getUserData().organizationId == orgId);
       // Allow any signed-in user to create an organization (Cold Signup)
       allow create: if isSignedIn();
       // Org admins can update their own org; only super admins can delete
-      allow update: if isSuperAdmin() || (isSignedIn() && getUserData().organizationId == orgId && isOrgAdmin());
+      allow update: if isSuperAdmin() || (hasUserData() && getUserData().organizationId == orgId && isOrgAdmin());
       allow delete: if isSuperAdmin();
     }
 
     match /users/{userId} {
-      // Allow initial creation if authenticated
-      allow create: if isSignedIn();
+      // Allow initial creation if authenticated, ensuring ID matches or creator is Admin in same org
+      allow create: if isSignedIn() && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        (isOrgAdmin() && request.resource.data.organizationId == getUserData().organizationId)
+      );
       
       // A user can read their own document, or if it matches their email (for invite lookups)
       // Super admin can read any. Same-org users can read team members.
@@ -46,12 +59,14 @@ service cloud.firestore {
         (resource != null && isSameOrg(resource.data.organizationId))
       );
 
-      // A user can update their own document, org admins can manage their org's users,
+      // A user can update their own document (excluding roles/tenant hopping), org admins can manage their org's users,
       // super admins can manage anyone.
       allow update: if isSignedIn() && (
-        request.auth.uid == userId ||
+        (request.auth.uid == userId && 
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'isActive', 'email'])) ||
         isSuperAdmin() ||
-        (isOrgAdmin() && isSameOrg(resource.data.organizationId))
+        (isOrgAdmin() && isSameOrg(resource.data.organizationId) && 
+         !(request.resource.data.role in ['super_admin', 'Superadmin']))
       );
 
       allow delete: if isSignedIn() && (
@@ -62,8 +77,10 @@ service cloud.firestore {
     }
 
     match /bugs/{bugId} {
-      // Super admin sees all; others see only their org's bugs
-      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      // Super admin sees all; others see only their org's bugs, or public portal visitors see bugs in public projects
+      allow read: if isSuperAdmin() || 
+                  isSameOrg(resource.data.organizationId) || 
+                  (resource.data.projectId != null && get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.isPublic == true);
       // Only create bugs in your own org
       allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
       // Only update bugs in your own org (can't change org)
@@ -78,7 +95,8 @@ service cloud.firestore {
     }
     
     match /projects/{projectId} {
-      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      // Allow read if Superadmin, member of same org, or if project is explicitly public
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId) || resource.data.isPublic == true;
       allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
       allow update: if isSuperAdmin() || (
         isSameOrg(resource.data.organizationId) && 
@@ -107,9 +125,9 @@ service cloud.firestore {
     }
 
     match /invitations/{inviteId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isOrgAdmin();
-      allow update, delete: if isSignedIn() && (isOrgAdmin() || request.auth.uid == resource.data.invitedBy);
+      allow read: if isSignedIn() && (isSuperAdmin() || (hasUserData() && resource.data.organizationId == getUserData().organizationId));
+      allow create: if isSignedIn() && isOrgAdmin() && request.resource.data.organizationId == getUserData().organizationId;
+      allow update, delete: if isSignedIn() && (isSuperAdmin() || (isOrgAdmin() && isSameOrg(resource.data.organizationId)) || request.auth.uid == resource.data.invitedBy);
     }
   }
 }

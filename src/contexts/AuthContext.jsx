@@ -16,6 +16,7 @@ import {
   where,
   getDocs,
   deleteDoc,
+  updateDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
@@ -25,6 +26,48 @@ import toast from 'react-hot-toast';
 const AuthContext = createContext(null);
 
 let isSigningUp = false;
+
+async function migrateProjectAndBugAssignments(oldId, newId, orgId) {
+  if (!oldId || !newId || !orgId) return;
+  console.log(`[AuthContext] Migrating assignments from placeholder ${oldId} to real UID ${newId} in org ${orgId}...`);
+  try {
+    // 1. Projects
+    const qProjects = query(
+      collection(db, 'projects'),
+      where('organizationId', '==', orgId),
+      where('assignedUsers', 'array-contains', oldId)
+    );
+    const snapProjects = await getDocs(qProjects);
+    console.log(`[AuthContext] Found ${snapProjects.size} projects referencing placeholder ${oldId}`);
+    for (const projectDoc of snapProjects.docs) {
+      const data = projectDoc.data();
+      const assignedUsers = data.assignedUsers || [];
+      const updatedUsers = assignedUsers.map(uid => uid === oldId ? newId : uid);
+      const uniqueUsers = Array.from(new Set(updatedUsers));
+      await updateDoc(doc(db, 'projects', projectDoc.id), {
+        assignedUsers: uniqueUsers
+      });
+      console.log(`[AuthContext] Updated project ${projectDoc.id} assignments.`);
+    }
+
+    // 2. Bugs
+    const qBugs = query(
+      collection(db, 'bugs'),
+      where('organizationId', '==', orgId),
+      where('assigneeId', '==', oldId)
+    );
+    const snapBugs = await getDocs(qBugs);
+    console.log(`[AuthContext] Found ${snapBugs.size} bugs assigned to placeholder ${oldId}`);
+    for (const bugDoc of snapBugs.docs) {
+      await updateDoc(doc(db, 'bugs', bugDoc.id), {
+        assigneeId: newId
+      });
+      console.log(`[AuthContext] Updated bug ${bugDoc.id} assigneeId.`);
+    }
+  } catch (err) {
+    console.error("[AuthContext] Error migrating assignments:", err);
+  }
+}
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -43,11 +86,11 @@ export function AuthProvider({ children }) {
       
       // Phase 1: Authentication
       try {
+        console.log("[AuthContext] Phase 1: Creating user in Firebase Auth...");
         const result = await createUserWithEmailAndPassword(auth, email.toLowerCase(), password);
         user = result.user;
+        console.log("[AuthContext] User created in Auth:", user.uid);
       } catch (err) {
-        console.error("[AuthContext] Signup phase 1 error:", err);
-        
         const errCode = err.code || err.error?.code;
         const errMsg = err.message || err.error?.message || "";
         
@@ -57,17 +100,10 @@ export function AuthProvider({ children }) {
                             errMsg.includes('email-already-in-use');
 
         if (isEmailInUse) {
-          console.log("[AuthContext] Account already exists, attempting sign-in...");
-          try {
-            const result = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
-            user = result.user;
-            console.log("[AuthContext] Sign-in successful for existing account:", user.uid);
-          } catch (signInErr) {
-            console.error("[AuthContext] Sign-in failed for existing account:", signInErr);
-            const finalErr = new Error("An account with this email already exists. Please sign in with the correct password.");
-            finalErr.code = 'auth/email-already-in-use';
-            throw finalErr;
-          }
+          console.log("[AuthContext] Account already exists. Refusing signup to prevent collision.");
+          const finalErr = new Error("An account with this email already exists. Please log in instead.");
+          finalErr.code = 'auth/email-already-in-use';
+          throw finalErr;
         } else {
           throw err;
         }
@@ -89,6 +125,7 @@ export function AuthProvider({ children }) {
             if (data.invited) {
               invitedData = data;
               if (d.id !== user.uid) {
+                await migrateProjectAndBugAssignments(d.id, user.uid, invitedData.organizationId || "default_org_id");
                 await deleteDoc(doc(db, 'users', d.id));
               }
               break;
@@ -202,6 +239,7 @@ export function AuthProvider({ children }) {
         if (data.invited) {
           invitedData = data;
           if (d.id !== user.uid) {
+            await migrateProjectAndBugAssignments(d.id, user.uid, invitedData.organizationId || "default_org_id");
             await deleteDoc(doc(db, 'users', d.id));
           }
           break;

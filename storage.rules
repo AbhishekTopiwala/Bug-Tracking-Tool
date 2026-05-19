@@ -1,8 +1,18 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Only allow users to read/write files under their organization prefix
+    match /organizations/{orgId}/{allPaths=**} {
+      allow read, write: if request.auth != null && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.organizationId == orgId &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+    
+    // Super admins can access everything
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if request.auth != null && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['super_admin', 'Superadmin'] &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isActive == true;
     }
   }
 }
