@@ -31,6 +31,9 @@
     "rules": "storage.rules"
   },
   "emulators": {
+    "functions": {
+      "port": 5001
+    },
     "storage": {
       "port": 9199
     },

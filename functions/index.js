@@ -43,6 +43,42 @@ async function checkAndIncrementQuota(orgId) {
 // Using a generic API key variable. In production, use Firebase Secret Manager.
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
 
+// Helper function to query Gemini with retry logic and fallback model mechanism
+async function generateGeminiContentWithRetry(genAI, defaultModel, systemInstruction, contents, maxRetries = 3) {
+  let currentModel = defaultModel;
+  let delay = 1000;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: currentModel,
+        systemInstruction: systemInstruction
+      });
+      const result = await model.generateContent(contents);
+      return result;
+    } catch (error) {
+      console.error(`[Gemini Attempt ${attempt}] Failed using model ${currentModel}:`, error);
+      
+      const status = error.status;
+      const isTransient = status === 503 || status === 429 || error.message?.includes("experiencing high demand") || error.message?.includes("503") || error.message?.includes("429");
+      
+      if (isTransient && attempt < maxRetries) {
+        // Toggle model to the other 2.5 flash model as a fallback
+        if (currentModel === 'gemini-2.5-flash-lite') {
+          currentModel = 'gemini-2.5-flash';
+        } else {
+          currentModel = 'gemini-2.5-flash-lite';
+        }
+        console.warn(`[Gemini Retry] Retrying in ${delay}ms with fallback model: ${currentModel}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 1.5;
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
 exports.generateBugFromNote = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be logged in to generate bugs.");
@@ -60,9 +96,7 @@ exports.generateBugFromNote = onCall(async (request) => {
   }
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash-lite',
-    systemInstruction: `You are a QA engineer assistant. Convert the short QA note into a formal bug report.
+  const systemInstruction = `You are a QA engineer assistant. Convert the short QA note into a formal bug report.
 Respond ONLY with a valid JSON object (no markdown, no code blocks) in this exact format:
 {
   "title": "Clear, concise bug title",
@@ -73,11 +107,15 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks) in this exac
   "priority": "High"
 }
 
-Priority must be one of: Low, Medium, High, Critical`
-  });
+Priority must be one of: Low, Medium, High, Critical`;
 
   try {
-    const result = await model.generateContent(`QA Note: "${note}"`);
+    const result = await generateGeminiContentWithRetry(
+      genAI,
+      'gemini-2.5-flash-lite',
+      systemInstruction,
+      `QA Note: "${note}"`
+    );
     const text = result.response.text().trim();
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     return JSON.parse(cleaned);
@@ -103,9 +141,7 @@ exports.generateTestCases = onCall(async (request) => {
   }
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash-lite',
-    systemInstruction: `You are a QA engineer. Generate comprehensive test cases for the provided feature description or image of a website page.
+  const systemInstruction = `You are a QA engineer. Generate comprehensive test cases for the provided feature description or image of a website page.
 Analyze the image or description carefully to list:
 - Positive flows (successful operations, standard user behavior)
 - Negative flows (validation errors, wrong inputs, invalid operations)
@@ -122,8 +158,7 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks) in this exac
   "edge": [
     {"id": "TC-E1", "title": "Test case title", "steps": ["Step 1", "Step 2"], "expected": "Expected result"}
   ]
-}`
-  });
+}`;
 
   const contents = [];
   if (imageBase64 && imageMimeType) {
@@ -140,7 +175,12 @@ Respond ONLY with a valid JSON object (no markdown, no code blocks) in this exac
   });
 
   try {
-    const result = await model.generateContent(contents);
+    const result = await generateGeminiContentWithRetry(
+      genAI,
+      'gemini-2.5-flash-lite',
+      systemInstruction,
+      contents
+    );
     const text = result.response.text().trim();
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     return JSON.parse(cleaned);
@@ -161,24 +201,24 @@ exports.suggestSimilarBugs = onCall(async (request) => {
 
   const { title, existingBugs, organizationId } = request.data;
 
-  // We might not increment quota for just a suggestSimilarBugs call, or we could.
-  // Assuming we do.
   if (organizationId) {
      await checkAndIncrementQuota(organizationId);
   }
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash-lite',
-    systemInstruction: `Given a new bug title, analyze the provided list of existing bugs and identify any that are highly similar or duplicates.
+  const systemInstruction = `Given a new bug title, analyze the provided list of existing bugs and identify any that are highly similar or duplicates.
 Return ONLY a JSON array containing the IDs of the most similar bugs (maximum 3). Example: ["bug1", "bug2"]
-If no existing bugs are similar, return: []`
-  });
+If no existing bugs are similar, return: []`;
 
   const bugList = (existingBugs || []).slice(0, 20).map(b => `ID: ${b.id} | Title: ${b.title}`).join('\n');
 
   try {
-    const result = await model.generateContent(`New bug title: "${title}"\n\nExisting bugs:\n${bugList}`);
+    const result = await generateGeminiContentWithRetry(
+      genAI,
+      'gemini-2.5-flash-lite',
+      systemInstruction,
+      `New bug title: "${title}"\n\nExisting bugs:\n${bugList}`
+    );
     const text = result.response.text().trim();
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     return JSON.parse(cleaned);
