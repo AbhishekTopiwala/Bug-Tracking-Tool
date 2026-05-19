@@ -4,7 +4,7 @@ import {
   ShieldOff, CheckCircle, ChevronDown, ChevronUp, Filter,
   TrendingUp, Users, BrainCircuit, Layers, Clock, Mail, Info, ArrowUpDown, ShieldCheck
 } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import toast from 'react-hot-toast';
 
@@ -28,8 +28,33 @@ export default function OrganizationsManagementPage() {
     setLoading(true);
     try {
       const snap = await getDocs(collection(db, 'organizations'));
-      setOrganizations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const projectsSnap = await getDocs(collection(db, 'projects'));
+      const usersSnap = await getDocs(collection(db, 'users'));
+
+      const allProjects = projectsSnap.docs.map(d => d.data());
+      const allUsers = usersSnap.docs.map(d => d.data());
+
+      const orgs = snap.docs.map(d => {
+        const orgId = d.id;
+        const orgData = d.data();
+
+        // Calculate actual projects count for this organization
+        const projectsCount = allProjects.filter(p => p.organizationId === orgId).length;
+
+        // Calculate actual active members count for this organization
+        const membersCount = allUsers.filter(u => u.organizationId === orgId && u.isActive !== false).length;
+
+        return {
+          id: orgId,
+          ...orgData,
+          projectsCount,
+          membersCount
+        };
+      });
+
+      setOrganizations(orgs);
     } catch (err) {
+      console.error('Failed to load organizations:', err);
       toast.error('Failed to load organizations');
     } finally {
       setLoading(false);
@@ -56,15 +81,85 @@ export default function OrganizationsManagementPage() {
 
   const handleDelete = async (orgId, e) => {
     e.stopPropagation(); // Prevent drawer toggle
-    if (!window.confirm('Are you absolutely sure you want to delete this organization? All projects, members, and AI data will be lost.')) return;
     
+    const confirmMessage = 
+      "⚠️ WARNING: You are executing a secure cascading purge on this workspace!\n\n" +
+      "This action will permanently:\n" +
+      "1. Delete the organization record.\n" +
+      "2. Delete all private projects belonging to this workspace.\n" +
+      "3. Delete all bugs and test logs registered under those projects.\n" +
+      "4. Revoke and delete pending team invitations.\n" +
+      "5. Deactivate all members and lock them out of the platform safely.\n\n" +
+      "Are you absolutely sure you want to proceed?";
+
+    if (!window.confirm(confirmMessage)) return;
+    
+    setLoading(true);
     try {
-      await deleteDoc(doc(db, 'organizations', orgId));
+      // 1. Fetch bugs
+      const bugsRef = collection(db, 'bugs');
+      const bugsSnap = await getDocs(bugsRef);
+      const bugsToDelete = bugsSnap.docs.filter(d => d.data().organizationId === orgId);
+
+      // 2. Fetch projects
+      const projectsRef = collection(db, 'projects');
+      const projectsSnap = await getDocs(projectsRef);
+      const projectsToDelete = projectsSnap.docs.filter(d => d.data().organizationId === orgId);
+
+      // 3. Fetch invitations
+      const invitesRef = collection(db, 'invitations');
+      const invitesSnap = await getDocs(invitesRef);
+      const invitesToDelete = invitesSnap.docs.filter(d => d.data().organizationId === orgId);
+
+      // 4. Fetch users
+      const usersRef = collection(db, 'users');
+      const usersSnap = await getDocs(usersRef);
+      const usersToDeactivate = usersSnap.docs.filter(d => d.data().organizationId === orgId);
+
+      // Initialize atomic transaction batch
+      const batch = writeBatch(db);
+
+      // Add bugs to batch delete
+      bugsToDelete.forEach(b => {
+        batch.delete(doc(db, 'bugs', b.id));
+      });
+
+      // Add projects to batch delete
+      projectsToDelete.forEach(p => {
+        batch.delete(doc(db, 'projects', p.id));
+      });
+
+      // Add invitations to batch delete
+      invitesToDelete.forEach(inv => {
+        batch.delete(doc(db, 'invitations', inv.id));
+      });
+
+      // Deactivate and unlink users in batch
+      usersToDeactivate.forEach(u => {
+        batch.update(doc(db, 'users', u.id), {
+          organizationId: null,
+          isActive: false,
+          is_active: false,
+          removedFromOrg: true,
+          removed_from_org: true,
+          deactivatedAt: new Date()
+        });
+      });
+
+      // Add organization itself to batch delete
+      batch.delete(doc(db, 'organizations', orgId));
+
+      // Commit changes atomically
+      await batch.commit();
+
       setOrganizations(orgs => orgs.filter(o => o.id !== orgId));
       if (expandedOrgId === orgId) setExpandedOrgId(null);
-      toast.success('Organization deleted successfully');
+      toast.success('Workspace and all associated resources successfully purged.');
     } catch (err) {
-      toast.error('Failed to delete organization');
+      console.error('[OrganizationsPage] Cascade deletion failed:', err);
+      toast.error('Failed to complete cascading workspace deletion.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -276,16 +371,16 @@ export default function OrganizationsManagementPage() {
                   const isSuspended = org.subscription?.status === 'suspended';
                   const isExpanded = expandedOrgId === org.id;
 
-                  // High-fidelity fallback details for the expanded drawer
-                  const currentUsage = org.aiUsage?.currentUsage || 0;
-                  const monthlyLimit = org.aiUsage?.monthlyLimit || 10000;
-                  const usagePercent = Math.min(100, Math.round((currentUsage / monthlyLimit) * 100));
+                  // High-fidelity details for the expanded drawer
+                  const currentUsage = org.subscription?.aiUsed !== undefined ? Number(org.subscription.aiUsed) : 0;
+                  const monthlyLimit = org.subscription?.aiQuota !== undefined ? Number(org.subscription.aiQuota) : 100;
+                  const usagePercent = monthlyLimit > 0 ? Math.min(100, Math.round((currentUsage / monthlyLimit) * 100)) : 0;
 
-                  const projectsCount = org.stats?.projectsCount || Math.floor(Math.random() * 8) + 2;
-                  const membersCount = org.stats?.membersCount || Math.floor(Math.random() * 12) + 2;
-                  const lastActiveDate = org.lastActive?.seconds 
-                    ? new Date(org.lastActive.seconds * 1000).toLocaleDateString()
-                    : new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000).toLocaleDateString();
+                  const projectsCount = org.projectsCount ?? 0;
+                  const membersCount = org.membersCount ?? 0;
+                  const lastActiveDate = org.createdAt?.seconds 
+                    ? new Date(org.createdAt.seconds * 1000).toLocaleDateString()
+                    : new Date().toLocaleDateString();
 
                   return (
                     <>

@@ -100,10 +100,17 @@ export function AuthProvider({ children }) {
                             errMsg.includes('email-already-in-use');
 
         if (isEmailInUse) {
-          console.log("[AuthContext] Account already exists. Refusing signup to prevent collision.");
-          const finalErr = new Error("An account with this email already exists. Please log in instead.");
-          finalErr.code = 'auth/email-already-in-use';
-          throw finalErr;
+          console.log("[AuthContext] Account already exists. Attempting auto-login to self-heal profile/invites...");
+          try {
+            const loginResult = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+            user = loginResult.user;
+            console.log("[AuthContext] Auto-login succeeded during signup collision for UID:", user.uid);
+          } catch (loginErr) {
+            console.warn("[AuthContext] Auto-login fallback failed:", loginErr);
+            const finalErr = new Error("An account with this email already exists. Please log in instead.");
+            finalErr.code = 'auth/email-already-in-use';
+            throw finalErr;
+          }
         } else {
           throw err;
         }
@@ -311,6 +318,26 @@ export function AuthProvider({ children }) {
         }
 
         if (user) {
+          if (isSigningUp) {
+            console.log("[AuthContext] Auth state changed during active signup. Bypassing self-healing and profile verification check.");
+            const docRef = doc(db, 'users', user.uid);
+            unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
+              if (docSnap.exists()) {
+                const data = docSnap.data();
+                setGlobalUserContext(data.organizationId || 'default_org_id', data.role);
+                setUserProfile(data);
+                if (data.isActive === false) {
+                  await logout();
+                  toast.error('Your account has been deactivated.');
+                }
+              }
+            }, (err) => {
+              console.error("AuthContext: Profile listener error during signup", err);
+            });
+            setLoading(false);
+            return;
+          }
+
           let profile = await fetchUserProfile(user.uid);
           if (!profile) {
             console.log("[AuthContext] Firestore profile missing for authenticated user. Attempting self-healing...");

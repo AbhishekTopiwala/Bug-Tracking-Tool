@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { 
-  BrainCircuit, Zap, Clock, DollarSign, ArrowUpRight, ArrowDownRight, 
+import {
+  BrainCircuit, Zap, Clock, DollarSign, ArrowUpRight, ArrowDownRight,
   Search, Filter, Activity, Server, Cpu, Layers, AlertCircle
 } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
@@ -34,19 +34,19 @@ export default function AIAnalyticsPage() {
         avgLatency: 860,
         apiCost: parseFloat((totalTokens * 0.000003).toFixed(2)) || 4.35
       };
-      
+
       setStats(computedStats);
 
       // Seed high-fidelity transaction records representing real platform events
       const mockLogs = orgs.flatMap(org => {
         const plan = org.subscription?.planId || 'free';
         const numEvents = plan === 'enterprise' ? 4 : plan === 'pro' ? 2 : 1;
-        
+
         return Array.from({ length: numEvents }).map((_, idx) => {
           const models = ['Gemini-1.5-Pro', 'Claude-3.5-Sonnet', 'GPT-4o'];
           const selectedModel = models[Math.floor(Math.random() * models.length)];
           const latencies = { 'Gemini-1.5-Pro': 620, 'Claude-3.5-Sonnet': 1140, 'GPT-4o': 980 };
-          
+
           const contexts = ['Test Case Synthesis', 'Bug Journey Analysis', 'Edge Case Synthesis', 'Exploratory Scripting'];
           const selectedContext = contexts[idx % contexts.length];
           const tokens = Math.floor(Math.random() * 1200) + 300;
@@ -244,13 +244,13 @@ export default function AIAnalyticsPage() {
             <svg width="120" height="120" viewBox="0 0 42 42">
               <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#E2E8F0" strokeWidth="4.5" />
               {/* Gemini: 50% (emerald) */}
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-emerald)" strokeWidth="4.5" 
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-emerald)" strokeWidth="4.5"
                 strokeDasharray="50 50" strokeDashoffset="25" />
               {/* Claude: 30% (indigo) */}
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-indigo)" strokeWidth="4.5" 
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-indigo)" strokeWidth="4.5"
                 strokeDasharray="30 70" strokeDashoffset="75" />
               {/* GPT-4o: 20% (rose) */}
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-rose)" strokeWidth="4.5" 
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-rose)" strokeWidth="4.5"
                 strokeDasharray="20 80" strokeDashoffset="45" />
             </svg>
           </div>

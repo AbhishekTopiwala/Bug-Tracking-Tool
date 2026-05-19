@@ -53,6 +53,7 @@ const SubscriptionsManagementPage = lazy(() => import('./pages/super-admin/Subsc
 const AIAnalyticsPage = lazy(() => import('./pages/super-admin/AIAnalyticsPage'));
 const SystemHealthPage = lazy(() => import('./pages/super-admin/SystemHealthPage'));
 const GlobalSettingsPage = lazy(() => import('./pages/super-admin/GlobalSettingsPage'));
+const UserManagementPage = lazy(() => import('./pages/super-admin/UserManagementPage'));
 
 import { Loader2 } from 'lucide-react';
 
@@ -219,6 +220,7 @@ function SuperAdminPortal() {
           <Route path="subscriptions" element={<SubscriptionsManagementPage />} />
           <Route path="ai-usage" element={<AIAnalyticsPage />} />
           <Route path="health" element={<SystemHealthPage />} />
+          <Route path="users" element={<UserManagementPage />} />
           <Route path="settings" element={<GlobalSettingsPage />} />
           <Route path="*" element={<Navigate to="/super-admin" replace />} />
         </Routes>

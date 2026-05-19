@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, CreditCard, BrainCircuit, 
   Settings, LogOut, ShieldAlert, Activity, ChevronLeft, ChevronRight,
-  User, ExternalLink, Globe, LayoutGrid, Terminal
+  User, ExternalLink, Globe, LayoutGrid, Terminal, Users
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 const superAdminNavItems = [
   { to: '/super-admin', icon: LayoutDashboard, label: 'Platform Overview', exact: true },
   { to: '/super-admin/organizations', icon: Building2, label: 'Organizations', exact: false },
+  { to: '/super-admin/users', icon: Users, label: 'User Control', exact: false },
   { to: '/super-admin/subscriptions', icon: CreditCard, label: 'Subscriptions', exact: false },
   { to: '/super-admin/ai-usage', icon: BrainCircuit, label: 'AI Analytics', exact: false },
 ];

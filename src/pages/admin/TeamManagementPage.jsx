@@ -13,6 +13,7 @@ import {
   activateUser,
   inviteUser,
   deleteUser,
+  softDeleteUser,
 } from '../../services/teamService';
 import { getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -218,12 +219,22 @@ function InviteModal({ onClose, onSuccess }) {
 
 // ─── Member Row (shared) ──────────────────────────────────────────────────────
 
+// ─── Member Row (shared) ──────────────────────────────────────────────────────
+
 function MemberRow({ user, onToggle, onRoleChange, onDelete }) {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, userProfile } = useAuth();
   const isActive = user.isActive !== false;
   const [showRoles, setShowRoles] = useState(false);
 
+  const isTargetSuperAdmin = user.role === 'super_admin' || user.role === 'Superadmin';
+  const isSelf = user.uid === userProfile?.uid || user.id === userProfile?.uid;
+  const canModify = isSuperAdmin || (!isTargetSuperAdmin && !isSelf);
+
   const handleRoleSelect = async (newRole) => {
+    if (!canModify) {
+      toast.error("You do not have permission to change this user's role.");
+      return setShowRoles(false);
+    }
     if (newRole === user.role) return setShowRoles(false);
     try {
       await onRoleChange(user, newRole);
@@ -245,6 +256,7 @@ function MemberRow({ user, onToggle, onRoleChange, onDelete }) {
           <div>
             <p className="tm-member-name">
               {user.name || (user.email ? user.email.split('@')[0] : '—')}
+              {isSelf && <span style={{ marginLeft: 8, fontSize: '0.7rem', background: 'rgba(91, 108, 255, 0.15)', color: '#5B6CFF', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>You</span>}
             </p>
             <p className="tm-member-uid">
               {user.invited ? (
@@ -264,13 +276,13 @@ function MemberRow({ user, onToggle, onRoleChange, onDelete }) {
       </td>
       <td style={{ position: 'relative' }}>
         <div 
-          onClick={() => setShowRoles(!showRoles)} 
-          style={{ cursor: 'pointer', display: 'inline-block' }}
+          onClick={() => canModify && setShowRoles(!showRoles)} 
+          style={{ cursor: canModify ? 'pointer' : 'default', display: 'inline-block' }}
         >
           <RoleBadge role={user.role} />
         </div>
         
-        {showRoles && (
+        {showRoles && canModify && (
           <div className="tm-actions-menu" style={{ top: '100%', left: 0, width: 160 }}>
             <div className="tm-actions-label">Change Role</div>
             {DB_ROLES.map(r => (
@@ -298,14 +310,22 @@ function MemberRow({ user, onToggle, onRoleChange, onDelete }) {
         })()}
       </td>
       <td style={{ textAlign: 'center' }}>
-        <ActiveToggle user={user} onToggle={onToggle} />
+        {isSelf || !canModify ? (
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+        ) : (
+          <ActiveToggle user={user} onToggle={onToggle} />
+        )}
       </td>
-      {isSuperAdmin && (
-        <td style={{ textAlign: 'center' }}>
+      <td style={{ textAlign: 'center' }}>
+        {isSelf || !canModify ? (
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>—</span>
+        ) : (
           <button
             className="btn-delete-user"
             onClick={() => onDelete && onDelete(user)}
-            title="Permanently delete user"
+            title="Remove / Soft-Delete user"
             style={{
               background: 'none',
               border: 'none',
@@ -323,8 +343,8 @@ function MemberRow({ user, onToggle, onRoleChange, onDelete }) {
           >
             <Trash2 size={15} />
           </button>
-        </td>
-      )}
+        )}
+      </td>
     </tr>
   );
 }
@@ -332,7 +352,6 @@ function MemberRow({ user, onToggle, onRoleChange, onDelete }) {
 // ─── Project Team Group Card ──────────────────────────────────────────────────
 
 function ProjectGroupCard({ project, members, onToggle, onRoleChange, onDelete }) {
-  const { isSuperAdmin } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -382,17 +401,17 @@ function ProjectGroupCard({ project, members, onToggle, onRoleChange, onDelete }
                   <th>Role</th>
                   <th>Joined</th>
                   <th style={{ textAlign: 'center' }}>Active</th>
-                  {isSuperAdmin && <th style={{ textAlign: 'center' }}>Actions</th>}
+                  <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {members.map(user => (
                   <MemberRow
-                    key={user.id}
-                    user={user}
-                    onToggle={onToggle}
-                    onRoleChange={onRoleChange}
-                    onDelete={onDelete}
+                     key={user.id || user.uid}
+                     user={user}
+                     onToggle={onToggle}
+                     onRoleChange={onRoleChange}
+                     onDelete={onDelete}
                   />
                 ))}
               </tbody>
@@ -407,7 +426,7 @@ function ProjectGroupCard({ project, members, onToggle, onRoleChange, onDelete }
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TeamManagementPage() {
-  const { currentUser, isSuperAdmin } = useAuth();
+  const { currentUser, isSuperAdmin, userProfile } = useAuth();
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -424,7 +443,18 @@ export default function TeamManagementPage() {
         fetchAllUsers(),
         getProjects(null, 'Admin'),
       ]);
-      setUsers(userData);
+      // Filter out soft-deleted users so Company Admin doesn't see them in active lists
+      let activeUsersList = userData.filter(u => u.isDeleted !== true && u.is_deleted !== true);
+      
+      // Deduplicate: if an active signed-up user exists for an email, exclude the pending invite placeholder
+      const registeredEmails = new Set(
+        activeUsersList.filter(u => !u.invited).map(u => u.email?.toLowerCase()).filter(Boolean)
+      );
+      activeUsersList = activeUsersList.filter(
+        u => !u.invited || !registeredEmails.has(u.email?.toLowerCase())
+      );
+
+      setUsers(activeUsersList);
       setProjects(projectData);
     } catch (err) {
       toast.error('Failed to load team data');
@@ -483,12 +513,12 @@ export default function TeamManagementPage() {
     try {
       // 2. Perform update
       if (currentlyActive) {
-        await deactivateUser(targetId);
-        setUsers(prev => prev.map(u => (u.id === targetId || u.uid === targetId) ? { ...u, isActive: false } : u));
+        await deactivateUser(targetId, userProfile, "Deactivated by Org Admin");
+        setUsers(prev => prev.map(u => (u.id === targetId || u.uid === targetId) ? { ...u, isActive: false, is_active: false } : u));
         toast.success(`${user.name || user.email} has been deactivated.`);
       } else {
-        await activateUser(targetId);
-        setUsers(prev => prev.map(u => (u.id === targetId || u.uid === targetId) ? { ...u, isActive: true } : u));
+        await activateUser(targetId, userProfile, "Activated by Org Admin");
+        setUsers(prev => prev.map(u => (u.id === targetId || u.uid === targetId) ? { ...u, isActive: true, is_active: true } : u));
         toast.success(`${user.name || user.email} has been activated.`);
       }
     } catch (err) {
@@ -519,14 +549,14 @@ export default function TeamManagementPage() {
       return toast.error("You cannot delete your own account.");
     }
 
-    if (!window.confirm(`Are you absolutely sure you want to permanently delete user "${user.name || user.email}"? This action is irreversible.`)) {
+    if (!window.confirm(`Are you sure you want to remove and soft-delete user "${user.name || user.email}"? All their bug logs and history will be fully preserved.`)) {
       return;
     }
 
     try {
-      await deleteUser(targetId);
+      await softDeleteUser(targetId, userProfile, "Soft deleted by Org Admin");
       setUsers(prev => prev.filter(u => u.id !== targetId && u.uid !== targetId));
-      toast.success(`${user.name || user.email} has been permanently deleted.`);
+      toast.success(`${user.name || user.email} has been soft-deleted and removed from the active roster.`);
     } catch (err) {
       console.error('[TeamManagement] Delete error:', err);
       toast.error(`Failed to delete user: ${err.message || 'Permission denied'}`);
@@ -652,7 +682,7 @@ export default function TeamManagementPage() {
                       <th>Role</th>
                       <th>Joined</th>
                       <th style={{ textAlign: 'center' }}>Active</th>
-                      {isSuperAdmin && <th style={{ textAlign: 'center' }}>Actions</th>}
+                      <th style={{ textAlign: 'center' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>

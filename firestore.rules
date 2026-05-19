@@ -34,11 +34,11 @@ service cloud.firestore {
     }
 
     match /organizations/{orgId} {
-      allow read: if isSuperAdmin() || (hasUserData() && getUserData().organizationId == orgId);
+      allow read: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId);
       // Allow any signed-in user to create an organization (Cold Signup)
       allow create: if isSignedIn();
       // Org admins can update their own org; only super admins can delete
-      allow update: if isSuperAdmin() || (hasUserData() && getUserData().organizationId == orgId && isOrgAdmin());
+      allow update: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId && isOrgAdmin());
       allow delete: if isSuperAdmin();
     }
 
@@ -63,16 +63,18 @@ service cloud.firestore {
       // super admins can manage anyone.
       allow update: if isSignedIn() && (
         (request.auth.uid == userId && 
+         isUserActive() &&
          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'isActive', 'email'])) ||
         isSuperAdmin() ||
         (isOrgAdmin() && isSameOrg(resource.data.organizationId) && 
          !(request.resource.data.role in ['super_admin', 'Superadmin']))
       );
 
-      allow delete: if isSignedIn() && (
-        request.auth.uid == userId ||
-        isSuperAdmin() ||
-        (isOrgAdmin() && isSameOrg(resource.data.organizationId))
+      allow delete: if isSuperAdmin() || (
+        isSignedIn() &&
+        resource != null &&
+        resource.data.email == request.auth.token.email &&
+        resource.data.invited == true
       );
     }
 
@@ -110,11 +112,11 @@ service cloud.firestore {
 
     match /notifications/{notifId} {
       // Users can read and create their own notifications
-      allow read: if isSignedIn() && (
+      allow read: if isSignedIn() && isUserActive() && (
         resource.data.userId == request.auth.uid || isSuperAdmin()
       );
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && (
+      allow create: if isSignedIn() && isUserActive();
+      allow update, delete: if isSignedIn() && isUserActive() && (
         resource.data.userId == request.auth.uid || isSuperAdmin()
       );
     }
@@ -125,9 +127,15 @@ service cloud.firestore {
     }
 
     match /invitations/{inviteId} {
-      allow read: if isSignedIn() && (isSuperAdmin() || (hasUserData() && resource.data.organizationId == getUserData().organizationId));
+      allow read: if isSignedIn() && (isSuperAdmin() || (isUserActive() && hasUserData() && resource.data.organizationId == getUserData().organizationId));
       allow create: if isSignedIn() && isOrgAdmin() && request.resource.data.organizationId == getUserData().organizationId;
-      allow update, delete: if isSignedIn() && (isSuperAdmin() || (isOrgAdmin() && isSameOrg(resource.data.organizationId)) || request.auth.uid == resource.data.invitedBy);
+      allow update, delete: if isSignedIn() && (isSuperAdmin() || (isOrgAdmin() && isSameOrg(resource.data.organizationId)) || (isUserActive() && request.auth.uid == resource.data.invitedBy));
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isSignedIn() && isUserActive();
+      allow update, delete: if false;
     }
   }
 }
