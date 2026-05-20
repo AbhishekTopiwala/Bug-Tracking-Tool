@@ -13,7 +13,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const { currentUser, userProfile } = useAuth();
-  const isAdmin = userProfile?.role === 'Admin';
+  const isAdmin = ['Admin', 'org_admin', 'Manager'].includes(userProfile?.role);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +27,18 @@ export default function NotificationsPage() {
 
   const handleClick = async (notif) => {
     if (!notif.read) await markNotificationRead(notif.id);
+    if (notif.bugId) {
+      const role = userProfile?.role;
+      let path;
+      if (['Admin', 'org_admin', 'Manager'].includes(role)) {
+        path = `/admin/bugs/${notif.bugId}`;
+      } else if (role === 'Developer') {
+        path = `/dev/bugs/${notif.bugId}`;
+      } else {
+        path = `/qa/bugs/${notif.bugId}`;
+      }
+      navigate(path);
+    }
   };
 
   const markAllRead = async () => {

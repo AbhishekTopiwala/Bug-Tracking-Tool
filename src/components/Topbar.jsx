@@ -38,6 +38,19 @@ export default function Topbar({ title, subtitle, onSearch, onBack }) {
 
   const handleNotifClick = async (notif) => {
     if (!notif.read) await markNotificationRead(notif.id);
+    setShowNotifs(false);
+    if (notif.bugId) {
+      const role = userProfile?.role;
+      let path;
+      if (['Admin', 'org_admin', 'Manager'].includes(role)) {
+        path = `/admin/bugs/${notif.bugId}`;
+      } else if (role === 'Developer') {
+        path = `/dev/bugs/${notif.bugId}`;
+      } else {
+        path = `/qa/bugs/${notif.bugId}`;
+      }
+      navigate(path);
+    }
   };
 
   const handleClearAll = async () => {

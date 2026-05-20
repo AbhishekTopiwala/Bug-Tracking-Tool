@@ -24,12 +24,12 @@ export const functions = getFunctions(app);
 
 
 if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
-  connectStorageEmulator(storage, 'localhost', 9199);
+  connectStorageEmulator(storage, '127.0.0.1', 9199);
 }
 
 if (import.meta.env.DEV) {
   console.log('Running in DEV mode, connecting to local Functions emulator');
-  connectFunctionsEmulator(functions, 'localhost', 5001);
+  connectFunctionsEmulator(functions, '127.0.0.1', 5001);
 }
 
 export default app;

@@ -41,7 +41,9 @@ async function checkAndIncrementQuota(orgId) {
 
 // ── GEMINI FUNCTIONS ─────────────────────────────────────────────────────────
 // Using a generic API key variable. In production, use Firebase Secret Manager.
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
+function getGeminiApiKey() {
+  return process.env.GEMINI_API_KEY;
+} 
 
 // Helper function to query Gemini with retry logic and fallback model mechanism
 async function generateGeminiContentWithRetry(genAI, defaultModel, systemInstruction, contents, maxRetries = 3) {
@@ -84,7 +86,8 @@ exports.generateBugFromNote = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "Must be logged in to generate bugs.");
   }
   
-  if (!GEMINI_API_KEY) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
     throw new HttpsError("internal", "GEMINI_API_KEY not configured.");
   }
 
@@ -95,7 +98,7 @@ exports.generateBugFromNote = onCall(async (request) => {
      await checkAndIncrementQuota(organizationId);
   }
 
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const genAI = new GoogleGenerativeAI(apiKey);
   const systemInstruction = `You are a QA engineer assistant. Convert the short QA note into a formal bug report.
 Respond ONLY with a valid JSON object (no markdown, no code blocks) in this exact format:
 {
@@ -130,7 +133,8 @@ exports.generateTestCases = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "Must be logged in to generate test cases.");
   }
 
-  if (!GEMINI_API_KEY) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
     throw new HttpsError("internal", "GEMINI_API_KEY not configured.");
   }
 
@@ -140,7 +144,7 @@ exports.generateTestCases = onCall(async (request) => {
      await checkAndIncrementQuota(organizationId);
   }
 
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const genAI = new GoogleGenerativeAI(apiKey);
   const systemInstruction = `You are a QA engineer. Generate comprehensive test cases for the provided feature description or image of a website page.
 Analyze the image or description carefully to list:
 - Positive flows (successful operations, standard user behavior)
@@ -195,7 +199,8 @@ exports.suggestSimilarBugs = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "Must be logged in.");
   }
 
-  if (!GEMINI_API_KEY) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
     throw new HttpsError("internal", "GEMINI_API_KEY not configured.");
   }
 
@@ -205,7 +210,7 @@ exports.suggestSimilarBugs = onCall(async (request) => {
      await checkAndIncrementQuota(organizationId);
   }
 
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const genAI = new GoogleGenerativeAI(apiKey);
   const systemInstruction = `Given a new bug title, analyze the provided list of existing bugs and identify any that are highly similar or duplicates.
 Return ONLY a JSON array containing the IDs of the most similar bugs (maximum 3). Example: ["bug1", "bug2"]
 If no existing bugs are similar, return: []`;
@@ -229,9 +234,13 @@ If no existing bugs are similar, return: []`;
 });
 
 // ── RAZORPAY & BILLING ──────────────────────────────────────────────────────
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-const RAZORPAY_SECRET = process.env.RAZORPAY_SECRET;
-const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
+function getRazorpayConfig() {
+  return {
+    keyId: process.env.RAZORPAY_KEY_ID,
+    secret: process.env.RAZORPAY_SECRET,
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+  };
+}
 
 exports.createRazorpayOrder = onCall(async (request) => {
   if (!request.auth) {
@@ -240,13 +249,14 @@ exports.createRazorpayOrder = onCall(async (request) => {
 
   const { amount, currency = "INR" } = request.data;
 
-  if (!RAZORPAY_KEY_ID || !RAZORPAY_SECRET) {
+  const { keyId, secret } = getRazorpayConfig();
+  if (!keyId || !secret) {
     throw new HttpsError("internal", "Razorpay not configured.");
   }
 
   const razorpay = new Razorpay({
-    key_id: RAZORPAY_KEY_ID,
-    key_secret: RAZORPAY_SECRET,
+    key_id: keyId,
+    key_secret: secret,
   });
 
   try {
@@ -266,13 +276,14 @@ exports.razorpayWebhook = onRequest(async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
   const body = JSON.stringify(req.body);
 
-  if (!RAZORPAY_WEBHOOK_SECRET) {
+  const { webhookSecret } = getRazorpayConfig();
+  if (!webhookSecret) {
     console.error("WEBHOOK_SECRET not configured");
     return res.status(500).send("Internal Configuration Error");
   }
 
   const expectedSignature = crypto
-    .createHmac("sha256", RAZORPAY_WEBHOOK_SECRET)
+    .createHmac("sha256", webhookSecret)
     .update(body)
     .digest("hex");
 

@@ -9,7 +9,7 @@ import {
 import { formatDistanceToNow, format } from 'date-fns';
 import Topbar from '../components/Topbar';
 import {
-  getBug, updateBug, deleteBug, addComment, updateComment, deleteComment, createNotification, removeAttachmentFromBug, getProjects
+  getBug, updateBug, deleteBug, addComment, updateComment, deleteComment, createNotification, notifyAdmins, removeAttachmentFromBug, getProjects
 } from '../services/firestoreService';
 import { cld } from '../services/cloudinaryService';
 import { useAuth } from '../contexts/AuthContext';
@@ -109,12 +109,14 @@ export default function BugDetailPage() {
       setEditingStatus(false);
       toast.success(`Status updated to ${newStatus}`);
 
+      const statusMsg = `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> changed the status of <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`;
+
       // Notify reporter
       if (bug.reportedBy && bug.reportedBy !== currentUser.uid) {
         await createNotification({
           userId: bug.reportedBy,
           bugId: id,
-          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> changed the status of <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
+          message: statusMsg,
           type: 'status_change',
         });
       }
@@ -124,10 +126,16 @@ export default function BugDetailPage() {
         await createNotification({
           userId: bug.assigneeId,
           bugId: id,
-          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> changed the status of <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
+          message: statusMsg,
           type: 'status_change',
         });
       }
+
+      // Notify admins (exclude current user so they don't notif themselves)
+      await notifyAdmins(
+        { bugId: id, message: statusMsg, type: 'status_change' },
+        [currentUser.uid, bug.reportedBy, bug.assigneeId].filter(Boolean)
+      );
     } catch (err) {
       console.error("Error changing bug status:", err);
       toast.error('Failed to update status');
@@ -167,20 +175,32 @@ export default function BugDetailPage() {
       setBug(updated);
       toast.success('Comment added');
 
-      // Notify others
-      const notifyId = bug.assigneeId && bug.assigneeId !== currentUser.uid
-        ? bug.assigneeId
-        : bug.reportedBy !== currentUser.uid
-          ? bug.reportedBy
-          : null;
-      if (notifyId) {
+      const freshBug = updated || bug;
+      const commentMsg = `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> commented on <strong>${freshBug.title}</strong>`;
+
+      // Notify assignee and reporter
+      const directRecipients = new Set();
+      if (freshBug.assigneeId && freshBug.assigneeId !== currentUser.uid) {
+        directRecipients.add(freshBug.assigneeId);
+      }
+      if (freshBug.reportedBy && freshBug.reportedBy !== currentUser.uid) {
+        directRecipients.add(freshBug.reportedBy);
+      }
+
+      for (const recipientId of directRecipients) {
         await createNotification({
-          userId: notifyId,
+          userId: recipientId,
           bugId: id,
-          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'QA'}</strong> commented on <strong>${bug.title}</strong>`,
+          message: commentMsg,
           type: 'comment',
         });
       }
+
+      // Notify all admins in the org (exclude commenter + already-notified users)
+      await notifyAdmins(
+        { bugId: id, message: commentMsg, type: 'comment' },
+        [currentUser.uid, ...Array.from(directRecipients)]
+      );
     } catch (err) {
       console.error("Error adding comment:", err);
       toast.error('Failed to add comment');

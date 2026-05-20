@@ -180,15 +180,24 @@ export async function getAllBugs() {
 
 export async function addComment(bugId, comment) {
   const bugRef = doc(db, 'bugs', bugId);
+  
+  // Clean up undefined properties to avoid Firestore write crashes
+  const cleanComment = {};
+  Object.keys(comment).forEach(key => {
+    if (comment[key] !== undefined) {
+      cleanComment[key] = comment[key];
+    }
+  });
+
   await updateDoc(bugRef, {
     comments: arrayUnion({
-      ...comment,
+      ...cleanComment,
       id: `comment_${Date.now()}`,
       createdAt: new Date().toISOString(),
     }),
     history: arrayUnion({
       type: 'comment',
-      user: comment.authorName || 'User',
+      user: cleanComment.authorName || 'User',
       timestamp: new Date().toISOString(),
       details: 'Added a comment'
     }),
@@ -277,8 +286,42 @@ export async function removeAttachmentFromBug(bugId, attachment) {
 // ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 
 export async function createNotification(data) {
+  if (!data.userId) return;
+
+  // Clean up undefined properties to avoid Firestore write crashes
+  const cleanData = {};
+  Object.keys(data).forEach(key => {
+    if (data[key] !== undefined) {
+      cleanData[key] = data[key];
+    }
+  });
+
+  try {
+    const userRef = doc(db, 'users', cleanData.userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const prefs = userData.notificationPreferences || {};
+      
+      const prefKeys = {
+        'assignment': 'bugAssigned',
+        'status_change': 'statusChanges',
+        'comment': 'newComments'
+      };
+      
+      const prefKey = prefKeys[cleanData.type];
+      // Suppress notification if explicitly disabled
+      if (prefKey && prefs[prefKey] === false) {
+        console.log(`Notification of type ${cleanData.type} suppressed for user ${cleanData.userId} due to preference settings.`);
+        return;
+      }
+    }
+  } catch (err) {
+    console.error("Error checking user notification preferences:", err);
+  }
+
   await addDoc(collection(db, 'notifications'), {
-    ...data,
+    ...cleanData,
     organizationId: currentOrgId,
     read: false,
     createdAt: serverTimestamp(),
@@ -302,6 +345,41 @@ export function subscribeToNotifications(userId, callback) {
     console.error("Error subscribing to notifications:", error);
     callback([]);
   });
+}
+
+/**
+ * Notifies all active Admin-role users in the current org.
+ * Call this after a comment or status change so admins always stay informed.
+ *
+ * @param {object} notifData   - Same shape as createNotification, but WITHOUT userId
+ * @param {string[]} excludeIds - UIDs to skip (e.g. the user who performed the action)
+ */
+export async function notifyAdmins(notifData, excludeIds = []) {
+  try {
+    const adminRoles = ['Admin', 'org_admin', 'Manager'];
+    const snap = await getDocs(
+      query(
+        collection(db, 'users'),
+        where('organizationId', '==', currentOrgId)
+      )
+    );
+
+    const adminUsers = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(u =>
+        u.isActive !== false &&
+        adminRoles.includes(u.role) &&
+        !excludeIds.includes(u.id || u.uid)
+      );
+
+    await Promise.all(
+      adminUsers.map(admin =>
+        createNotification({ ...notifData, userId: admin.id || admin.uid })
+      )
+    );
+  } catch (err) {
+    console.error('notifyAdmins error:', err);
+  }
 }
 
 export async function markNotificationRead(id) {

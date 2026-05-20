@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import Topbar from '../../components/Topbar';
-import { getBug, updateBug, addComment, updateComment, deleteComment, createNotification, getProjects } from '../../services/firestoreService';
+import { getBug, updateBug, addComment, updateComment, deleteComment, createNotification, notifyAdmins, getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getValidStatusTransitions } from '../../utils/statusRules';
 import toast from 'react-hot-toast';
@@ -119,13 +119,22 @@ export default function DevBugDetailPage() {
       await updateBug(id, { status: newStatus }, userProfile?.displayName || currentUser?.displayName);
       setBug((b) => ({ ...b, status: newStatus }));
       toast.success(`Status updated → ${newStatus}`);
+
+      const statusMsg = `<strong>${userProfile?.displayName || currentUser?.displayName || 'Developer'}</strong> changed <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`;
+
       if (bug.reportedBy && bug.reportedBy !== currentUser.uid) {
         await createNotification({
           userId: bug.reportedBy, bugId: id,
-          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'Developer'}</strong> changed <strong>${bug.title}</strong> to <strong>${newStatus}</strong>`,
+          message: statusMsg,
           type: 'status_change',
         });
       }
+
+      // Notify admins (exclude the developer + already-notified reporter)
+      await notifyAdmins(
+        { bugId: id, message: statusMsg, type: 'status_change' },
+        [currentUser.uid, bug.reportedBy, bug.assigneeId].filter(Boolean)
+      );
     } catch (err) {
       console.error("Error changing bug status (dev):", err);
       toast.error('Failed to update status');
@@ -150,13 +159,33 @@ export default function DevBugDetailPage() {
       const updated = await getBug(id);
       setBug(updated);
       toast.success('Comment added');
-      if (bug.reportedBy && bug.reportedBy !== currentUser.uid) {
+
+      const freshBug = updated || bug;
+      const commentMsg = `<strong>${userProfile?.displayName || currentUser?.displayName || 'Developer'}</strong> commented on <strong>${freshBug.title}</strong>`;
+
+      // Notify assignee and reporter directly
+      const directRecipients = new Set();
+      if (freshBug.assigneeId && freshBug.assigneeId !== currentUser.uid) {
+        directRecipients.add(freshBug.assigneeId);
+      }
+      if (freshBug.reportedBy && freshBug.reportedBy !== currentUser.uid) {
+        directRecipients.add(freshBug.reportedBy);
+      }
+
+      for (const recipientId of directRecipients) {
         await createNotification({
-          userId: bug.reportedBy, bugId: id,
-          message: `<strong>${userProfile?.displayName || currentUser?.displayName || 'Developer'}</strong> commented on <strong>${bug.title}</strong>`,
+          userId: recipientId,
+          bugId: id,
+          message: commentMsg,
           type: 'comment',
         });
       }
+
+      // Notify all admins in the org (exclude commenter + already-notified users)
+      await notifyAdmins(
+        { bugId: id, message: commentMsg, type: 'comment' },
+        [currentUser.uid, ...Array.from(directRecipients)]
+      );
     } catch (err) {
       console.error("Error adding comment (dev):", err);
       toast.error('Failed to add comment');

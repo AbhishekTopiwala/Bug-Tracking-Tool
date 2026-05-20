@@ -47,6 +47,10 @@ export default function AdminTopbar({ title, subtitle, onSearch }) {
 
   const handleNotifClick = async (notif) => {
     if (!notif.read) await markNotificationRead(notif.id);
+    setShowNotifs(false);
+    if (notif.bugId) {
+      navigate(`/admin/bugs/${notif.bugId}`);
+    }
   };
 
   const handleClearAll = async () => {
