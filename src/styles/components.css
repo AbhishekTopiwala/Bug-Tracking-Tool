@@ -1512,26 +1512,42 @@
 }
 
 /* ── Bug Card Premium ────────────────────────────────────────────────────── */
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
 .bug-card-premium {
   background: var(--bg-card);
   border-radius: 12px;
-  padding: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
+  border-left: 3px solid transparent;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
   display: flex;
   flex-direction: column;
   gap: 6px;
   cursor: grab;
   margin-bottom: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .bug-card-premium:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.1);
-  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--status-color) 40%, transparent);
+  border-color: var(--status-color);
+  border-left-color: var(--status-color);
+}
+
+/* edit btn: always visible but subtle; brighter on card hover */
+.bug-card-premium .card-edit-btn {
+  opacity: 0.45;
+  transition: opacity 0.2s ease, background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
+}
+.bug-card-premium:hover .card-edit-btn {
+  opacity: 1;
 }
 
 .status-dot-glow {
@@ -1539,81 +1555,102 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+  transition: box-shadow 0.3s;
+}
+
+/* Pulse only for active/alert statuses */
+.status-dot-glow[data-active="true"] {
+  animation: dot-pulse 2s ease-in-out infinite;
 }
 
 .bug-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
-  gap: 12px;
+  margin-bottom: 4px;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: 100%;
+  overflow: hidden;
 }
 
 .bug-card-id-text {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
   flex-shrink: 0;
+  letter-spacing: 0.03em;
 }
 
 .bug-card-project-pill {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   color: var(--accent);
   background: var(--accent-light);
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .priority-tag {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 4px;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .priority-critical {
   background: var(--danger-light);
   color: var(--danger);
+  border-left: 2px solid var(--danger);
 }
 
 .priority-high {
   background: var(--warning-light);
   color: var(--warning);
+  border-left: 2px solid var(--warning);
 }
 
 .priority-medium {
   background: #eff6ff;
   color: #3b82f6;
+  border-left: 2px solid #3b82f6;
 }
 
 .priority-low {
   background: #f0fdf4;
   color: #16a34a;
+  border-left: 2px solid #16a34a;
 }
 
 .bug-card-title-premium {
-  font-size: 0.88rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.3;
-  margin: 4px 0;
+  line-height: 1.35;
+  margin: 2px 0 4px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  letter-spacing: -0.01em;
 }
 
 .bug-card-desc-premium {
   font-size: 0.78rem;
   color: var(--text-secondary);
   line-height: 1.4;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
@@ -1625,22 +1662,23 @@
   display: flex;
   gap: 4px;
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .minimal-tag {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--text-muted);
   background: var(--bg-secondary);
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 4px;
   border: 1px solid var(--border);
 }
 
 .bug-card-footer-premium {
-  padding-top: 6px;
-  border-top: 1px dashed var(--border);
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+  opacity: 0.9;
 }
 
 .bug-card-meta-premium {
@@ -1653,35 +1691,50 @@
 .bug-card-assignee-pill {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
+  gap: 5px;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-secondary);
   background: var(--bg-secondary);
-  padding: 4px 8px;
+  padding: 3px 7px;
   border-radius: 100px;
+  border: 1px solid var(--border);
+  max-width: 110px;
+  overflow: hidden;
+}
+
+.bug-card-assignee-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .unassigned-pill {
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 500;
   color: var(--text-muted);
   font-style: italic;
+  padding: 3px 0;
 }
 
 .assignee-avatar-sm {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .meta-icon-group {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.72rem;
+  gap: 3px;
+  font-size: 0.7rem;
   color: var(--text-muted);
   font-weight: 600;
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
 }
 
 .bug-card-bottom-row {
@@ -1692,30 +1745,32 @@
 }
 
 .bug-card-status-text {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
 }
 
 .bug-card-time-text {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .card-edit-btn {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .card-edit-btn:hover {

@@ -28,29 +28,42 @@ export default function BugCard({ bug, hideStatus = false }) {
     Reproduced: '#ec4899',
   };
 
+  // Statuses that should show a pulsing dot
+  const activeStatuses = new Set(['Open', 'In Progress', 'Reopened', 'Reopen']);
+
+  const statusColor = statusGlow[bug.status] || '#6366f1';
+
   return (
     <article
       className="bug-card-premium"
+      style={{ '--status-color': statusColor }}
       onClick={() => navigate(`${basePath}/bugs/${bug.id}`)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && navigate(`${basePath}/bugs/${bug.id}`)}
     >
-      <div className="bug-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, flexWrap: 'wrap', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: '1 1 auto' }}>
+      <div className="bug-card-header">
+        {/* Left: status dot + ID + project — clamp with overflow hidden */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, overflow: 'hidden', flex: 1 }}>
           <div 
             className="status-dot-glow" 
+            data-active={activeStatuses.has(bug.status) ? 'true' : undefined}
             style={{ 
               backgroundColor: statusGlow[bug.status] || '#6366f1',
-              boxShadow: `0 0 8px ${statusGlow[bug.status] || '#6366f1'}80`
+              boxShadow: `0 0 6px ${statusGlow[bug.status] || '#6366f1'}90`,
+              flexShrink: 0
             }} 
           />
           <span className="bug-card-id-text">#{bugKey}</span>
           {bug.projectName && (
-            <span className="bug-card-project-pill" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bug.projectName}</span>
+            <span className="bug-card-project-pill">{bug.projectName}</span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        {/* Right: priority + optional edit — never wraps */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 6 }}>
+          <div className={`priority-tag priority-${bug.priority?.toLowerCase() || 'medium'}`}>
+            {bug.priority || 'Medium'}
+          </div>
           {canEdit && (
             <button 
               className="card-edit-btn"
@@ -63,9 +76,6 @@ export default function BugCard({ bug, hideStatus = false }) {
               <Edit3 size={11} />
             </button>
           )}
-          <div className={`priority-tag priority-${bug.priority?.toLowerCase() || 'medium'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-            {bug.priority || 'Medium'}
-          </div>
         </div>
       </div>
 
