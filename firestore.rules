@@ -97,17 +97,22 @@ service cloud.firestore {
     }
     
     match /projects/{projectId} {
-      // Allow read if Superadmin, member of same org, or if project is explicitly public
-      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId) || resource.data.isPublic == true;
-      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      // Allow read if: Superadmin, member of same org, project is public,
+      // OR user's UID is in the project's assignedUsers list
+      // (fallback for projects created during org-ID race conditions)
+      allow read: if isSuperAdmin() 
+                  || isSameOrg(resource.data.organizationId) 
+                  || resource.data.isPublic == true
+                  || (isSignedIn() && isUserActive() && request.auth.uid in resource.data.assignedUsers);
+      allow create: if isSignedIn() && (isSameOrg(request.resource.data.organizationId) || isOrgAdmin());
       allow update: if isSuperAdmin() || (
         isSameOrg(resource.data.organizationId) && 
         isSameOrg(request.resource.data.organizationId)
-      );
+      ) || (isOrgAdmin() && request.auth.uid in resource.data.assignedUsers);
       allow delete: if isSuperAdmin() || (
         isSameOrg(resource.data.organizationId) && 
         isOrgAdmin()
-      );
+      ) || (isOrgAdmin() && request.auth.uid in resource.data.assignedUsers);
     }
 
     match /notifications/{notifId} {

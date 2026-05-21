@@ -83,12 +83,15 @@ export default function ProjectsPage() {
   const isQA = userProfile?.role === 'QA';
 
   useEffect(() => {
-    if (!currentUser || !userProfile) return;
+    if (!currentUser || !userProfile?.organizationId) return;
 
-    const unsubscribeProjects = subscribeToProjects(currentUser.uid, userProfile.role, (data) => {
+    const orgId = userProfile.organizationId;
+    const role  = userProfile.role;
+
+    const unsubscribeProjects = subscribeToProjects(currentUser.uid, role, (data) => {
       setProjects(data);
       setLoading(false);
-    });
+    }, orgId);
 
     if (isAdmin) {
       getUsers().then(users => {
@@ -98,7 +101,7 @@ export default function ProjectsPage() {
 
     const unsubscribeBugs = subscribeToBugs((data) => {
       // Filter bugs based on role: QA only sees their own bugs
-      if (userProfile?.role === 'QA') {
+      if (role === 'QA') {
         const filteredBugs = data.filter(b => b.reportedBy === currentUser?.uid);
         setBugs(filteredBugs);
       } else {
@@ -110,7 +113,9 @@ export default function ProjectsPage() {
       unsubscribeProjects();
       unsubscribeBugs();
     };
-  }, [currentUser, userProfile]);
+  // Use primitive values as deps so the listener isn't torn down on every profile snapshot
+  }, [currentUser?.uid, userProfile?.organizationId, userProfile?.role]);
+
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -122,7 +127,7 @@ export default function ProjectsPage() {
         name: newProject.name.trim(),
         description: newProject.description.trim(),
         assignedUsers: [currentUser.uid] // Admin is always assigned to their own project
-      });
+      }, userProfile?.organizationId);
       toast.success('Project created successfully');
       setNewProject({ name: '', description: '' });
       setShowModal(false);
@@ -133,6 +138,7 @@ export default function ProjectsPage() {
       setIsSubmitting(false);
     }
   };
+
 
   // Removed handleAssign and saveAssignments as they are now on the dedicated page
 
@@ -274,7 +280,7 @@ export default function ProjectsPage() {
                     variants={itemVariants}
                     layout
                     whileHover={{ y: -8, boxShadow: '0 30px 60px -12px rgba(0,0,0,0.12)' }}
-                    onClick={() => isAdmin ? navigate(`/admin/projects/${project.id}`) : navigate(`${isDeveloper ? '/dev/bugs' : '/qa/bugs'}?project=${encodeURIComponent(project.name)}`)}
+                    onClick={() => isAdmin ? navigate(`/admin/projects/${project.id}`, { state: { project } }) : navigate(`${isDeveloper ? '/dev/bugs' : '/qa/bugs'}?project=${encodeURIComponent(project.name)}`)}
                     style={{ 
                       padding: 32, borderRadius: 28, border: '1px solid var(--border)', background: 'var(--bg-card)',
                       cursor: 'pointer', position: 'relative', display: 'flex', flexDirection: 'column', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'

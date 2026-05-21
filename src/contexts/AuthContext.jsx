@@ -25,7 +25,13 @@ import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
-let isSigningUp = false;
+// Promise-based signup lock.
+// When signup() is running, signupLockPromise is a Promise that resolves only
+// after the user doc (and org) have been fully written to Firestore.
+// onAuthStateChanged awaits this Promise before doing any profile work,
+// eliminating ALL race-condition duplicates.
+let signupLockPromise = null;
+let signupLockResolve = null;
 
 async function migrateProjectAndBugAssignments(oldId, newId, orgId) {
   if (!oldId || !newId || !orgId) return;
@@ -80,7 +86,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1', workspaceName = '') {
-    isSigningUp = true;
+    // Acquire lock — onAuthStateChanged will await this before touching profile/healing
+    signupLockPromise = new Promise((resolve) => {
+      signupLockResolve = resolve;
+    });
     try {
       let user;
       
@@ -207,7 +216,12 @@ export function AuthProvider({ children }) {
         throw finalErr;
       }
     } finally {
-      isSigningUp = false;
+      // Release lock — onAuthStateChanged may now safely proceed
+      if (signupLockResolve) {
+        signupLockResolve();
+        signupLockResolve = null;
+      }
+      signupLockPromise = null;
     }
   }
 
@@ -263,25 +277,51 @@ export function AuthProvider({ children }) {
       orgId = invitedData.organizationId || "default_org_id";
       finalRole = invitedData.role || 'QA';
     } else {
-      const orgRef = doc(collection(db, 'organizations'));
-      orgId = orgRef.id;
-      console.log("[AuthContext] Healing: Creating default organization...");
+      // ── FIX: Check if an organization already exists for this user ──
+      // This prevents a duplicate "My Workspace" org from being created when
+      // healUserProfile races with the signup() flow (e.g. signup created the
+      // real org but the user-doc write hadn't landed in Firestore yet).
+      let existingOrgId = null;
+      let existingOrgName = 'My Workspace';
       try {
-        await setDoc(orgRef, {
-          name: 'My Workspace',
-          ownerId: user.uid,
-          createdAt: serverTimestamp(),
-          subscription: {
-            plan: 'free',
-            status: 'active',
-            aiQuota: 100,
-            aiUsed: 0,
-            resetDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString()
-          }
-        });
-      } catch (orgErr) {
-        console.error("[AuthContext] Healing: Error creating organization:", orgErr);
-        throw orgErr;
+        const existingOrgQ = query(
+          collection(db, 'organizations'),
+          where('ownerId', '==', user.uid)
+        );
+        const existingOrgSnap = await getDocs(existingOrgQ);
+        if (!existingOrgSnap.empty) {
+          existingOrgId = existingOrgSnap.docs[0].id;
+          existingOrgName = existingOrgSnap.docs[0].data().name || 'My Workspace';
+          console.log(`[AuthContext] Healing: Found existing org ${existingOrgId} ("${existingOrgName}") — skipping creation.`);
+        }
+      } catch (checkErr) {
+        console.warn('[AuthContext] Healing: Could not query existing orgs (non-critical):', checkErr);
+      }
+
+      if (existingOrgId) {
+        // Reuse the org that signup() already created
+        orgId = existingOrgId;
+      } else {
+        const orgRef = doc(collection(db, 'organizations'));
+        orgId = orgRef.id;
+        console.log("[AuthContext] Healing: No existing org found — creating default organization...");
+        try {
+          await setDoc(orgRef, {
+            name: 'My Workspace',
+            ownerId: user.uid,
+            createdAt: serverTimestamp(),
+            subscription: {
+              plan: 'free',
+              status: 'active',
+              aiQuota: 100,
+              aiUsed: 0,
+              resetDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString()
+            }
+          });
+        } catch (orgErr) {
+          console.error("[AuthContext] Healing: Error creating organization:", orgErr);
+          throw orgErr;
+        }
       }
       finalRole = 'Admin';
     }
@@ -318,35 +358,25 @@ export function AuthProvider({ children }) {
         }
 
         if (user) {
-          if (isSigningUp) {
-            console.log("[AuthContext] Auth state changed during active signup. Bypassing self-healing and profile verification check.");
-            const docRef = doc(db, 'users', user.uid);
-            unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
-              if (docSnap.exists()) {
-                const data = docSnap.data();
-                setGlobalUserContext(data.organizationId || 'default_org_id', data.role);
-                setUserProfile(data);
-                if (data.isActive === false) {
-                  await logout();
-                  toast.error('Your account has been deactivated.');
-                }
-              }
-            }, (err) => {
-              console.error("AuthContext: Profile listener error during signup", err);
-            });
-            setLoading(false);
-            return;
+          // ── Wait for any in-flight signup to fully complete ──
+          // This guarantees that by the time we check for the profile,
+          // signup() has already written both the org and the user doc.
+          if (signupLockPromise) {
+            console.log('[AuthContext] Auth state changed during signup lock — waiting for signup to complete...');
+            await signupLockPromise;
+            console.log('[AuthContext] Signup lock released — proceeding with profile check.');
           }
 
           let profile = await fetchUserProfile(user.uid);
           if (!profile) {
-            console.log("[AuthContext] Firestore profile missing for authenticated user. Attempting self-healing...");
+            console.log('[AuthContext] Firestore profile missing — attempting self-healing...');
             try {
               profile = await healUserProfile(user);
             } catch (healErr) {
-              console.error("[AuthContext] Self-healing failed:", healErr);
+              console.error('[AuthContext] Self-healing failed:', healErr);
             }
           }
+
 
           if (profile) {
             setGlobalUserContext(profile.organizationId || 'default_org_id', profile.role);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Code2, TestTube2, Bug, FolderOpen,
@@ -11,7 +12,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import AdminTopbar from '../../components/AdminTopbar';
-import { getAllBugs, getProjects, updateProject, getUsers } from '../../services/firestoreService';
+import { getAllBugs, getProjectById, getProjects, updateProject, getUsers } from '../../services/firestoreService';
+
 import { fetchAllUsers } from '../../services/teamService';
 import { toast } from 'react-hot-toast';
 import { formatSafeDate } from '../../utils/dateUtils';
@@ -34,41 +36,65 @@ export default function ProjectOverviewPage() {
   const { projectId } = useParams();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [project, setProject] = useState(null);
+  // Seed from router state immediately so the page renders without waiting for Firestore
+  const routerProject = location.state?.project || null;
+
+  const [project, setProject] = useState(routerProject);
   const [bugs, setBugs] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // If we already have project data from router state, skip the loading spinner
+  const [loading, setLoading] = useState(!routerProject);
   const [showReportModal, setShowReportModal] = useState(false);
 
+
   useEffect(() => {
+    if (!projectId) return;
     async function loadData() {
       try {
-        setLoading(true);
-        const [pList, bList, uList] = await Promise.all([
-          getProjects(),
-          getAllBugs(),
-          fetchAllUsers()
-        ]);
+        // Only show loading spinner if we don't already have project data from router state
+        if (!routerProject) setLoading(true);
 
-        const found = pList.find(p => p.id === projectId || p.name === projectId);
-        setProject(found);
-
+        // Step 1: Fetch the project directly by its Firestore document ID.
+        // This is independent of the org ID global singleton — avoids the stale-state race.
+        const found = await getProjectById(projectId);
+        console.log('[ProjectOverviewPage] getProjectById result:', found);
         if (found) {
-          const projectBugs = bList.filter(b => b.projectId === found.id || b.projectName === found.name);
-          setBugs(projectBugs);
+          setProject(found);
+        } else if (!routerProject) {
+          // Only treat as missing if we have no router-state fallback either
+          console.warn('[ProjectOverviewPage] Project not found for ID:', projectId);
+          setLoading(false);
+          return;
+        }
 
-          const projectUsers = uList.filter(u => found.assignedUsers?.includes(u.id));
+        // Step 2: Load bugs and users independently so a failure here
+        // doesn't prevent the project from displaying.
+        try {
+          const [bList, uList] = await Promise.all([getAllBugs(), fetchAllUsers()]);
+          const resolvedProject = found || routerProject;
+          const projectBugs = bList.filter(b => b.projectId === resolvedProject.id || b.projectName === resolvedProject.name);
+          setBugs(projectBugs);
+          const projectUsers = uList.filter(u => resolvedProject.assignedUsers?.includes(u.id));
           setAllUsers(projectUsers);
+        } catch (secondaryErr) {
+          console.warn('[ProjectOverviewPage] Could not load bugs/users (non-critical):', secondaryErr);
         }
       } catch (err) {
-        console.error("Failed to load project data:", err);
+        console.error('[ProjectOverviewPage] Failed to load project:', err);
+        // If we have router state data, keep showing that instead of "Project Missing"
+        if (!routerProject) {
+          setProject(null);
+        }
       } finally {
         setLoading(false);
       }
     }
     loadData();
-  }, [projectId]);
+  }, [projectId, userProfile?.organizationId]);
+
+
 
   const handleExportCSV = () => {
     if (!bugs || bugs.length === 0) {

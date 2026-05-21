@@ -400,13 +400,19 @@ export async function deleteNotification(id) {
 
 // ── PROJECTS ──────────────────────────────────────────────────────────────────
 
-export async function createProject(projectData) {
+export async function createProject(projectData, orgId) {
+  const effectiveOrgId = orgId || currentOrgId;
   const docRef = await addDoc(collection(db, 'projects'), {
     ...projectData,
-    organizationId: currentOrgId,
+    organizationId: effectiveOrgId,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
+}
+
+export async function getProjectById(projectId) {
+  const snap = await getDoc(doc(db, 'projects', projectId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
 export async function getProjects(userId, role) {
@@ -422,14 +428,15 @@ export async function getProjects(userId, role) {
   return allProjects;
 }
 
-export function subscribeToProjects(userId, role, callback) {
+export function subscribeToProjects(userId, role, callback, orgId) {
+  const effectiveOrgId = orgId || currentOrgId;
   const projectsRef = collection(db, 'projects');
   let q;
   
   if (role === 'super_admin' || role === 'Superadmin') {
     q = query(projectsRef, orderBy('createdAt', 'desc'));
   } else {
-    q = query(projectsRef, where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
+    q = query(projectsRef, where('organizationId', '==', effectiveOrgId), orderBy('createdAt', 'desc'));
   }
   
   return onSnapshot(q, (snap) => {

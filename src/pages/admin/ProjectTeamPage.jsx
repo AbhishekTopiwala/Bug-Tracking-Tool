@@ -5,7 +5,8 @@ import {
   Users, Search, ArrowLeft, CheckCircle2, Loader2,
   UserPlus, Shield, Mail, ShieldCheck, Check
 } from 'lucide-react';
-import { getProjects, updateProject } from '../../services/firestoreService';
+import { getProjectById, updateProject } from '../../services/firestoreService';
+
 import { fetchAllUsers } from '../../services/teamService';
 import { toast } from 'react-hot-toast';
 import AdminTopbar from '../../components/AdminTopbar';
@@ -108,8 +109,10 @@ export default function ProjectTeamPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [pList, uList] = await Promise.all([getProjects(), fetchAllUsers()]);
-        const found = pList.find(p => p.id === projectId || p.name === projectId);
+        const [found, uList] = await Promise.all([
+          getProjectById(projectId),
+          fetchAllUsers()
+        ]);
         if (found) {
           setProject(found);
           setSelectedIds(found.assignedUsers || []);
@@ -124,6 +127,7 @@ export default function ProjectTeamPage() {
     }
     load();
   }, [projectId]);
+
 
   const filteredUsers = useMemo(() => {
     const q = search.toLowerCase();
