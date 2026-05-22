@@ -6,6 +6,7 @@ import './styles/components.css';
 import './styles/developer.css';
 import './styles/admin.css';
 import './styles/super-admin.css';
+import './styles/landing.css';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { subscribeToNotifications } from './services/firestoreService';
@@ -22,6 +23,7 @@ import RoleRoute from './components/RoleRoute';
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
 const InvitePage = lazy(() => import('./pages/InvitePage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 
 // Lazy-loaded QA Portal pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -79,8 +81,8 @@ function PageLoader() {
 function RootRedirect() {
   const { currentUser, userProfile, loading, isSuperAdmin, isAdmin } = useAuth();
 
-  if (loading) return null;
-  if (!currentUser) return <Navigate to="/login" replace />;
+  if (loading) return <PageLoader />;
+  if (!currentUser) return <LandingPage />;
 
   if (!userProfile) {
     return (
@@ -249,8 +251,8 @@ function AppLayout() {
       {/* Public View (No Auth) */}
       <Route path="/public/:projectId" element={<PublicProjectPage />} />
 
-      {/* Root → role-based redirect */}
-      <Route path="/" element={<PrivateRoute><RootRedirect /></PrivateRoute>} />
+      {/* Root → role-based redirect or Landing Page */}
+      <Route path="/" element={<RootRedirect />} />
 
       {/* QA Portal — /qa/* (QA role only) */}
       <Route
