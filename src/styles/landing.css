@@ -1163,13 +1163,13 @@
   min-height: 0;
 }
 
-.admin-stats-side {
+.mock-admin-stats-side {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.admin-stat-card {
+.mock-admin-stat-card {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
   border-radius: 8px;
@@ -1179,7 +1179,7 @@
   gap: 4px;
 }
 
-.progress-mini {
+.mock-progress-mini {
   background: #F1F5F9;
   height: 3px;
   border-radius: 2px;
@@ -1187,13 +1187,13 @@
   margin-top: 4px;
 }
 
-.progress-fill {
+.mock-progress-fill {
   background: #5B6CFF;
   height: 100%;
   border-radius: 2px;
 }
 
-.admin-members-list {
+.mock-admin-members-list {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
   border-radius: 8px;
@@ -1204,7 +1204,7 @@
   overflow-y: auto;
 }
 
-.members-header {
+.mock-members-header {
   font-size: 0.65rem;
   font-weight: 700;
   color: #94A3B8;
@@ -1214,18 +1214,18 @@
   padding-bottom: 4px;
 }
 
-.member-row {
+.mock-member-row {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 4px 0;
 }
 
-.member-row:not(:last-child) {
+.mock-member-row:not(:last-child) {
   border-bottom: 1px solid #F1F5F9;
 }
 
-.member-avatar {
+.mock-member-avatar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -1237,16 +1237,16 @@
   color: white;
 }
 
-.member-avatar.blue { background: #3b82f6; }
-.member-avatar.green { background: #10b981; }
-.member-avatar.orange { background: #f97316; }
+.mock-member-avatar.blue { background: #3b82f6; }
+.mock-member-avatar.green { background: #10b981; }
+.mock-member-avatar.orange { background: #f97316; }
 
-.member-details {
+.mock-member-details {
   flex: 1;
   min-width: 0;
 }
 
-.member-name {
+.mock-member-name {
   font-size: 0.68rem;
   font-weight: 600;
   color: #0F172A;
@@ -1255,7 +1255,7 @@
   text-overflow: ellipsis;
 }
 
-.member-email {
+.mock-member-email {
   font-size: 0.58rem;
   color: #475569;
   white-space: nowrap;
@@ -1263,24 +1263,24 @@
   text-overflow: ellipsis;
 }
 
-.role-tag {
+.mock-role-tag {
   font-size: 0.5rem;
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
 }
 
-.role-tag.admin {
+.mock-role-tag.admin {
   background: rgba(91, 108, 255, 0.08);
   color: #5B6CFF;
 }
 
-.role-tag.dev {
+.mock-role-tag.dev {
   background: rgba(59, 130, 246, 0.08);
   color: #3B82F6;
 }
 
-.role-tag.qa {
+.mock-role-tag.qa {
   background: rgba(16, 185, 129, 0.08);
   color: #10B981;
 }

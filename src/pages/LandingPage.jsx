@@ -412,55 +412,55 @@ const tourTabs = [
 
               <div className="mock-admin-layout">
                 {/* Admin Stats Sidebar */}
-                <div className="admin-stats-side">
-                  <div className="admin-stat-card">
+                <div className="mock-admin-stats-side">
+                  <div className="mock-admin-stat-card">
                     <span className="stat-lbl">Active Seats</span>
                     <div className="stat-val">24 / 50</div>
-                    <div className="progress-mini">
-                      <div className="progress-fill" style={{ width: '48%' }}></div>
+                    <div className="mock-progress-mini">
+                      <div className="mock-progress-fill" style={{ width: '48%' }}></div>
                     </div>
                   </div>
-                  <div className="admin-stat-card">
+                  <div className="mock-admin-stat-card">
                     <span className="stat-lbl">AI Generations</span>
                     <div className="stat-val">8,420 / 10k</div>
-                    <div className="progress-mini">
-                      <div className="progress-fill" style={{ width: '84.2%' }}></div>
+                    <div className="mock-progress-mini">
+                      <div className="mock-progress-fill" style={{ width: '84.2%' }}></div>
                     </div>
                   </div>
                 </div>
 
                 {/* Team Members List */}
-                <div className="admin-members-list">
-                  <div className="members-header">Active Team Members</div>
+                <div className="mock-admin-members-list">
+                  <div className="mock-members-header">Active Team Members</div>
                   
                   {/* Member 1 */}
-                  <div className="member-row">
-                    <div className="member-avatar blue">AT</div>
-                    <div className="member-details">
-                      <div className="member-name">Abhishek Topiwala</div>
-                      <div className="member-email">abhishek@qualia.app</div>
+                  <div className="mock-member-row">
+                    <div className="mock-member-avatar blue">AT</div>
+                    <div className="mock-member-details">
+                      <div className="mock-member-name">Abhishek Topiwala</div>
+                      <div className="mock-member-email">abhishek@qualia.app</div>
                     </div>
-                    <span className="role-tag admin">ADMIN</span>
+                    <span className="mock-role-tag admin">ADMIN</span>
                   </div>
 
                   {/* Member 2 */}
-                  <div className="member-row">
-                    <div className="member-avatar green">JD</div>
-                    <div className="member-details">
-                      <div className="member-name">Jane Doe</div>
-                      <div className="member-email">jane@qualia.app</div>
+                  <div className="mock-member-row">
+                    <div className="mock-member-avatar green">JD</div>
+                    <div className="mock-member-details">
+                      <div className="mock-member-name">Jane Doe</div>
+                      <div className="mock-member-email">jane@qualia.app</div>
                     </div>
-                    <span className="role-tag dev">DEVELOPER</span>
+                    <span className="mock-role-tag dev">DEVELOPER</span>
                   </div>
 
                   {/* Member 3 */}
-                  <div className="member-row">
-                    <div className="member-avatar orange">SC</div>
-                    <div className="member-details">
-                      <div className="member-name">Sarah Conner</div>
-                      <div className="member-email">sarah@qualia.app</div>
+                  <div className="mock-member-row">
+                    <div className="mock-member-avatar orange">SC</div>
+                    <div className="mock-member-details">
+                      <div className="mock-member-name">Sarah Conner</div>
+                      <div className="mock-member-email">sarah@qualia.app</div>
                     </div>
-                    <span className="role-tag qa">QA</span>
+                    <span className="mock-role-tag qa">QA</span>
                   </div>
                 </div>
               </div>
