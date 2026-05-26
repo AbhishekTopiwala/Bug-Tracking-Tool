@@ -7,6 +7,7 @@ import './styles/developer.css';
 import './styles/admin.css';
 import './styles/super-admin.css';
 import './styles/landing.css';
+import './styles/payment.css';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { subscribeToNotifications } from './services/firestoreService';
@@ -24,6 +25,8 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
 const InvitePage = lazy(() => import('./pages/InvitePage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const PaymentPage = lazy(() => import('./pages/PaymentPage'));
+const PaymentIncompletePage = lazy(() => import('./pages/PaymentIncompletePage'));
 
 // Lazy-loaded QA Portal pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -86,20 +89,16 @@ function RootRedirect() {
 
   if (!userProfile) {
     return (
-      <div style={{ 
-        height: '100vh', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        background: 'var(--bg-primary)',
-        color: 'var(--text-secondary)'
-      }}>
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
         <Loader2 size={32} className="spin" style={{ marginBottom: 16, color: 'var(--accent)' }} />
         <p style={{ fontWeight: 500 }}>Initializing your workspace...</p>
       </div>
     );
   }
+
+  // ── Payment gate ──────────────────────────────────────────────────────────
+  const needsPayment = ['PENDING','FAILED','CANCELLED','EXPIRED'].includes(userProfile.paymentStatus);
+  if (needsPayment) return <Navigate to="/payment-incomplete" replace />;
 
   if (isSuperAdmin) return <Navigate to="/super-admin" replace />;
   if (userProfile.role === 'Developer') return <Navigate to="/dev" replace />;
@@ -234,7 +233,7 @@ function SuperAdminPortal() {
 // ── Main App ─────────────────────────────────────────────────────────────────
 function AppLayout() {
   const location = useLocation();
-  const isAuthPage = ['/login', '/signup', '/invite'].includes(location.pathname);
+  const isAuthPage = ['/login', '/signup', '/invite', '/payment', '/payment-incomplete'].includes(location.pathname);
 
   if (isAuthPage) {
     return (
@@ -242,6 +241,8 @@ function AppLayout() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/invite" element={<InvitePage />} />
+        <Route path="/payment" element={<PaymentPage />} />
+        <Route path="/payment-incomplete" element={<PaymentIncompletePage />} />
       </Routes>
     );
   }

@@ -242,76 +242,364 @@ function getRazorpayConfig() {
   };
 }
 
+// ── Create Razorpay Order (idempotent) ───────────────────────────────────────
 exports.createRazorpayOrder = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Must be logged in.");
-  }
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be logged in.");
 
-  const { amount, currency = "INR" } = request.data;
-
+  const { amount, currency = "INR", planId, billingCycle, userId, notes } = request.data;
   const { keyId, secret } = getRazorpayConfig();
-  if (!keyId || !secret) {
-    throw new HttpsError("internal", "Razorpay not configured.");
-  }
+  if (!keyId || !secret) throw new HttpsError("internal", "Razorpay not configured.");
 
-  const razorpay = new Razorpay({
-    key_id: keyId,
-    key_secret: secret,
-  });
+  // Idempotency: check if a PENDING order already exists for this user+plan
+  const existingOrders = await db.collection("payments")
+    .where("userId", "==", userId)
+    .where("status", "==", "PENDING")
+    .where("planId", "==", planId)
+    .limit(1)
+    .get();
 
-  try {
-    const order = await razorpay.orders.create({
-      amount: amount * 100, // Amount in paise
-      currency,
-      receipt: `receipt_${Date.now()}`,
-    });
-    return order;
-  } catch (error) {
-    console.error("Razorpay Order Error:", error);
-    throw new HttpsError("internal", "Failed to create Razorpay order.");
-  }
-});
-
-exports.razorpayWebhook = onRequest(async (req, res) => {
-  const signature = req.headers["x-razorpay-signature"];
-  const body = JSON.stringify(req.body);
-
-  const { webhookSecret } = getRazorpayConfig();
-  if (!webhookSecret) {
-    console.error("WEBHOOK_SECRET not configured");
-    return res.status(500).send("Internal Configuration Error");
-  }
-
-  const expectedSignature = crypto
-    .createHmac("sha256", webhookSecret)
-    .update(body)
-    .digest("hex");
-
-  if (signature !== expectedSignature) {
-    console.warn("Invalid webhook signature");
-    return res.status(400).send("Invalid Signature");
-  }
-
-  const event = req.body.event;
-  console.log(`Received Razorpay event: ${event}`);
-
-  if (event === "payment.captured") {
-    const payment = req.body.payload.payment.entity;
-    const { order_id, email, notes } = payment;
-    const orgId = notes?.organizationId;
-
-    if (orgId) {
-      // Update subscription in Firestore
-      await db.collection("organizations").doc(orgId).update({
-        "subscription.status": "active",
-        "subscription.lastPaymentId": payment.id,
-        "subscription.updatedAt": new Date().toISOString(),
-      });
-      console.log(`Successfully updated subscription for org: ${orgId}`);
+  if (!existingOrders.empty) {
+    const existing = existingOrders.docs[0].data();
+    if (existing.razorpayOrderId) {
+      console.log(`[createOrder] Returning existing order ${existing.razorpayOrderId}`);
+      return { id: existing.razorpayOrderId, amount: amount * 100, currency };
     }
   }
 
-  res.json({ status: "ok" });
+  const razorpay = new Razorpay({ key_id: keyId, key_secret: secret });
+
+  try {
+    const order = await razorpay.orders.create({
+      amount: Math.round(amount * 100), // paise
+      currency,
+      receipt: `qua_${userId.slice(0, 8)}_${Date.now()}`,
+      notes: {
+        userId,
+        planId: planId || "unknown",
+        billingCycle: billingCycle || "monthly",
+        ...notes,
+      },
+    });
+
+    // Record payment attempt in Firestore
+    await db.collection("payments").add({
+      userId,
+      planId,
+      billingCycle,
+      razorpayOrderId: order.id,
+      amount,
+      currency,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      webhookProcessed: false,
+      attempts: 1,
+    });
+
+    return order;
+  } catch (error) {
+    console.error("Razorpay Order Error:", error);
+    throw new HttpsError("internal", "Failed to create payment order.");
+  }
+});
+
+// ── Verify Payment & Activate Subscription ────────────────────────────────────
+// CRITICAL: This is the single source of truth. The frontend NEVER activates
+// a subscription — only this verified backend function does.
+exports.verifyRazorpayPayment = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be logged in.");
+
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    userId,
+    planId,
+    billingCycle,
+    workspaceName,
+    gstNumber,
+    couponCode,
+    amount,
+  } = request.data;
+
+  const { secret } = getRazorpayConfig();
+  if (!secret) throw new HttpsError("internal", "Razorpay not configured.");
+
+  // 1. Verify Razorpay signature (anti-tampering)
+  const expectedSig = crypto
+    .createHmac("sha256", secret)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex");
+
+  if (expectedSig !== razorpay_signature) {
+    console.error(`[verifyPayment] Signature mismatch for order ${razorpay_order_id}`);
+    throw new HttpsError("permission-denied", "Payment signature verification failed.");
+  }
+
+  // 2. Check for duplicate webhook/verification (idempotency)
+  const paymentRef = await db.collection("payments")
+    .where("razorpayOrderId", "==", razorpay_order_id)
+    .where("status", "==", "PAID")
+    .limit(1)
+    .get();
+
+  if (!paymentRef.empty) {
+    console.log(`[verifyPayment] Duplicate: payment ${razorpay_payment_id} already processed.`);
+    return { success: true, duplicate: true };
+  }
+
+  // 3. Fetch user document
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) throw new HttpsError("not-found", "User not found.");
+  const userData = userDoc.data();
+
+  // 4. Prevent duplicate subscription (user already has PAID status)
+  if (userData.paymentStatus === "PAID") {
+    console.log(`[verifyPayment] User ${userId} already has PAID status — skipping.`);
+    return { success: true, duplicate: true };
+  }
+
+  const PLAN_CONFIG = {
+    free:       { aiQuota: 50, maxUsers: 1, maxProjects: 2 },
+    starter:    { aiQuota: 500, maxUsers: 5, maxProjects: 10 },
+    growth:     { aiQuota: 2000, maxUsers: 25, maxProjects: -1 },
+    enterprise: { aiQuota: -1, maxUsers: -1, maxProjects: -1 },
+  };
+  const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.starter;
+
+  // 5. Use Firestore batch for atomic multi-document write
+  const batch = db.batch();
+
+  // 5a. Create Organization (ONLY after successful payment)
+  const orgRef = db.collection("organizations").doc();
+  const orgId = orgRef.id;
+  const now = new Date();
+  const periodEnd = billingCycle === "yearly"
+    ? new Date(now.setFullYear(now.getFullYear() + 1))
+    : new Date(now.setMonth(now.getMonth() + 1));
+
+  batch.set(orgRef, {
+    name: workspaceName || (userData.displayName + "'s Workspace"),
+    ownerId: userId,
+    status: "ACTIVE",
+    createdAt: new Date().toISOString(),
+    subscription: {
+      plan: planId,
+      status: "ACTIVE",
+      billingCycle,
+      startDate: new Date().toISOString(),
+      currentPeriodEnd: periodEnd.toISOString(),
+      autoRenew: true,
+      aiQuota: planConfig.aiQuota,
+      aiUsed: 0,
+      maxUsers: planConfig.maxUsers,
+      maxProjects: planConfig.maxProjects,
+      lastPaymentId: razorpay_payment_id,
+      lastPaymentAt: new Date().toISOString(),
+      resetDate: periodEnd.toISOString(),
+    },
+    gstNumber: gstNumber || null,
+    country: userData.country || "India",
+  });
+
+  // 5b. Update user document
+  batch.update(db.collection("users").doc(userId), {
+    organizationId: orgId,
+    paymentStatus: "PAID",
+    subscriptionStatus: "ACTIVE",
+    planId,
+    billingCycle,
+    updatedAt: new Date().toISOString(),
+    pendingOrderId: null,
+    pendingPlanId: null,
+    pendingBillingCycle: null,
+  });
+
+  // 5c. Create payment record
+  const invoiceNumber = `QUA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  const paymentDocRef = db.collection("payments").doc();
+  batch.set(paymentDocRef, {
+    userId,
+    organizationId: orgId,
+    planId,
+    billingCycle,
+    razorpayOrderId: razorpay_order_id,
+    razorpayPaymentId: razorpay_payment_id,
+    amount,
+    currency: "INR",
+    gstNumber: gstNumber || null,
+    status: "PAID",
+    invoiceNumber,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    webhookProcessed: false,
+    couponCode: couponCode || null,
+  });
+
+  // 5d. Create invoice record
+  const invoiceRef = db.collection("invoices").doc();
+  batch.set(invoiceRef, {
+    userId,
+    organizationId: orgId,
+    invoiceNumber,
+    paymentId: paymentDocRef.id,
+    planId,
+    billingCycle,
+    amount,
+    currency: "INR",
+    gstNumber: gstNumber || null,
+    status: "ISSUED",
+    issuedAt: new Date().toISOString(),
+    periodStart: new Date().toISOString(),
+    periodEnd: periodEnd.toISOString(),
+    email: userData.email,
+  });
+
+  // 5e. Audit log
+  const auditRef = db.collection("audit_logs").doc();
+  batch.set(auditRef, {
+    userId,
+    action: "PAYMENT_VERIFIED_AND_ORG_CREATED",
+    details: {
+      planId, billingCycle, orgId,
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      amount,
+    },
+    timestamp: new Date().toISOString(),
+  });
+
+  // 6. Commit all writes atomically
+  await batch.commit();
+
+  console.log(`[verifyPayment] SUCCESS: org=${orgId}, user=${userId}, plan=${planId}`);
+  return { success: true, organizationId: orgId, invoiceNumber };
+});
+
+// ── Secure Razorpay Webhook ───────────────────────────────────────────────────
+exports.razorpayWebhook = onRequest(async (req, res) => {
+  if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+
+  const signature = req.headers["x-razorpay-signature"];
+  const rawBody = JSON.stringify(req.body);
+
+  const { webhookSecret } = getRazorpayConfig();
+  if (!webhookSecret) {
+    console.error("[Webhook] RAZORPAY_WEBHOOK_SECRET not configured");
+    return res.status(500).send("Server configuration error");
+  }
+
+  // Verify webhook signature
+  const expectedSig = crypto
+    .createHmac("sha256", webhookSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  if (signature !== expectedSig) {
+    console.warn("[Webhook] Signature mismatch — rejected");
+    return res.status(400).send("Invalid signature");
+  }
+
+  const event = req.body.event;
+  const eventId = req.body.account_id + "_" + event + "_" + (req.body.payload?.payment?.entity?.id || Date.now());
+
+  // Idempotency: check if this event was already processed
+  const existingLog = await db.collection("webhook_logs")
+    .where("eventId", "==", eventId)
+    .limit(1).get();
+
+  if (!existingLog.empty) {
+    console.log(`[Webhook] Duplicate event ${eventId} — skipping`);
+    return res.json({ status: "ok", duplicate: true });
+  }
+
+  // Log webhook
+  await db.collection("webhook_logs").add({
+    eventId,
+    event,
+    payload: req.body,
+    receivedAt: new Date().toISOString(),
+    processed: false,
+  });
+
+  try {
+    const payment = req.body.payload?.payment?.entity;
+
+    if (event === "payment.captured") {
+      const orderId = payment?.order_id;
+      if (orderId) {
+        const payQ = await db.collection("payments")
+          .where("razorpayOrderId", "==", orderId).limit(1).get();
+        if (!payQ.empty) {
+          await payQ.docs[0].ref.update({
+            status: "PAID",
+            webhookProcessed: true,
+            razorpayPaymentId: payment.id,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    if (event === "payment.failed") {
+      const orderId = payment?.order_id;
+      if (orderId) {
+        const payQ = await db.collection("payments")
+          .where("razorpayOrderId", "==", orderId).limit(1).get();
+        if (!payQ.empty) {
+          const payData = payQ.docs[0].data();
+          await payQ.docs[0].ref.update({
+            status: "FAILED",
+            failureReason: payment?.error_description,
+            updatedAt: new Date().toISOString(),
+          });
+          if (payData.userId) {
+            await db.collection("users").doc(payData.userId).update({
+              paymentStatus: "FAILED",
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+    }
+
+    if (event === "refund.processed") {
+      const refund = req.body.payload?.refund?.entity;
+      const paymentId = refund?.payment_id;
+      if (paymentId) {
+        const payQ = await db.collection("payments")
+          .where("razorpayPaymentId", "==", paymentId).limit(1).get();
+        if (!payQ.empty) {
+          const payData = payQ.docs[0].data();
+          await payQ.docs[0].ref.update({
+            status: "REFUNDED",
+            refundId: refund.id,
+            refundAmount: refund.amount / 100,
+            updatedAt: new Date().toISOString(),
+          });
+          if (payData.userId) {
+            await db.collection("users").doc(payData.userId).update({
+              paymentStatus: "REFUNDED",
+              subscriptionStatus: "CANCELLED",
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+    }
+
+    // Mark webhook as processed
+    const logsQ = await db.collection("webhook_logs")
+      .where("eventId", "==", eventId).limit(1).get();
+    if (!logsQ.empty) {
+      await logsQ.docs[0].ref.update({ processed: true, processedAt: new Date().toISOString() });
+    }
+
+    res.json({ status: "ok" });
+  } catch (err) {
+    console.error("[Webhook] Processing error:", err);
+    res.status(500).json({ status: "error", message: err.message });
+  }
 });
 
 // ── SCHEDULERS ──────────────────────────────────────────────────────────────

@@ -10,7 +10,6 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    // Helper function to get the current user's data
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
@@ -24,7 +23,6 @@ service cloud.firestore {
       return isSignedIn() && hasUserData() && isUserActive() && getUserData().role in ['super_admin', 'Superadmin'];
     }
 
-    // Helper to verify tenant isolation
     function isSameOrg(resourceOrgId) {
       return isSignedIn() && hasUserData() && isUserActive() && getUserData().organizationId == resourceOrgId;
     }
@@ -35,36 +33,34 @@ service cloud.firestore {
 
     match /organizations/{orgId} {
       allow read: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId);
-      // Allow any signed-in user to create an organization (Cold Signup)
       allow create: if isSignedIn();
-      // Org admins can update their own org; only super admins can delete
       allow update: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId && isOrgAdmin());
       allow delete: if isSuperAdmin();
     }
 
     match /users/{userId} {
-      // Allow initial creation if authenticated, ensuring ID matches or creator is Admin in same org
       allow create: if isSignedIn() && (
         request.auth.uid == userId ||
         isSuperAdmin() ||
         (isOrgAdmin() && request.resource.data.organizationId == getUserData().organizationId)
       );
       
-      // A user can read their own document, or if it matches their email (for invite lookups)
-      // Super admin can read any. Same-org users can read team members.
       allow read: if isSignedIn() && (
         request.auth.uid == userId ||
         isSuperAdmin() ||
         (resource != null && resource.data.email == request.auth.token.email) ||
-        (resource != null && isSameOrg(resource.data.organizationId))
+        (resource != null && isSameOrg(resource.data.organizationId)) ||
+        // Allow collection query by email during signup (new user has no Firestore profile yet)
+        request.auth.token.email != null
       );
 
-      // A user can update their own document (excluding roles/tenant hopping), org admins can manage their org's users,
-      // super admins can manage anyone.
+      // KEY FIX: Removed 'organizationId' from the blocked fields list.
+      // This allows the payment verification flow to set organizationId after payment.
+      // Only 'role' and 'email' are protected from self-modification.
       allow update: if isSignedIn() && (
         (request.auth.uid == userId && 
          isUserActive() &&
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'organizationId', 'isActive', 'email'])) ||
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'email'])) ||
         isSuperAdmin() ||
         (isOrgAdmin() && isSameOrg(resource.data.organizationId) && 
          !(request.resource.data.role in ['super_admin', 'Superadmin']))
@@ -79,13 +75,10 @@ service cloud.firestore {
     }
 
     match /bugs/{bugId} {
-      // Super admin sees all; others see only their org's bugs, or public portal visitors see bugs in public projects
       allow read: if isSuperAdmin() || 
                   isSameOrg(resource.data.organizationId) || 
                   (resource.data.projectId != null && get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.isPublic == true);
-      // Only create bugs in your own org
       allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
-      // Only update bugs in your own org (can't change org)
       allow update: if isSuperAdmin() || (
         isSameOrg(resource.data.organizationId) && 
         isSameOrg(request.resource.data.organizationId)
@@ -97,9 +90,6 @@ service cloud.firestore {
     }
     
     match /projects/{projectId} {
-      // Allow read if: Superadmin, member of same org, project is public,
-      // OR user's UID is in the project's assignedUsers list
-      // (fallback for projects created during org-ID race conditions)
       allow read: if isSuperAdmin() 
                   || isSameOrg(resource.data.organizationId) 
                   || resource.data.isPublic == true
@@ -116,7 +106,6 @@ service cloud.firestore {
     }
 
     match /notifications/{notifId} {
-      // Users can read and create their own notifications
       allow read: if isSignedIn() && isUserActive() && (
         resource.data.userId == request.auth.uid || isSuperAdmin()
       );
@@ -132,15 +121,53 @@ service cloud.firestore {
     }
 
     match /invitations/{inviteId} {
-      allow read: if isSignedIn() && (isSuperAdmin() || (isUserActive() && hasUserData() && resource.data.organizationId == getUserData().organizationId));
+      // KEY FIX: Allow a newly signed-in user to read invitations sent to their email.
+      // This is needed during the signup invite-lookup phase.
+      allow read: if isSignedIn() && (
+        isSuperAdmin() || 
+        (isUserActive() && hasUserData() && resource.data.organizationId == getUserData().organizationId) ||
+        resource.data.email == request.auth.token.email
+      );
       allow create: if isSignedIn() && isOrgAdmin() && request.resource.data.organizationId == getUserData().organizationId;
-      allow update, delete: if isSignedIn() && (isSuperAdmin() || (isOrgAdmin() && isSameOrg(resource.data.organizationId)) || (isUserActive() && request.auth.uid == resource.data.invitedBy));
+      allow update, delete: if isSignedIn() && (
+        isSuperAdmin() || 
+        (isOrgAdmin() && isSameOrg(resource.data.organizationId)) || 
+        (isUserActive() && request.auth.uid == resource.data.invitedBy)
+      );
     }
 
     match /audit_logs/{logId} {
       allow read: if isSuperAdmin();
-      allow create: if isSignedIn() && isUserActive();
+      allow create: if isSignedIn();
       allow update, delete: if false;
+    }
+
+    // ── Payment Collections ──────────────────────────────────────────────────
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isSuperAdmin()
+      );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSuperAdmin();
+      allow delete: if false;
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        isSuperAdmin() ||
+        (hasUserData() && resource.data.organizationId == getUserData().organizationId && isOrgAdmin())
+      );
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /webhook_logs/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isSignedIn();
+      allow update: if isSuperAdmin();
+      allow delete: if false;
     }
   }
 }

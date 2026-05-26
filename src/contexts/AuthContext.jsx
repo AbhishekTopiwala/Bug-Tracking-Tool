@@ -85,7 +85,7 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(true);
 
-  async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1', workspaceName = '') {
+  async function signup(email, password, displayName, role = 'QA', avatarBg = '6366f1', workspaceName = '', extendedData = {}) {
     // Acquire lock — onAuthStateChanged will await this before touching profile/healing
     signupLockPromise = new Promise((resolve) => {
       signupLockResolve = resolve;
@@ -154,10 +154,19 @@ export function AuthProvider({ children }) {
         console.log("[AuthContext] Phase 4: Initializing data...");
         let orgId = '';
         let finalRole = role;
+        const paymentPending = extendedData?.paymentPending === true;
 
         if (Object.keys(invitedData).length > 0) {
           orgId = invitedData.organizationId || "default_org_id";
           finalRole = invitedData.role || role;
+        } else if (paymentPending) {
+          // ── PAYMENT-PENDING MODE ──────────────────────────────────────────
+          // Do NOT create an organization. It will be created ONLY after
+          // successful payment verification in the Cloud Function.
+          // Leave orgId empty; user doc gets paymentStatus = PAYMENT_PENDING.
+          console.log("[AuthContext] Payment-pending mode: skipping org creation.");
+          orgId = '';
+          finalRole = 'Admin';
         } else {
           const orgRef = doc(collection(db, 'organizations'));
           orgId = orgRef.id;
@@ -179,7 +188,7 @@ export function AuthProvider({ children }) {
             console.error("[AuthContext] Error creating organization:", orgErr);
             throw orgErr;
           }
-          finalRole = 'Admin'; // Creator is Admin
+          finalRole = 'Admin';
         }
 
         console.log("[AuthContext] Phase 5: Saving user profile...");
@@ -188,11 +197,19 @@ export function AuthProvider({ children }) {
           email: email.toLowerCase(),
           displayName,
           role: finalRole,
-          organizationId: orgId,
+          organizationId: orgId || null,
           avatarBg,
           isActive: true,
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
+          // Payment fields
+          paymentStatus: paymentPending ? 'PENDING' : (orgId ? 'NOT_REQUIRED' : 'PENDING'),
+          subscriptionStatus: paymentPending ? null : 'ACTIVE',
+          planId: extendedData?.planId || 'free',
+          billingCycle: extendedData?.billingCycle || null,
+          workspaceName: workspaceName || null,
+          country: extendedData?.country || null,
+          gstNumber: extendedData?.gstNumber || null,
         };
 
         try {

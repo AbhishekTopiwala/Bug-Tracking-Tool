@@ -1,23 +1,12 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ArrowRight, 
-  Sparkles, 
-  ChevronDown, 
-  Clock, 
-  Zap,
-  Check,
-  X,
-  Globe,
-  Terminal,
-  Users,
-  LayoutDashboard,
-  Activity,
-  Folder,
-  Plus,
-  MessageSquare
+  ArrowRight, Sparkles, ChevronDown, Clock, Zap,
+  Check, X, Globe, Terminal, Users, LayoutDashboard,
+  Activity, Folder, Plus, MessageSquare
 } from 'lucide-react';
+import { PLANS, saveSelectedPlan, formatPrice } from '../services/paymentService';
 
 
 const mockBugs = [
@@ -49,49 +38,8 @@ const mockBugs = [
   }
 ];
 
-const pricingPlans = [
-  {
-    title: "Free Sandbox",
-    desc: "Perfect for single developers or initial software proofs.",
-    price: "$0",
-    features: [
-      "1 User License",
-      "2 Active Projects",
-      "50 AI Bug generations / mo",
-      "Basic Kanban Dashboard"
-    ],
-    btnText: "Launch Sandbox",
-    popular: false
-  },
-  {
-    title: "Team Growth",
-    desc: "Designed for active QA teams and developer hubs.",
-    price: "$29",
-    features: [
-      "Up to 15 User Licenses",
-      "Unlimited active projects",
-      "1,500 AI Bug generations / mo",
-      "Custom manual test catalogs",
-      "Priority repository sync"
-    ],
-    btnText: "Get Team Growth",
-    popular: true
-  },
-  {
-    title: "Enterprise Scale",
-    desc: "Built for massive developer groups with advanced workloads.",
-    price: "$89",
-    features: [
-      "Unlimited User Licenses",
-      "Unlimited projects & orgs",
-      "Unlimited AI Bug generations",
-      "Advanced analytics charts",
-      "Dedicated slack sync channel"
-    ],
-    btnText: "Contact Sales",
-    popular: false
-  }
-];
+// pricingPlans now loaded from paymentService — see PLANS constant
+
 
 const faqData = [
   {
@@ -474,22 +422,25 @@ const tourTabs = [
 ];
 
 export default function LandingPage() {
+  const navigate = useNavigate();
   const [activeBug, setActiveBug] = useState(mockBugs[0]);
   const [isScanning, setIsScanning] = useState(false);
   const [showResult, setShowResult] = useState(true);
   const [activeTourTab, setActiveTourTab] = useState(tourTabs[0]);
   const [activeFaq, setActiveFaq] = useState(null);
+  const [billingCycle, setBillingCycle] = useState('monthly');
 
   const handleSelectBug = (bug) => {
     if (isScanning) return;
     setIsScanning(true);
     setShowResult(false);
     setActiveBug(bug);
+    setTimeout(() => { setIsScanning(false); setShowResult(true); }, 1800);
+  };
 
-    setTimeout(() => {
-      setIsScanning(false);
-      setShowResult(true);
-    }, 1800);
+  const handleSelectPlan = (planId, cycle) => {
+    saveSelectedPlan(planId, cycle);
+    navigate('/signup', { state: { planId, billingCycle: cycle } });
   };
 
   const toggleFaq = (index) => {
@@ -959,28 +910,72 @@ export default function LandingPage() {
           <span className="section-tag">Value Plans</span>
           <h2 className="section-title">Transparent, seat-based pricing</h2>
           <p className="section-subtitle">
-            Get started for free in minutes, and upgrade your scale or active users as your software project expands.
+            Get started for free, and upgrade as your team grows. All plans include a 14-day free trial.
           </p>
         </div>
 
+        {/* Billing Cycle Toggle */}
+        <div className="pricing-cycle-toggle">
+          <button
+            className={`pricing-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
+            onClick={() => setBillingCycle('monthly')}
+          >Monthly</button>
+          <button
+            className={`pricing-cycle-btn ${billingCycle === 'yearly' ? 'active' : ''}`}
+            onClick={() => setBillingCycle('yearly')}
+          >
+            Yearly
+            <span className="pricing-cycle-save">Save 17%</span>
+          </button>
+        </div>
+
         <div className="pricing-grid">
-          {pricingPlans.map((plan, index) => (
-            <div key={index} className={`pricing-card ${plan.popular ? 'popular' : ''}`}>
+          {Object.values(PLANS).map((plan) => (
+            <div key={plan.id} className={`pricing-card ${plan.popular ? 'popular' : ''}`}>
+              {plan.popular && (
+                <div className="pricing-popular-badge">⭐ Most Popular</div>
+              )}
               <div className="pricing-header">
-                <h3>{plan.title}</h3>
-                <p className="pricing-desc">{plan.desc}</p>
+                <h3>{plan.name}</h3>
+                <p className="pricing-desc">{plan.tagline}</p>
               </div>
-              <div className="pricing-price">{plan.price}<span>/month</span></div>
+              <div className="pricing-price">
+                {plan.monthlyPrice === null ? (
+                  <span className="pricing-custom">Custom</span>
+                ) : plan.monthlyPrice === 0 ? (
+                  <><span className="pricing-amount">Free</span><span className="pricing-period"> forever</span></>
+                ) : (
+                  <>
+                    <span className="pricing-amount">
+                      {formatPrice(billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice)}
+                    </span>
+                    <span className="pricing-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                  </>
+                )}
+              </div>
+              {billingCycle === 'yearly' && plan.yearlyPrice && plan.monthlyPrice > 0 && (
+                <div className="pricing-yearly-note">
+                  ₹{Math.round(plan.yearlyPrice / 12).toLocaleString('en-IN')}/mo billed annually
+                </div>
+              )}
               <div className="pricing-features">
                 {plan.features.map((feature, fIdx) => (
-                  <div key={fIdx} className="pricing-feature">
-                    <Check size={16} /> {feature}
+                  <div key={fIdx} className={`pricing-feature ${!feature.included ? 'muted' : ''}`}>
+                    {feature.included
+                      ? <Check size={15} style={{ color: '#22c55e', flexShrink: 0 }} />
+                      : <X size={15} style={{ color: '#94a3b8', flexShrink: 0 }} />}
+                    {feature.label}
                   </div>
                 ))}
               </div>
-              <Link to="/signup" className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`} style={{ textAlign: 'center', display: 'block', fontWeight: 600 }}>
-                {plan.btnText}
-              </Link>
+              <button
+                id={`plan-cta-${plan.id}`}
+                className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ textAlign: 'center', display: 'block', fontWeight: 600, width: '100%' }}
+                onClick={() => handleSelectPlan(plan.id, billingCycle)}
+              >
+                {plan.cta}
+              </button>
             </div>
           ))}
         </div>
