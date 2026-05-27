@@ -21,7 +21,7 @@ import { usePlanLimits } from '../../hooks/usePlanLimits';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const ROLES = ['QA', 'Developer', 'Admin', 'Superadmin'];
+const ROLES = ['QA', 'Developer'];
 
 const ROLE_META = {
   super_admin: { label: 'Superadmin', icon: Crown, cls: 'role-badge--superadmin' },
@@ -105,7 +105,7 @@ function ActiveToggle({ user, onToggle }) {
 
 // ─── Invite Modal ─────────────────────────────────────────────────────────────
 
-function InviteModal({ onClose, onSuccess }) {
+function InviteModal({ onClose, onSuccess, planId, qasCount, devsCount }) {
   const { userProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -115,6 +115,16 @@ function InviteModal({ onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return toast.error('Email is required');
+    
+    if (planId === 'free') {
+      if (role === 'QA' && qasCount >= 1) {
+        return toast.error('Free plan allows only 1 QA member.');
+      }
+      if (role === 'Developer' && devsCount >= 1) {
+        return toast.error('Free plan allows only 1 Developer.');
+      }
+    }
+
     setLoading(true);
     try {
       await inviteUser({ 
@@ -428,7 +438,7 @@ function ProjectGroupCard({ project, members, onToggle, onRoleChange, onDelete }
 
 export default function TeamManagementPage() {
   const { currentUser, isSuperAdmin, userProfile } = useAuth();
-  const { canAddUser, userCount, maxUsers, isUnlimitedUsers } = usePlanLimits();
+  const { canAddUser, userCount, maxUsers, isUnlimitedUsers, planId } = usePlanLimits();
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -436,9 +446,6 @@ export default function TeamManagementPage() {
   const [filterRole, setFilterRole] = useState('All');
   const [showInvite, setShowInvite] = useState(false);
   const [viewMode, setViewMode] = useState('all');
-
-  // User limit label for the button
-  const userLimitLabel = isUnlimitedUsers ? null : `${userCount}/${maxUsers}`;
 
   const loadData = async () => {
     setLoading(true);
@@ -575,6 +582,9 @@ export default function TeamManagementPage() {
   const devs = activeUsers.filter((u) => u.role === 'Developer').length;
   const qas = activeUsers.filter((u) => u.role === 'QA').length;
 
+  // User limit label for the button
+  const userLimitLabel = isUnlimitedUsers ? null : `${total}/${maxUsers}`;
+
   return (
     <>
       <AdminTopbar
@@ -606,7 +616,7 @@ export default function TeamManagementPage() {
           </div>
 
           <button className="btn btn-primary" onClick={() => {
-            if (!canAddUser()) return;
+            if (!canAddUser(total)) return;
             setShowInvite(true);
           }}>
             <UserPlus size={16} />
@@ -767,6 +777,9 @@ export default function TeamManagementPage() {
         <InviteModal
           onClose={() => setShowInvite(false)}
           onSuccess={loadData}
+          planId={planId}
+          qasCount={qas}
+          devsCount={devs}
         />
       )}
     </>

@@ -39,7 +39,7 @@ export const PLANS = {
     monthlyPricePaise: 0,
     yearlyPricePaise: 0,
     currency: 'INR',
-    maxUsers: 1,
+    maxUsers: 3,
     maxProjects: 2,
     storageGB: 1,
     aiQuota: 50,
@@ -47,7 +47,7 @@ export const PLANS = {
     popular: false,
     active: true,
     features: [
-      { label: '1 User License', included: true },
+      { label: '3 User Licenses (Admin + 1 QA + 1 Dev)', included: true },
       { label: '2 Active Projects', included: true },
       { label: '50 AI Bug generations / mo', included: true },
       { label: 'Basic Kanban Dashboard', included: true },
