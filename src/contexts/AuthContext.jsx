@@ -268,6 +268,23 @@ export function AuthProvider({ children }) {
     const displayName = user.displayName || email.split('@')[0] || 'User';
     console.log("[AuthContext] Healing profile for:", email);
 
+    // ── CRITICAL FIX: Check if there's already a user doc with PAYMENT_PENDING ──
+    // This happens when the user doc was created during signup (paymentPending mode)
+    // but onAuthStateChanged fired before fetchUserProfile succeeded (timing issue).
+    // In this case, DO NOT heal — just re-read and return the existing doc.
+    try {
+      const existingDocSnap = await getDoc(doc(db, 'users', user.uid));
+      if (existingDocSnap.exists()) {
+        const existingData = existingDocSnap.data();
+        console.log('[AuthContext] Healing: User doc found on retry, skipping heal. paymentStatus:', existingData.paymentStatus);
+        setUserProfile(existingData);
+        setGlobalUserContext(existingData.organizationId || null, existingData.role);
+        return existingData;
+      }
+    } catch (retryErr) {
+      console.warn('[AuthContext] Healing: Could not re-read user doc:', retryErr);
+    }
+
     let invitedData = {};
     try {
       const q = query(collection(db, 'users'), where('email', '==', email));
@@ -289,10 +306,14 @@ export function AuthProvider({ children }) {
 
     let orgId = '';
     let finalRole = 'QA';
+    let paymentStatus = 'NOT_REQUIRED';
+    let subscriptionStatus = 'ACTIVE';
 
     if (Object.keys(invitedData).length > 0) {
       orgId = invitedData.organizationId || "default_org_id";
       finalRole = invitedData.role || 'QA';
+      paymentStatus = 'NOT_REQUIRED';
+      subscriptionStatus = 'ACTIVE';
     } else {
       // ── FIX: Check if an organization already exists for this user ──
       // This prevents a duplicate "My Workspace" org from being created when
@@ -318,7 +339,10 @@ export function AuthProvider({ children }) {
       if (existingOrgId) {
         // Reuse the org that signup() already created
         orgId = existingOrgId;
+        paymentStatus = 'NOT_REQUIRED';
+        subscriptionStatus = 'ACTIVE';
       } else {
+        // No org found — this is a truly missing profile. Create a default org.
         const orgRef = doc(collection(db, 'organizations'));
         orgId = orgRef.id;
         console.log("[AuthContext] Healing: No existing org found — creating default organization...");
@@ -339,6 +363,8 @@ export function AuthProvider({ children }) {
           console.error("[AuthContext] Healing: Error creating organization:", orgErr);
           throw orgErr;
         }
+        paymentStatus = 'NOT_REQUIRED';
+        subscriptionStatus = 'ACTIVE';
       }
       finalRole = 'Admin';
     }
@@ -351,6 +377,9 @@ export function AuthProvider({ children }) {
       organizationId: orgId,
       avatarBg: '6366f1',
       isActive: true,
+      paymentStatus,
+      subscriptionStatus,
+      planId: 'free',
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp(),
     };
@@ -396,7 +425,7 @@ export function AuthProvider({ children }) {
 
 
           if (profile) {
-            setGlobalUserContext(profile.organizationId || 'default_org_id', profile.role);
+            setGlobalUserContext(profile.organizationId || null, profile.role);
             if (profile.isActive === false) {
               await logout();
               toast.error('Your account has been deactivated.');
@@ -414,7 +443,10 @@ export function AuthProvider({ children }) {
           unsubscribeProfile = onSnapshot(docRef, async (docSnap) => {
             if (docSnap.exists()) {
               const data = docSnap.data();
-              setGlobalUserContext(data.organizationId || 'default_org_id', data.role);
+              // For payment-pending users, organizationId may be null — that's expected.
+              // Only pass a real orgId string to setGlobalUserContext when it exists.
+              const orgId = data.organizationId || null;
+              setGlobalUserContext(orgId, data.role);
               setUserProfile(data);
               if (data.isActive === false) {
                 await logout();
@@ -422,7 +454,13 @@ export function AuthProvider({ children }) {
               }
             }
           }, (err) => {
-            console.error("AuthContext: Profile listener error", err);
+            // Suppress expected permission-denied errors for payment-pending users
+            // who have no organizationId yet — these are transient during signup.
+            if (err?.code === 'permission-denied') {
+              console.warn("AuthContext: Profile listener permission-denied (likely transient during signup):", err.message);
+            } else {
+              console.error("AuthContext: Profile listener error", err);
+            }
           });
         } else {
           setUserProfile(null);

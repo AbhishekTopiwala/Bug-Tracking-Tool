@@ -25,7 +25,11 @@ let currentOrgId = 'default_org_id';
 let currentUserRole = 'QA';
 
 export function setGlobalUserContext(orgId, role) {
-  currentOrgId = orgId;
+  // Only update orgId if it's a real value — payment-pending users have null orgId,
+  // and we must not overwrite the default to avoid invalid Firestore queries.
+  if (orgId) {
+    currentOrgId = orgId;
+  }
   currentUserRole = role;
 }
 

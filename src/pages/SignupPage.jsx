@@ -92,19 +92,26 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      // Duplicate email check
-      const emailQ = query(collection(db, 'users'), where('email', '==', form.email.toLowerCase().trim()));
-      const emailSnap = await getDocs(emailQ);
-      if (!emailSnap.empty) {
-        const existingUser = emailSnap.docs[0].data();
-        // If user exists with PAYMENT_PENDING, let them login instead
-        if (existingUser.paymentStatus === PAYMENT_STATUS.PENDING || existingUser.paymentStatus === PAYMENT_STATUS.FAILED) {
-          toast.error('An account with this email already exists. Please login to complete your payment.');
-          navigate('/login', { state: { email: form.email } });
+      // Duplicate email check (best-effort — runs before auth so may fail with permission-denied
+      // for unauthenticated users. Firebase Auth's own email-already-in-use error is the true guard.)
+      try {
+        const emailQ = query(collection(db, 'users'), where('email', '==', form.email.toLowerCase().trim()));
+        const emailSnap = await getDocs(emailQ);
+        if (!emailSnap.empty) {
+          const existingUser = emailSnap.docs[0].data();
+          // If user exists with PAYMENT_PENDING, let them login instead
+          if (existingUser.paymentStatus === PAYMENT_STATUS.PENDING || existingUser.paymentStatus === PAYMENT_STATUS.FAILED) {
+            toast.error('An account with this email already exists. Please login to complete your payment.');
+            navigate('/login', { state: { email: form.email } });
+            return;
+          }
+          setFieldErrors(err => ({ ...err, email: 'This email is already registered. Try logging in.' }));
           return;
         }
-        setFieldErrors(err => ({ ...err, email: 'This email is already registered. Try logging in.' }));
-        return;
+      } catch (emailCheckErr) {
+        // Firestore permission-denied for unauthenticated users — skip the check.
+        // Firebase Auth will still block duplicate emails with auth/email-already-in-use.
+        console.warn('[Signup] Pre-auth email check skipped (expected for unauthenticated users):', emailCheckErr.code);
       }
 
       // Create user with PAYMENT_PENDING status (org NOT created yet)
