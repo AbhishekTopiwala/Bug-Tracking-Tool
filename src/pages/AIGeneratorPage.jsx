@@ -8,6 +8,7 @@ import Topbar from '../components/Topbar';
 import { generateBugFromNote } from '../services/geminiService';
 import { getAllBugs } from '../services/firestoreService';
 import toast from 'react-hot-toast';
+import { usePlanLimits } from '../hooks/usePlanLimits';
 
 export default function AIGeneratorPage() {
   const [note, setNote] = useState('');
@@ -16,6 +17,7 @@ export default function AIGeneratorPage() {
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState([]);
   const navigate = useNavigate();
+  const { canUseAI, incrementAIUsage, aiUsed, aiQuota, isUnlimitedAI } = usePlanLimits();
 
   const examples = [
     'video selects 360p instead of 720p when auto quality is enabled',
@@ -27,6 +29,10 @@ export default function AIGeneratorPage() {
 
   const handleGenerate = async () => {
     if (!note.trim()) return toast.error('Please enter a QA note first');
+
+    // ── Plan limit enforcement ──
+    if (!canUseAI()) return;
+
     setLoading(true);
     setResult(null);
     try {
@@ -34,6 +40,8 @@ export default function AIGeneratorPage() {
       setResult(bug);
       setHistory((h) => [{ note, bug, timestamp: new Date() }, ...h.slice(0, 4)]);
       toast.success('Bug report generated! ✨');
+      // Track usage AFTER successful generation
+      await incrementAIUsage();
     } catch (err) {
       console.error(err);
       toast.error('AI generation failed. Check your Gemini API key.');
@@ -112,6 +120,36 @@ export default function AIGeneratorPage() {
                   </button>
                 )}
               </div>
+
+              {/* AI Quota Usage Bar */}
+              {!isUnlimitedAI && (
+                <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--bg-primary)', borderRadius: 12, border: '1px solid var(--border-light)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      AI Credits Used
+                    </span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: aiUsed >= aiQuota ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                      {aiUsed} / {aiQuota}
+                    </span>
+                  </div>
+                  <div style={{ height: 5, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 10, transition: 'width 0.4s ease',
+                      width: `${Math.min(100, Math.round((aiUsed / aiQuota) * 100))}%`,
+                      background: aiUsed >= aiQuota
+                        ? 'var(--danger)'
+                        : aiUsed / aiQuota > 0.8
+                          ? '#f59e0b'
+                          : 'var(--accent)',
+                    }} />
+                  </div>
+                  {aiUsed >= aiQuota && (
+                    <p style={{ fontSize: '0.7rem', color: 'var(--danger)', marginTop: 6, fontWeight: 600 }}>
+                      Monthly quota exhausted. Upgrade your plan to continue.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Examples */}

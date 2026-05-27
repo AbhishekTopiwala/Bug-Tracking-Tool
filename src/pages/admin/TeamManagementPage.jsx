@@ -17,6 +17,7 @@ import {
 } from '../../services/teamService';
 import { getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -427,14 +428,17 @@ function ProjectGroupCard({ project, members, onToggle, onRoleChange, onDelete }
 
 export default function TeamManagementPage() {
   const { currentUser, isSuperAdmin, userProfile } = useAuth();
+  const { canAddUser, userCount, maxUsers, isUnlimitedUsers } = usePlanLimits();
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('All');
   const [showInvite, setShowInvite] = useState(false);
-  // 'all' | 'project'
   const [viewMode, setViewMode] = useState('all');
+
+  // User limit label for the button
+  const userLimitLabel = isUnlimitedUsers ? null : `${userCount}/${maxUsers}`;
 
   const loadData = async () => {
     setLoading(true);
@@ -601,9 +605,20 @@ export default function TeamManagementPage() {
             </button>
           </div>
 
-          <button className="btn btn-primary" onClick={() => setShowInvite(true)}>
+          <button className="btn btn-primary" onClick={() => {
+            if (!canAddUser()) return;
+            setShowInvite(true);
+          }}>
             <UserPlus size={16} />
             Invite Member
+            {userLimitLabel && (
+              <span style={{
+                background: 'rgba(255,255,255,0.2)', borderRadius: 8,
+                padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, marginLeft: 4
+              }}>
+                {userLimitLabel}
+              </span>
+            )}
           </button>
         </div>
 

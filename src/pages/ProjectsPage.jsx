@@ -10,6 +10,7 @@ import Topbar from '../components/Topbar';
 import AdminTopbar from '../components/AdminTopbar';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { usePlanLimits } from '../hooks/usePlanLimits';
 
 // ── Memoized Member Item ──
 const MemberItem = memo(({ user, isAssigned, onToggle }) => {
@@ -65,6 +66,7 @@ MemberItem.displayName = 'MemberItem';
 
 export default function ProjectsPage() {
   const { userProfile, currentUser } = useAuth();
+  const { canAddProject, projectCount, maxProjects, isUnlimitedProjects, planName } = usePlanLimits();
   const [projects, setProjects] = useState([]);
   const [bugs, setBugs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [allTeam, setAllTeam] = useState([]);
   const [assignSearch, setAssignSearch] = useState('');
@@ -81,6 +83,11 @@ export default function ProjectsPage() {
   const isAdmin = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role);
   const isDeveloper = userProfile?.role === 'Developer';
   const isQA = userProfile?.role === 'QA';
+
+  // Project limit label shown on the button — use live projects.length for accuracy
+  const projectLimitLabel = isUnlimitedProjects
+    ? null
+    : `${projects.length}/${maxProjects}`;
 
   useEffect(() => {
     if (!currentUser || !userProfile?.organizationId) return;
@@ -121,12 +128,19 @@ export default function ProjectsPage() {
     e.preventDefault();
     if (!newProject.name.trim()) return;
 
+    // ── Plan limit enforcement: pass live projects.length for up-to-date count ──
+    if (!canAddProject(projects.length)) {
+      setShowModal(false);
+      return;
+    }
+
+
     setIsSubmitting(true);
     try {
       await createProject({
         name: newProject.name.trim(),
         description: newProject.description.trim(),
-        assignedUsers: [currentUser.uid] // Admin is always assigned to their own project
+        assignedUsers: [currentUser.uid]
       }, userProfile?.organizationId);
       toast.success('Project created successfully');
       setNewProject({ name: '', description: '' });
@@ -197,13 +211,25 @@ export default function ProjectsPage() {
       <div className="page-container">
         {isAdmin && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 32 }}>
-            <button 
+          <button 
               className="btn btn-primary" 
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                // Pass live projects.length so the check uses the up-to-date count
+                if (!canAddProject(projects.length)) return;
+                setShowModal(true);
+              }}
               style={{ padding: '12px 24px', borderRadius: 14, gap: 10, fontWeight: 700 }}
             >
               <Plus size={20} />
               New Project
+              {projectLimitLabel && (
+                <span style={{
+                  background: 'rgba(255,255,255,0.2)', borderRadius: 8,
+                  padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, marginLeft: 4
+                }}>
+                  {projectLimitLabel}
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -278,6 +304,9 @@ export default function ProjectsPage() {
                   <motion.div 
                     key={project.id} 
                     variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
                     layout
                     whileHover={{ y: -8, boxShadow: '0 30px 60px -12px rgba(0,0,0,0.12)' }}
                     onClick={() => isAdmin ? navigate(`/admin/projects/${project.id}`, { state: { project } }) : navigate(`${isDeveloper ? '/dev/bugs' : '/qa/bugs'}?project=${encodeURIComponent(project.name)}`)}

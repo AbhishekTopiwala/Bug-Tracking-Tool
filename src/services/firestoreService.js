@@ -134,8 +134,18 @@ export async function getBug(id) {
 let activeBugsListener = null;
 let activeBugsSubscribers = [];
 let cachedBugs = null;
+let cachedBugsOrgId = null; // track which org the current listener belongs to
 
 export function subscribeToBugs(callback) {
+  // If the org changed (e.g. after login), tear down the stale listener so we
+  // re-build it for the correct org. currentOrgId is the module-level variable.
+  if (cachedBugsOrgId !== currentOrgId) {
+    if (activeBugsListener) { activeBugsListener(); activeBugsListener = null; }
+    cachedBugs = null;
+    cachedBugsOrgId = null;
+    activeBugsSubscribers = [];
+  }
+
   // Return cached data immediately if available for smooth transitions
   if (cachedBugs !== null) {
     callback(cachedBugs);
@@ -146,15 +156,26 @@ export function subscribeToBugs(callback) {
   if (!activeBugsListener) {
     const bugsRef = collection(db, 'bugs');
     let q;
-    
+
+    // NOTE: Do NOT use orderBy('createdAt') with a where() clause here — that
+    // requires a composite Firestore index. Without it the listener silently
+    // returns [] once any bug exists. Sort client-side instead.
     if (isSuperAdminContext()) {
-      q = query(bugsRef, orderBy('createdAt', 'desc'));
+      q = query(bugsRef);
     } else {
-      q = query(bugsRef, where('organizationId', '==', currentOrgId), orderBy('createdAt', 'desc'));
+      q = query(bugsRef, where('organizationId', '==', currentOrgId));
     }
-    
+
+    cachedBugsOrgId = currentOrgId;
+
     activeBugsListener = onSnapshot(q, (snap) => {
-      cachedBugs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      cachedBugs = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const tA = a.createdAt?.seconds ?? 0;
+          const tB = b.createdAt?.seconds ?? 0;
+          return tB - tA;
+        });
       activeBugsSubscribers.forEach(cb => cb(cachedBugs));
     }, (error) => {
       console.error("Error subscribing to bugs:", error);
@@ -170,6 +191,7 @@ export function subscribeToBugs(callback) {
       activeBugsListener();
       activeBugsListener = null;
       cachedBugs = null;
+      cachedBugsOrgId = null;
     }
   };
 }
@@ -436,16 +458,32 @@ export function subscribeToProjects(userId, role, callback, orgId) {
   const effectiveOrgId = orgId || currentOrgId;
   const projectsRef = collection(db, 'projects');
   let q;
-  
+
+  // NOTE: Do NOT use orderBy('createdAt') with a where() clause here — that requires
+  // a composite Firestore index. Without it the listener silently returns [] once any
+  // project exists. Sort client-side instead (equally fast for the scale we operate at).
   if (role === 'super_admin' || role === 'Superadmin') {
-    q = query(projectsRef, orderBy('createdAt', 'desc'));
+    q = query(projectsRef);
   } else {
-    q = query(projectsRef, where('organizationId', '==', effectiveOrgId), orderBy('createdAt', 'desc'));
+    q = query(projectsRef, where('organizationId', '==', effectiveOrgId));
   }
-  
+
+  // All roles considered admin — they see every project in their org without filtering
+  const ADMIN_ROLES = ['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager'];
+  const isAdminRole = ADMIN_ROLES.includes(role);
+
   return onSnapshot(q, (snap) => {
-    let allProjects = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    if (role && role !== 'Admin' && userId) {
+    let allProjects = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      // Sort newest-first client-side
+      .sort((a, b) => {
+        const tA = a.createdAt?.seconds ?? 0;
+        const tB = b.createdAt?.seconds ?? 0;
+        return tB - tA;
+      });
+
+    // Non-admin roles (Developer, QA) only see projects they're assigned to
+    if (!isAdminRole && userId) {
       allProjects = allProjects.filter(p => p.assignedUsers?.includes(userId));
     }
     callback(allProjects);
