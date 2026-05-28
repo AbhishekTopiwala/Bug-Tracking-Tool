@@ -906,78 +906,81 @@ export default function LandingPage() {
 
       {/* Pricing Matrix Section */}
       <section id="pricing" className="landing-pricing">
-        <div className="section-header">
-          <span className="section-tag">Value Plans</span>
-          <h2 className="section-title">Transparent, seat-based pricing</h2>
-          <p className="section-subtitle">
-            Get started for free, and upgrade as your team grows. All plans include a 14-day free trial.
-          </p>
-        </div>
+        <div className="pricing-container">
+          <div className="section-header">
+            <span className="section-tag">Simple Pricing</span>
+            <h2 className="section-title">AI-Powered QA Workspace for Modern Teams</h2>
+            <p className="section-subtitle">
+              Manage bugs, generate AI-powered reports, and streamline QA workflows — all in one platform.
+              Start free, upgrade as your team grows.
+            </p>
+          </div>
 
-        {/* Billing Cycle Toggle */}
-        <div className="pricing-cycle-toggle">
-          <button
-            className={`pricing-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
-            onClick={() => setBillingCycle('monthly')}
-          >Monthly</button>
-          <button
-            className={`pricing-cycle-btn ${billingCycle === 'yearly' ? 'active' : ''}`}
-            onClick={() => setBillingCycle('yearly')}
-          >
-            Yearly
-            <span className="pricing-cycle-save">Save 17%</span>
-          </button>
-        </div>
+          {/* Billing Cycle Toggle */}
+          <div className="pricing-cycle-toggle">
+            <button
+              className={`pricing-cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
+              onClick={() => setBillingCycle('monthly')}
+            >Monthly</button>
+            <button
+              className={`pricing-cycle-btn ${billingCycle === 'yearly' ? 'active' : ''}`}
+              onClick={() => setBillingCycle('yearly')}
+            >
+              Yearly
+              <span className="pricing-cycle-save">Save 20%</span>
+            </button>
+          </div>
 
-        <div className="pricing-grid">
-          {Object.values(PLANS).map((plan) => (
-            <div key={plan.id} className={`pricing-card ${plan.popular ? 'popular' : ''}`}>
-              {plan.popular && (
-                <div className="pricing-popular-badge">⭐ Most Popular</div>
-              )}
-              <div className="pricing-header">
-                <h3>{plan.name}</h3>
-                <p className="pricing-desc">{plan.tagline}</p>
-              </div>
-              <div className="pricing-price">
-                {plan.monthlyPrice === null ? (
-                  <span className="pricing-custom">Custom</span>
-                ) : plan.monthlyPrice === 0 ? (
-                  <><span className="pricing-amount">Free</span><span className="pricing-period"> forever</span></>
-                ) : (
-                  <>
-                    <span className="pricing-amount">
-                      {formatPrice(billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice)}
-                    </span>
-                    <span className="pricing-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
-                  </>
+          <div className="pricing-grid">
+            {Object.values(PLANS).filter(plan => plan.active).map((plan) => (
+              <div key={plan.id} className={`pricing-card ${plan.popular ? 'popular' : ''}`}>
+                {plan.popular && (
+                  <div className="pricing-popular-badge">⭐ Most Popular</div>
                 )}
-              </div>
-              {billingCycle === 'yearly' && plan.yearlyPrice && plan.monthlyPrice > 0 && (
-                <div className="pricing-yearly-note">
-                  ₹{Math.round(plan.yearlyPrice / 12).toLocaleString('en-IN')}/mo billed annually
+                <div className="pricing-header">
+                  <h3>{plan.name}</h3>
+                  <p className="pricing-desc">{plan.tagline}</p>
                 </div>
-              )}
-              <div className="pricing-features">
-                {plan.features.map((feature, fIdx) => (
-                  <div key={fIdx} className={`pricing-feature ${!feature.included ? 'muted' : ''}`}>
-                    {feature.included
-                      ? <Check size={15} style={{ color: '#22c55e', flexShrink: 0 }} />
-                      : <X size={15} style={{ color: '#94a3b8', flexShrink: 0 }} />}
-                    {feature.label}
+                <div className="pricing-price">
+                  {plan.monthlyPrice === null ? (
+                    <span className="pricing-custom">Custom</span>
+                  ) : plan.monthlyPrice === 0 ? (
+                    <><span className="pricing-amount">Free</span><span className="pricing-period"> forever</span></>
+                  ) : (
+                    <>
+                      <span className="pricing-amount">
+                        {formatPrice(billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice)}
+                      </span>
+                      <span className="pricing-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                    </>
+                  )}
+                </div>
+                {billingCycle === 'yearly' && plan.yearlyPrice > 0 && plan.monthlyPrice > 0 && (
+                  <div className="pricing-yearly-note">
+                    ₹{Math.round(plan.yearlyPrice / 12).toLocaleString('en-IN')}/mo · billed annually
                   </div>
-                ))}
+                )}
+                <div className="pricing-features">
+                  {plan.features.map((feature, fIdx) => (
+                    <div key={fIdx} className={`pricing-feature ${!feature.included ? 'muted' : ''}`}>
+                      {feature.included
+                        ? <Check size={15} style={{ color: '#22c55e', flexShrink: 0 }} />
+                        : <X size={15} style={{ color: '#94a3b8', flexShrink: 0 }} />}
+                      {feature.label}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  id={`plan-cta-${plan.id}`}
+                  className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ textAlign: 'center', display: 'block', fontWeight: 600, width: '100%' }}
+                  onClick={() => handleSelectPlan(plan.id, billingCycle)}
+                >
+                  {plan.cta}
+                </button>
               </div>
-              <button
-                id={`plan-cta-${plan.id}`}
-                className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ textAlign: 'center', display: 'block', fontWeight: 600, width: '100%' }}
-                onClick={() => handleSelectPlan(plan.id, billingCycle)}
-              >
-                {plan.cta}
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
