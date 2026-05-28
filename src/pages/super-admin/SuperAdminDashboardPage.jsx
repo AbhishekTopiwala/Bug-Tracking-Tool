@@ -35,15 +35,19 @@ export default function SuperAdminDashboardPage() {
       const orgs = orgsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       
       const totalOrgs = orgs.length;
-      const activeSubs = orgs.filter(o => o.subscription?.status === 'active' || o.subscription?.status === 'trial').length;
+      const activeSubs = orgs.filter(o => {
+        const s = o.subscription?.status?.toLowerCase();
+        return s === 'active' || s === 'trial';
+      }).length;
       const totalAI = orgs.reduce((acc, o) => acc + (o.aiUsage?.currentUsage || 0), 0);
       
-      // Mock revenue calculation (Free: 0, Pro: 2999, Enterprise: 9999)
+      // Mock revenue calculation (Free: 0, Starter: 999, Growth: 2999, Enterprise: 9999)
       const revenue = orgs.reduce((acc, o) => {
-        const plan = o.subscription?.planId || 'free';
-        const status = o.subscription?.status || 'inactive';
+        const plan = o.subscription?.plan || o.subscription?.planId || 'free';
+        const status = o.subscription?.status?.toLowerCase() || 'inactive';
         if (status === 'active') {
-          if (plan === 'pro') return acc + 2999;
+          if (plan === 'starter') return acc + 999;
+          if (plan === 'growth') return acc + 2999;
           if (plan === 'enterprise') return acc + 9999;
         }
         return acc;
@@ -485,7 +489,7 @@ export default function SuperAdminDashboardPage() {
               </thead>
               <tbody>
                 {recentOrgs.map(org => {
-                  const planId = org.subscription?.planId || 'free';
+                  const planId = org.subscription?.plan || org.subscription?.planId || 'free';
                   const usageRatio = org.aiUsage ? (org.aiUsage.currentUsage / org.aiUsage.monthlyLimit) : 0;
                   const percent = Math.min(100, Math.round(usageRatio * 100));
                   
@@ -496,7 +500,7 @@ export default function SuperAdminDashboardPage() {
                           <div className="sa-avatar-logo" style={{ 
                             background: planId === 'enterprise' 
                               ? 'linear-gradient(135deg, var(--sa-rose) 0%, #FDA4AF 100%)' 
-                              : planId === 'pro' 
+                              : planId === 'growth' || planId === 'pro'
                                 ? 'linear-gradient(135deg, var(--sa-indigo) 0%, #C7D2FE 100%)'
                                 : 'linear-gradient(135deg, var(--sa-amber) 0%, #FDE047 100%)'
                           }}>
@@ -514,9 +518,9 @@ export default function SuperAdminDashboardPage() {
                         </span>
                       </td>
                       <td>
-                        <div className={`sa-status-pill ${org.subscription?.status === 'active' ? 'sa-status-active' : 'sa-status-suspended'}`}>
+                        <div className={`sa-status-pill ${(org.subscription?.status || '').toLowerCase() === 'active' ? 'sa-status-active' : 'sa-status-suspended'}`}>
                           <span className="sa-pulse-dot" />
-                          {org.subscription?.status === 'active' ? 'Active' : 'Suspended'}
+                          {(org.subscription?.status || '').toLowerCase() === 'active' ? 'Active' : 'Suspended'}
                         </div>
                       </td>
                       <td>

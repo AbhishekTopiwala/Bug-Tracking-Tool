@@ -122,8 +122,8 @@ export function usePlanLimits() {
     if (count < maxUsers) return true;
 
     toast.error(
-      `Your ${planLimits.name} plan allows up to ${maxUsers} user${maxUsers !== 1 ? 's' : ''}. ` +
-      `You've reached the limit. Upgrade to add more team members.`,
+      `Your ${planLimits.name} plan allows up to ${maxUsers} user${maxUsers !== 1 ? 's' : ''} per project. ` +
+      `You've reached the limit. Upgrade to assign more team members.`,
       { duration: 5000, id: 'plan-user-limit' }
     );
     return false;

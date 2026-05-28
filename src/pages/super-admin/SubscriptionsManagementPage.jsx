@@ -28,12 +28,16 @@ export default function SubscriptionsManagementPage() {
       const orgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       
       // Compute actual revenue flow
-      const activeSubs = orgs.filter(o => o.subscription?.status === 'active' || o.subscription?.status === 'trial');
+      const activeSubs = orgs.filter(o => {
+        const s = o.subscription?.status?.toLowerCase();
+        return s === 'active' || s === 'trial';
+      });
       const calculatedMrr = orgs.reduce((acc, o) => {
-        const plan = o.subscription?.planId || 'free';
-        const status = o.subscription?.status || 'inactive';
+        const plan = o.subscription?.plan || o.subscription?.planId || 'free';
+        const status = o.subscription?.status?.toLowerCase() || 'inactive';
         if (status === 'active') {
-          if (plan === 'pro') return acc + 2999;
+          if (plan === 'starter') return acc + 999;
+          if (plan === 'growth') return acc + 2999;
           if (plan === 'enterprise') return acc + 9999;
         }
         return acc;
@@ -48,14 +52,15 @@ export default function SubscriptionsManagementPage() {
 
       // Map organizations to high-fidelity subscription rows
       const list = orgs.map(org => {
-        const plan = org.subscription?.planId || 'free';
-        const price = plan === 'pro' ? 2999 : plan === 'enterprise' ? 9999 : 0;
+        const plan = org.subscription?.plan || org.subscription?.planId || 'free';
+        const price = plan === 'starter' ? 999 : plan === 'growth' ? 2999 : plan === 'enterprise' ? 9999 : 0;
+        const normalizedStatus = (org.subscription?.status || 'active').toLowerCase();
         return {
           id: org.id,
           orgName: org.name || 'Anonymous Tenant',
           planId: plan,
           price,
-          status: org.subscription?.status || 'active',
+          status: normalizedStatus,
           interval: plan === 'enterprise' ? 'Yearly' : 'Monthly',
           gateway: 'Razorpay',
           paymentId: `pay_RZP_${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
@@ -99,7 +104,7 @@ export default function SubscriptionsManagementPage() {
     { month: 'Feb', pro: 15000, ent: 19998 },
     { month: 'Mar', pro: 18000, ent: 19998 },
     { month: 'Apr', pro: 24000, ent: 29997 },
-    { month: 'May', pro: metrics.mrr * 0.5, ent: metrics.mrr * 0.5 }
+    { month: 'May', pro: (metrics.mrr || 60000) * 0.5, ent: (metrics.mrr || 60000) * 0.5 }
   ];
 
   const maxVal = 60000;

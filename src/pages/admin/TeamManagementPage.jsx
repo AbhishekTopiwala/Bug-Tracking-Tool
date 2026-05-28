@@ -117,12 +117,7 @@ function InviteModal({ onClose, onSuccess, planId, qasCount, devsCount }) {
     if (!email.trim()) return toast.error('Email is required');
     
     if (planId === 'free') {
-      if (role === 'QA' && qasCount >= 1) {
-        return toast.error('Free plan allows only 1 QA member.');
-      }
-      if (role === 'Developer' && devsCount >= 1) {
-        return toast.error('Free plan allows only 1 Developer.');
-      }
+      // Limits are now enforced per-project, not per-organization.
     }
 
     setLoading(true);
@@ -616,19 +611,10 @@ export default function TeamManagementPage() {
           </div>
 
           <button className="btn btn-primary" onClick={() => {
-            if (!canAddUser(total)) return;
             setShowInvite(true);
           }}>
             <UserPlus size={16} />
             Invite Member
-            {userLimitLabel && (
-              <span style={{
-                background: 'rgba(255,255,255,0.2)', borderRadius: 8,
-                padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, marginLeft: 4
-              }}>
-                {userLimitLabel}
-              </span>
-            )}
           </button>
         </div>
 

@@ -67,8 +67,9 @@ export default function OrganizationsManagementPage() {
 
   const handleSuspend = async (orgId, currentStatus, e) => {
     e.stopPropagation(); // Prevent drawer toggle
-    const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
-    if (!window.confirm(`Are you sure you want to ${currentStatus === 'suspended' ? 'activate' : 'suspend'} this organization?`)) return;
+    const isCurrentlySuspended = (currentStatus || '').toLowerCase() === 'suspended';
+    const newStatus = isCurrentlySuspended ? 'ACTIVE' : 'SUSPENDED';
+    if (!window.confirm(`Are you sure you want to ${isCurrentlySuspended ? 'activate' : 'suspend'} this organization?`)) return;
     
     try {
       await updateDoc(doc(db, 'organizations', orgId), { 'subscription.status': newStatus });
@@ -183,10 +184,10 @@ export default function OrganizationsManagementPage() {
                           org.domain?.toLowerCase().includes(search.toLowerCase()) ||
                           org.id?.toLowerCase().includes(search.toLowerCase());
       
-      const planId = org.subscription?.planId || 'free';
+      const planId = org.subscription?.plan || org.subscription?.planId || 'free';
       const matchPlan = planFilter === 'all' || planId === planFilter;
 
-      const status = org.subscription?.status === 'suspended' ? 'suspended' : 'active';
+      const status = (org.subscription?.status || '').toLowerCase() === 'suspended' ? 'suspended' : 'active';
       const matchStatus = statusFilter === 'all' || status === statusFilter;
 
       return matchSearch && matchPlan && matchStatus;
@@ -202,11 +203,11 @@ export default function OrganizationsManagementPage() {
         valA = a.createdAt?.seconds || 0;
         valB = b.createdAt?.seconds || 0;
       } else if (sortBy === 'plan') {
-        valA = a.subscription?.planId || 'free';
-        valB = b.subscription?.planId || 'free';
+        valA = a.subscription?.plan || a.subscription?.planId || 'free';
+        valB = b.subscription?.plan || b.subscription?.planId || 'free';
       } else if (sortBy === 'status') {
-        valA = a.subscription?.status === 'suspended' ? 'suspended' : 'active';
-        valB = b.subscription?.status === 'suspended' ? 'suspended' : 'active';
+        valA = (a.subscription?.status || '').toLowerCase() === 'suspended' ? 'suspended' : 'active';
+        valB = (b.subscription?.status || '').toLowerCase() === 'suspended' ? 'suspended' : 'active';
       }
 
       if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
@@ -367,8 +368,8 @@ export default function OrganizationsManagementPage() {
               </thead>
               <tbody>
                 {paginatedOrgs.map(org => {
-                  const planId = org.subscription?.planId || 'free';
-                  const isSuspended = org.subscription?.status === 'suspended';
+                  const planId = org.subscription?.plan || org.subscription?.planId || 'free';
+                  const isSuspended = (org.subscription?.status || '').toLowerCase() === 'suspended';
                   const isExpanded = expandedOrgId === org.id;
 
                   // High-fidelity details for the expanded drawer
@@ -396,7 +397,7 @@ export default function OrganizationsManagementPage() {
                             <div className="sa-avatar-logo" style={{ 
                               background: planId === 'enterprise' 
                                 ? 'linear-gradient(135deg, var(--sa-rose) 0%, #FDA4AF 100%)' 
-                                : planId === 'pro' 
+                                : planId === 'growth' || planId === 'pro'
                                   ? 'linear-gradient(135deg, var(--sa-indigo) 0%, #C7D2FE 100%)'
                                   : 'linear-gradient(135deg, var(--sa-amber) 0%, #FDE047 100%)'
                             }}>

@@ -3,7 +3,8 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { getFirestore } = require("firebase-admin/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Razorpay = require("razorpay");
+const Razorpay = require("razorpay"); // Force reload
+
 const crypto = require("crypto");
 
 initializeApp();

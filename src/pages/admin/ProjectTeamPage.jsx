@@ -10,6 +10,7 @@ import { getProjectById, updateProject } from '../../services/firestoreService';
 import { fetchAllUsers } from '../../services/teamService';
 import { toast } from 'react-hot-toast';
 import AdminTopbar from '../../components/AdminTopbar';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 
 // ── Memoized List Item ──
 const MemberItem = memo(({ user, isAssigned, onToggle }) => {
@@ -105,6 +106,7 @@ export default function ProjectTeamPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [roleFilter, setRoleFilter] = useState('All');
+  const { maxUsers, isUnlimitedUsers, planId } = usePlanLimits();
 
   useEffect(() => {
     async function load() {
@@ -140,10 +142,35 @@ export default function ProjectTeamPage() {
   }, [allUsers, search, roleFilter]);
 
   const handleToggle = useCallback((id) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  }, []);
+    setSelectedIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(x => x !== id);
+      } else {
+        if (!isUnlimitedUsers && prev.length >= maxUsers) {
+          toast.error(`Your plan allows up to ${maxUsers} users per project.`);
+          return prev;
+        }
+
+        if (planId === 'free') {
+          const userToAdd = allUsers.find(u => (u.uid || u.id) === id);
+          const currentSelectedUsers = allUsers.filter(u => prev.includes(u.uid || u.id));
+          const qasCount = currentSelectedUsers.filter(u => u.role === 'QA').length;
+          const devsCount = currentSelectedUsers.filter(u => u.role === 'Developer').length;
+          
+          if (userToAdd?.role === 'QA' && qasCount >= 1) {
+            toast.error('Free plan allows only 1 QA member per project.');
+            return prev;
+          }
+          if (userToAdd?.role === 'Developer' && devsCount >= 1) {
+            toast.error('Free plan allows only 1 Developer per project.');
+            return prev;
+          }
+        }
+
+        return [...prev, id];
+      }
+    });
+  }, [allUsers, isUnlimitedUsers, maxUsers, planId]);
 
   const handleSelectAll = () => {
     const visibleIds = filteredUsers.map(u => u.uid || u.id);
@@ -152,6 +179,10 @@ export default function ProjectTeamPage() {
     if (allSelected) {
       setSelectedIds(prev => prev.filter(id => !visibleIds.includes(id)));
     } else {
+      if (!isUnlimitedUsers) {
+        toast.error(`Please select users individually to respect the ${maxUsers} users per project limit.`);
+        return;
+      }
       setSelectedIds(prev => [...new Set([...prev, ...visibleIds])]);
     }
   };
