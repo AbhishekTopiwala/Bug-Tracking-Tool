@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Bug, CheckCircle2, Clock, AlertTriangle,
   Folder, ArrowRight, Activity, MessageSquare,
@@ -610,12 +611,25 @@ export default function DashboardPage() {
         title="Dashboard"
         subtitle={`${greeting}, ${firstName} 👋 — Here's your QA pipeline summary`}
       />
-      <div className="page-container" style={{ paddingTop: 24, paddingBottom: 40 }}>
+      <motion.div 
+        className="page-container" 
+        style={{ paddingTop: 24, paddingBottom: 40, willChange: 'opacity, transform' }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
 
         {/* Stats Strip */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 28 }}>
-          {statCards.map(s => (
-            <div key={s.label} className="stat-card">
+          {statCards.map((s, i) => (
+            <motion.div 
+              key={s.label} 
+              className="stat-card"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: i * 0.05 }}
+              style={{ willChange: 'opacity, transform' }}
+            >
               <div className="stat-icon" style={{ background: s.bg }}>
                 <s.icon size={20} color={s.color} />
               </div>
@@ -623,7 +637,7 @@ export default function DashboardPage() {
                 <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
                 <div className="stat-label">{s.label}</div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
 
@@ -631,7 +645,12 @@ export default function DashboardPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, alignItems: 'start' }}>
 
           {/* LEFT — Project Health Cards */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            style={{ willChange: 'opacity, transform' }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
                 <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>My Projects</h2>
@@ -718,10 +737,15 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* RIGHT — Live Activity Feed */}
-          <div style={{
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            style={{
+            willChange: 'opacity, transform',
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 16,
@@ -810,9 +834,9 @@ export default function DashboardPage() {
             >
               View All Notifications <ArrowRight size={13} />
             </button>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </>
   );
 }

@@ -5,6 +5,7 @@ import {
   Check, Crown, Folder, LayoutGrid, List, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 import AdminTopbar from '../../components/AdminTopbar';
 import {
   fetchAllUsers,
@@ -590,10 +591,21 @@ export default function TeamManagementPage() {
         title="Team Management"
         subtitle="Manage your team members, roles, and access."
       />
-      <div className="page-container">
+      <motion.div 
+        className="page-container"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        style={{ willChange: 'opacity, transform' }}
+      >
 
         {/* Top actions row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+        <motion.div 
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, willChange: 'opacity, transform' }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+        >
           {/* View toggle */}
           <div className="tm-view-toggle">
             <button
@@ -620,7 +632,7 @@ export default function TeamManagementPage() {
             <UserPlus size={16} />
             Invite Member
           </button>
-        </div>
+        </motion.div>
 
         {/* Stats */}
         <div className="admin-stats-grid tm-stats-grid">
@@ -630,8 +642,15 @@ export default function TeamManagementPage() {
             { label: 'Admins', value: admins, icon: Crown, color: '#5B6CFF' },
             { label: 'Developers', value: devs, icon: Code2, color: 'var(--info)' },
             { label: 'QA Engineers', value: qas, icon: TestTube2, color: 'var(--success)' },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="admin-stat-card">
+          ].map(({ label, value, icon: Icon, color }, idx) => (
+            <motion.div 
+              key={label} 
+              className="admin-stat-card"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 + idx * 0.05 }}
+              style={{ willChange: 'opacity, transform' }}
+            >
               <div className="admin-stat-icon-wrap" style={{ background: `${color}15`, color }}>
                 <Icon size={20} />
               </div>
@@ -639,12 +658,18 @@ export default function TeamManagementPage() {
                 <p className="admin-stat-value">{value}</p>
                 <p className="admin-stat-label">{label}</p>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
 
         {/* Toolbar */}
-        <div className="tm-toolbar">
+        <motion.div 
+          className="tm-toolbar"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+          style={{ willChange: 'opacity, transform' }}
+        >
           <div className="search-wrapper tm-search">
             <Search size={15} className="search-icon" />
             <input
@@ -671,11 +696,17 @@ export default function TeamManagementPage() {
           <button className="btn btn-secondary btn-sm" onClick={loadData} title="Refresh">
             <RefreshCw size={14} />
           </button>
-        </div>
+        </motion.div>
 
         {/* ── ALL MEMBERS VIEW ── */}
         {viewMode === 'all' && (
-          <div className="tm-table-wrap card">
+          <motion.div 
+            className="tm-table-wrap card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+            style={{ willChange: 'opacity, transform' }}
+          >
             {loading ? (
               <div className="tm-table-loading">
                 <span className="spinner spinner-lg" />
@@ -720,12 +751,17 @@ export default function TeamManagementPage() {
                 Showing <strong>{filtered.length}</strong> of <strong>{total}</strong> members
               </div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* ── PROJECT VIEW ── */}
         {viewMode === 'project' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <motion.div 
+            style={{ display: 'flex', flexDirection: 'column', gap: 20, willChange: 'opacity, transform' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+          >
             {loading ? (
               <div className="tm-table-wrap card">
                 <div className="tm-table-loading">
@@ -758,9 +794,9 @@ export default function TeamManagementPage() {
                 </div>
               </>
             )}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
       {/* ── Invite Modal ── */}
       {showInvite && (

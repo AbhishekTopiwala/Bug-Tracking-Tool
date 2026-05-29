@@ -51,6 +51,7 @@ const TeamManagementPage = lazy(() => import('./pages/admin/TeamManagementPage')
 const ProjectOverviewPage = lazy(() => import('./pages/admin/ProjectOverviewPage'));
 const ProjectTeamPage = lazy(() => import('./pages/admin/ProjectTeamPage'));
 const PublicProjectPage = lazy(() => import('./pages/PublicProjectPage'));
+const BillingPage = lazy(() => import('./pages/admin/BillingPage'));
 
 // Lazy-loaded Super Admin Portal pages
 const SuperAdminDashboardPage = lazy(() => import('./pages/super-admin/SuperAdminDashboardPage'));
@@ -203,6 +204,7 @@ function AdminPortal() {
           <Route path="bugs/:id/edit" element={<BugFormPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="billing" element={<BillingPage />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </div>

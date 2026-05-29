@@ -360,11 +360,17 @@ export async function getUserLatestPayment(userId) {
 export async function getUserPaymentHistory(userId) {
   const q = query(
     collection(db, 'payments'),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', userId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const payments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  
+  // Sort descending by createdAt client-side to avoid composite index requirements
+  return payments.sort((a, b) => {
+    const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (new Date(a.createdAt).getTime() || 0);
+    const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (new Date(b.createdAt).getTime() || 0);
+    return timeB - timeA;
+  });
 }
 
 /**

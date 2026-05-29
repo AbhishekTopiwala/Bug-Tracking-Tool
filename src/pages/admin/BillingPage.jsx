@@ -2,65 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase/config';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { 
-  CreditCard, 
-  CheckCircle2, 
-  Zap, 
-  ShieldCheck, 
-  BarChart3, 
-  RefreshCcw,
-  Sparkles
+import {
+  CreditCard, CheckCircle2, Zap, ShieldCheck, BarChart3, RefreshCcw,
+  Sparkles, Users, FolderGit2, Calendar, FileText, AlertCircle, Download
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
+import { getUserPaymentHistory, formatPrice, PLANS } from '../../services/paymentService';
+import { motion, AnimatePresence } from 'framer-motion';
 import './BillingPage.css';
 
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Starter',
-    price: 0,
-    features: [
-      'Up to 3 Projects',
-      '100 AI Generations / mo',
-      'Basic Reporting',
-      'Standard Support'
-    ],
-    limit: 100
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 1999,
-    features: [
-      'Unlimited Projects',
-      '1,000 AI Generations / mo',
-      'Advanced Analytics',
-      'Priority Support',
-      'Custom Branding'
-    ],
-    limit: 1000,
-    popular: true
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 4999,
-    features: [
-      'Unlimited Everything',
-      '10,000 AI Generations / mo',
-      'SLA Guarantee',
-      'Dedicated Manager',
-      'SSO Integration'
-    ],
-    limit: 10000
-  }
-];
 
 const BillingPage = () => {
   const { userProfile, branding } = useAuth();
   const [organization, setOrganization] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingOrg, setLoadingOrg] = useState(true);
   const [processingPlan, setProcessingPlan] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  const limits = usePlanLimits();
 
   useEffect(() => {
     if (!userProfile?.organizationId) return;
@@ -69,11 +31,28 @@ const BillingPage = () => {
       if (snap.exists()) {
         setOrganization(snap.data());
       }
-      setLoading(false);
+      setLoadingOrg(false);
     });
 
     return () => unsub();
   }, [userProfile?.organizationId]);
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+
+    const fetchHistory = async () => {
+      try {
+        const history = await getUserPaymentHistory(userProfile.uid);
+        setPaymentHistory(history);
+      } catch (error) {
+        console.error("Failed to fetch payment history:", error);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    fetchHistory();
+  }, [userProfile?.uid]);
 
   const loadRazorpay = () => {
     return new Promise((resolve) => {
@@ -86,14 +65,14 @@ const BillingPage = () => {
   };
 
   const handleUpgrade = async (plan) => {
-    if (plan.id === organization?.subscription?.planId) {
+    const currentPlanId = organization?.subscription?.plan || organization?.subscription?.planId;
+    if (plan.id === currentPlanId) {
       toast.error('You are already on this plan');
       return;
     }
 
-    if (plan.price === 0) {
-      // Downgrade to free or initial state logic
-      toast.success('Switched to Starter plan');
+    if (plan.monthlyPrice === 0) {
+      setShowCancelModal(true);
       return;
     }
 
@@ -106,24 +85,24 @@ const BillingPage = () => {
       return;
     }
 
-    // In a real production app, we would call a Cloud Function here to create an Order
-    // and get an order_id. For this demonstration, we'll simulate the payment flow.
-    
     const options = {
       key: "rzp_test_YOUR_KEY_ID", // Replace with actual Key ID
-      amount: plan.price * 100,
+      amount: plan.monthlyPricePaise || plan.monthlyPrice * 100,
       currency: "INR",
       name: "Qualia SaaS",
       description: `Upgrade to ${plan.name} Plan`,
       image: branding.logoUrl || "https://firebasestorage.googleapis.com/v0/b/demo2-659f2.firebasestorage.app/o/branding%2Fqualia_logo.png?alt=media",
       handler: async function (response) {
-        // This would normally be handled via Webhook, but for demo UI feedback:
         try {
+          const renewsAt = new Date();
+          renewsAt.setMonth(renewsAt.getMonth() + 1);
+
           await updateDoc(doc(db, 'organizations', userProfile.organizationId), {
-            'subscription.planId': plan.id,
+            'subscription.plan': plan.id,
             'subscription.status': 'active',
             'subscription.lastPaymentId': response.razorpay_payment_id,
-            'aiUsage.monthlyLimit': plan.limit
+            'subscription.renewsAt': renewsAt.toISOString(),
+            'aiUsage.monthlyLimit': plan.aiQuota
           });
           toast.success(`Welcome to ${plan.name}! Your plan has been upgraded.`);
         } catch (error) {
@@ -145,21 +124,172 @@ const BillingPage = () => {
     setProcessingPlan(null);
   };
 
-  if (loading) {
+  const handleDowngradeToFree = async () => {
+    try {
+      await updateDoc(doc(db, 'organizations', userProfile.organizationId), {
+        'subscription.plan': 'free',
+        'subscription.status': 'active',
+        'subscription.renewsAt': null,
+        'aiUsage.monthlyLimit': 100
+      });
+      toast.success('Successfully downgraded to Starter plan');
+      setShowCancelModal(false);
+    } catch (error) {
+      console.error("Downgrade error:", error);
+      toast.error("Failed to downgrade. Please try again.");
+    }
+  };
+
+  if (loadingOrg || limits.loadingLimits) {
     return <div className="billing-loading">Loading subscription details...</div>;
   }
 
-  const currentPlan = PLANS.find(p => p.id === (organization?.subscription?.planId || 'free'));
-  const usagePercent = organization?.aiUsage 
-    ? Math.min(100, (organization.aiUsage.currentUsage / organization.aiUsage.monthlyLimit) * 100)
-    : 0;
+  const currentPlanId = organization?.subscription?.plan || organization?.subscription?.planId || 'free';
+  const currentPlan = PLANS[currentPlanId] || PLANS.free;
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const calculateDaysRemaining = (renewsAt) => {
+    if (!renewsAt) return null;
+    const renewDate = new Date(renewsAt);
+    const today = new Date();
+    const diffTime = renewDate - today;
+    if (diffTime < 0) return 0;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getAvailableUpgradePlans = () => {
+    const activePlans = Object.values(PLANS).filter(p => p.active);
+    if (currentPlan.id === 'growth') {
+      return [];
+    }
+    if (currentPlan.id === 'starter') {
+      return activePlans.filter(p => p.id === 'growth');
+    }
+    return activePlans.filter(p => p.id !== 'free'); 
+  };
+
+  const upgradePlans = getAvailableUpgradePlans();
+
+  const handleDownloadInvoice = (payment) => {
+    const invoiceHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Invoice - ${payment.id}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; max-width: 800px; margin: 0 auto; line-height: 1.5; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 40px; }
+            .logo { font-size: 24px; font-weight: 800; color: #5b6cff; display: flex; align-items: center; gap: 8px; }
+            .invoice-details { text-align: right; }
+            .invoice-title { font-size: 32px; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: -0.02em; }
+            .bill-to { margin-bottom: 40px; padding: 24px; background: #f8fafc; border-radius: 12px; }
+            .bill-to h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin: 0 0 12px 0; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 40px; }
+            .table th, .table td { padding: 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+            .table th { background: #f8fafc; font-weight: 600; color: #64748b; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+            .total-row { font-weight: 800; font-size: 1.25rem; color: #0f172a; }
+            .footer { margin-top: 80px; font-size: 0.875rem; color: #64748b; text-align: center; padding-top: 24px; border-top: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo">Qualia SaaS</div>
+              <p style="margin-top: 8px; color: #64748b; font-size: 14px;">
+                123 Innovation Drive<br/>
+                San Francisco, CA 94105<br/>
+                United States
+              </p>
+            </div>
+            <div class="invoice-details">
+              <h1 class="invoice-title">INVOICE</h1>
+              <p style="margin-top: 12px; color: #64748b; font-size: 14px;">
+                Invoice #: INV-${payment.id?.slice(-8).toUpperCase() || 'NA'}<br/>
+                Date: ${formatTimestamp(payment.createdAt)}<br/>
+                Status: <strong style="color: #10b981;">PAID</strong>
+              </p>
+            </div>
+          </div>
+          
+          <div class="bill-to">
+            <h3>Bill To</h3>
+            <p style="font-size: 16px; margin: 0;">
+              <strong style="color: #0f172a; font-size: 18px;">${userProfile.displayName || 'Customer'}</strong><br/>
+              ${userProfile.email}<br/>
+              <span style="color: #64748b; font-size: 14px;">Organization ID: ${userProfile.organizationId || 'N/A'}</span>
+            </p>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <strong style="color: #0f172a;">Premium Plan Subscription</strong><br/>
+                  <span style="color: #64748b; font-size: 14px;">Processed securely via Razorpay</span>
+                </td>
+                <td style="text-align: right; font-weight: 500;">${formatPrice(payment.amount)}</td>
+              </tr>
+              <tr class="total-row">
+                <td style="text-align: right; padding-top: 24px;">Total Paid (INR):</td>
+                <td style="text-align: right; padding-top: 24px;">${formatPrice(payment.amount)}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="footer">
+            <p>Thank you for your business. For any questions, please contact support@qualia.app</p>
+          </div>
+          <script>
+            window.onload = function() { setTimeout(() => { window.print(); }, 500); }
+          </script>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob([invoiceHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
 
   return (
-    <div className="billing-container">
+    <motion.div
+      className="billing-container"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+
+      {/* 1. Header */}
       <div className="billing-header">
         <div className="header-content">
           <h1>Subscription & Billing</h1>
-          <p>Manage your organization's plan and AI resource usage</p>
+          <p>Manage your organization's plan, usage, and billing history</p>
         </div>
         <div className="billing-badge">
           <ShieldCheck size={18} />
@@ -167,106 +297,397 @@ const BillingPage = () => {
         </div>
       </div>
 
-      <div className="billing-grid">
-        {/* Current Plan Summary */}
-        <div className="billing-card current-plan-card">
-          <div className="card-header">
-            <h3>Current Subscription</h3>
-            <span className="plan-status active">Active</span>
-          </div>
-          <div className="plan-info">
-            <div className="plan-name-large">
-              <Zap className="plan-icon" />
-              {currentPlan.name}
+      {/* 2. Usage Overview */}
+      <div className="usage-dashboard">
+        <motion.div
+          className="usage-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <div className="usage-card-header">
+            <div className="usage-icon-wrapper projects-icon">
+              <FolderGit2 size={20} />
             </div>
-            <p className="plan-price-info">
-              {currentPlan.price > 0 ? `₹${currentPlan.price}/month` : 'Free Forever'}
-            </p>
+            <h4>Projects Used</h4>
           </div>
-          <div className="plan-divider" />
-          <div className="usage-section">
-            <div className="usage-header">
-              <span>AI Quota Usage</span>
-              <span>{organization?.aiUsage?.currentUsage || 0} / {organization?.aiUsage?.monthlyLimit || 100}</span>
+          <div className="usage-metrics">
+            <div className="usage-numbers">
+              <span className="current">{limits.projectCount}</span>
             </div>
-            <div className="progress-bar-bg">
-              <div 
-                className="progress-bar-fill" 
-                style={{ 
-                  width: `${usagePercent}%`,
-                  backgroundColor: usagePercent > 90 ? '#ef4444' : branding.primaryColor 
-                }} 
+          </div>
+          <div className="usage-progress-container">
+            <div className="usage-progress">
+              <div
+                className="progress-fill projects-fill"
+                style={{ width: `${limits.projectUsagePct}%` }}
               />
             </div>
-            <p className="usage-footer">
-              Resets on the 1st of next month
-            </p>
-          </div>
-        </div>
-
-        {/* Plan Selection */}
-        <div className="plans-selection-grid">
-          {PLANS.map((plan) => (
-            <div 
-              key={plan.id} 
-              className={`plan-card ${plan.popular ? 'popular' : ''} ${plan.id === currentPlan.id ? 'current' : ''}`}
-            >
-              {plan.popular && <div className="popular-tag">Most Popular</div>}
-              <h4>{plan.name}</h4>
-              <div className="plan-price">
-                <span className="currency">₹</span>
-                <span className="amount">{plan.price}</span>
-                <span className="period">/mo</span>
-              </div>
-              <ul className="plan-features">
-                {plan.features.map((feature, i) => (
-                  <li key={i}>
-                    <CheckCircle2 size={16} className="feature-icon" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <button 
-                className={`plan-button ${plan.id === currentPlan.id ? 'secondary' : 'primary'}`}
-                onClick={() => handleUpgrade(plan)}
-                disabled={processingPlan === plan.id || plan.id === currentPlan.id}
-                style={{ 
-                  backgroundColor: plan.id === currentPlan.id ? 'transparent' : branding.primaryColor,
-                  borderColor: branding.primaryColor,
-                  color: plan.id === currentPlan.id ? branding.primaryColor : '#fff'
-                }}
-              >
-                {processingPlan === plan.id ? 'Processing...' : plan.id === currentPlan.id ? 'Current Plan' : 'Upgrade Now'}
-              </button>
+            <div className="usage-limit-text">
+              {limits.projectCount} of {limits.isUnlimitedProjects ? '∞' : limits.maxProjects} limit
             </div>
-          ))}
-        </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="usage-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <div className="usage-card-header">
+            <div className="usage-icon-wrapper team-icon">
+              <Users size={20} />
+            </div>
+            <h4>Team Members</h4>
+          </div>
+          <div className="usage-metrics">
+            <div className="usage-numbers">
+              <span className="current">{limits.userCount}</span>
+            </div>
+          </div>
+          <div className="usage-progress-container">
+            <div className="usage-progress">
+              <div
+                className="progress-fill team-fill"
+                style={{ width: `${limits.userUsagePct}%` }}
+              />
+            </div>
+            <div className="usage-limit-text">
+              {limits.userCount} of {limits.isUnlimitedUsers ? '∞' : limits.maxUsers} limit
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="usage-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <div className="usage-card-header">
+            <div className="usage-icon-wrapper ai-icon">
+              <Sparkles size={20} />
+            </div>
+            <h4>AI Credits</h4>
+          </div>
+          <div className="usage-metrics">
+            <div className="usage-numbers">
+              <span className="current">{limits.aiUsed}</span>
+            </div>
+          </div>
+          <div className="usage-progress-container">
+            <div className="usage-progress">
+              <div
+                className="progress-fill ai-fill"
+                style={{
+                  width: `${limits.aiUsagePct}%`,
+                  backgroundColor: limits.aiUsagePct > 90 ? '#ef4444' : undefined
+                }}
+              />
+            </div>
+            <div className="usage-limit-text">
+              {limits.aiUsed} of {limits.isUnlimitedAI ? '∞' : limits.aiQuota} limit
+            </div>
+          </div>
+        </motion.div>
       </div>
 
+      {/* 3. Subscription & Upgrade Grid */}
+      <div className={`billing-grid ${upgradePlans.length === 0 ? 'single-column' : ''}`}>
+
+        {/* Current Plan Summary */}
+        <div className="billing-sidebar">
+          <motion.div
+            className="billing-card current-plan-card"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <div className="card-header">
+              <h3>Current Subscription</h3>
+              <span className={`plan-status ${organization?.subscription?.status === 'active' ? 'active' : 'inactive'}`}>
+                {organization?.subscription?.status === 'active' ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            
+            <div className="detailed-plan-info">
+              <div className="info-row">
+                <span className="info-label">Plan</span>
+                <span className="info-value plan-name-highlight">
+                  <Zap size={16} /> {currentPlan.name}
+                </span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Billing Cycle</span>
+                <span className="info-value">Monthly</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Price</span>
+                <span className="info-value">{currentPlan.monthlyPrice > 0 ? `₹${currentPlan.monthlyPrice}/month` : 'Free'}</span>
+              </div>
+              {organization?.createdAt && (
+                <div className="info-row">
+                  <span className="info-label">Started On</span>
+                  <span className="info-value">{formatTimestamp(organization.createdAt)}</span>
+                </div>
+              )}
+              {organization?.subscription?.renewsAt && (
+                <>
+                  <div className="info-row">
+                    <span className="info-label">Next Renewal</span>
+                    <span className="info-value">{formatDate(organization.subscription.renewsAt)}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Days Remaining</span>
+                    <span className="info-value">{calculateDaysRemaining(organization.subscription.renewsAt)} Days</span>
+                  </div>
+                </>
+              )}
+              
+              <div className="plan-divider" />
+              
+              <div className="info-row">
+                <span className="info-label">Projects</span>
+                <span className="info-value">{currentPlan.maxProjects === -1 ? 'Unlimited' : currentPlan.maxProjects}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Team Members</span>
+                <span className="info-value">{currentPlan.maxUsers === -1 ? 'Unlimited' : currentPlan.maxUsers}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Storage</span>
+                <span className="info-value">{currentPlan.storageGB === -1 ? 'Unlimited' : `${currentPlan.storageGB} GB`}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">AI Limits</span>
+                <span className="info-value">{currentPlan.aiQuota === -1 ? 'Unlimited' : `${currentPlan.aiQuota} Credits/mo`}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Auto Renewal</span>
+                <span className="info-value">{organization?.subscription?.status === 'active' ? 'Enabled' : 'Disabled'}</span>
+              </div>
+            </div>
+
+            <div className="plan-divider" />
+
+            <div className="current-plan-actions">
+              {currentPlan.id !== 'free' && (
+                <button
+                  className="cancel-subscription-btn"
+                  onClick={() => setShowCancelModal(true)}
+                >
+                  Cancel Subscription
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Upgrade Plans */}
+        {upgradePlans.length > 0 && (
+          <div className="billing-main upgrade-main">
+            <div className="plans-section" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
+              <h3 className="section-title" style={{ margin: 0 }}>Upgrade Your Plan</h3>
+              <div className={`plans-selection-grid ${upgradePlans.length === 1 ? 'single-plan' : ''}`}>
+                {upgradePlans.map((plan, index) => (
+                  <motion.div
+                    key={plan.id}
+                    className={`billing-plan-card ${plan.popular ? 'popular' : ''}`}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 + (index * 0.1) }}
+                  >
+                    {plan.popular && <div className="popular-tag">Most Popular</div>}
+                    <div className="plan-header">
+                      <h4>{plan.name}</h4>
+                      <div className="plan-price">
+                        <span className="currency">₹</span>
+                        <span className="amount">{plan.monthlyPrice}</span>
+                        <span className="period">/mo</span>
+                      </div>
+                      <p className="plan-description">{plan.tagline}</p>
+                    </div>
+
+                    <div className="plan-divider" />
+
+                    <div className="plan-features-container">
+                      <ul className="plan-features">
+                        {plan.features.filter(f => f.included).map((feature, i) => (
+                          <li key={i}>
+                            <CheckCircle2 size={16} className="feature-icon" />
+                            {feature.label}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="plan-footer">
+                      <button
+                        className="plan-button primary"
+                        onClick={() => handleUpgrade(plan)}
+                        disabled={processingPlan === plan.id}
+                        style={{
+                          backgroundColor: branding.primaryColor,
+                          borderColor: branding.primaryColor,
+                          color: '#fff'
+                        }}
+                      >
+                        {processingPlan === plan.id ? 'Processing...' : `Upgrade to ${plan.name}`}
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Payment History (Full Width) */}
+      <div className="payment-history-container" style={{ marginTop: '32px' }}>
+        <motion.div
+          className="billing-card payment-history-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <div className="card-header">
+            <h3>Payment History</h3>
+          </div>
+          <div className="table-responsive">
+            <table className="payment-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Invoice</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingHistory ? (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '32px' }}>Loading history...</td>
+                  </tr>
+                ) : paymentHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="empty-state">
+                      <FileText size={32} style={{ margin: '0 auto 8px', color: '#cbd5e1' }} />
+                      <p style={{ margin: 0 }}>No payment history available</p>
+                    </td>
+                  </tr>
+                ) : (
+                  paymentHistory.map((payment) => (
+                    <tr key={payment.id}>
+                      <td>{formatTimestamp(payment.createdAt)}</td>
+                      <td>{formatPrice(payment.amount)}</td>
+                      <td>
+                        <span className={`status-badge ${payment.status?.toLowerCase() || 'pending'}`}>
+                          {payment.status || 'Paid'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="download-btn"
+                          title="Download Invoice"
+                          onClick={() => handleDownloadInvoice(payment)}
+                        >
+                          <Download size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* 5. Additional Billing Features */}
       <div className="billing-footer-info">
         <div className="info-item">
-          <BarChart3 size={20} />
-          <div>
+          <div className="info-icon-wrapper">
+            <BarChart3 size={20} />
+          </div>
+          <div className="info-content">
             <h5>Detailed Invoices</h5>
             <p>Download monthly GST compliant invoices from your history.</p>
           </div>
         </div>
         <div className="info-item">
-          <RefreshCcw size={20} />
-          <div>
+          <div className="info-icon-wrapper">
+            <RefreshCcw size={20} />
+          </div>
+          <div className="info-content">
             <h5>Cancel Anytime</h5>
             <p>No long term contracts. Downgrade or cancel with one click.</p>
           </div>
         </div>
         <div className="info-item">
-          <Sparkles size={20} />
-          <div>
+          <div className="info-icon-wrapper">
+            <Sparkles size={20} />
+          </div>
+          <div className="info-content">
             <h5>Need Custom Quota?</h5>
             <p>Contact our sales team for higher AI generation limits.</p>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Cancel Subscription Modal */}
+      <AnimatePresence>
+        {showCancelModal && (
+          <motion.div
+            className="modal-overlay"
+            onClick={() => setShowCancelModal(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="modal-content"
+              onClick={e => e.stopPropagation()}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="modal-header warning">
+                <AlertCircle size={24} className="warning-icon" />
+                <h3>Cancel Subscription</h3>
+              </div>
+              <div className="modal-body">
+                <p>Are you sure you want to downgrade to the Starter plan?</p>
+                <p className="warning-text">
+                  You will lose access to premium features, and your limits will be reduced:
+                </p>
+                <ul className="downgrade-list">
+                  <li>Limit of 3 projects</li>
+                  <li>Limit of 100 AI generations per month</li>
+                  <li>Standard support only</li>
+                </ul>
+              </div>
+              <div className="modal-actions">
+                <button
+                  className="btn-cancel"
+                  onClick={() => setShowCancelModal(false)}
+                >
+                  Keep Current Plan
+                </button>
+                <button
+                  className="btn-danger"
+                  onClick={handleDowngradeToFree}
+                >
+                  Yes, Downgrade
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 

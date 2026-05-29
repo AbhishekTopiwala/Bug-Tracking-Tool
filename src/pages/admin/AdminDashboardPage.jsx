@@ -64,19 +64,29 @@ export default function AdminDashboardPage() {
         title="Admin Overview" 
         subtitle={`${greeting}, ${currentUser?.displayName?.split(' ')[0] || 'Admin'} 👋 — Here's your organization overview.`}
       />
-      <div className="page-container" style={{ padding: '40px', maxWidth: '1600px', margin: '0 auto', paddingTop: 24 }}>
+      <motion.div 
+        className="page-container" 
+        style={{ padding: '40px', maxWidth: '1600px', margin: '0 auto', paddingTop: 24, willChange: 'opacity, transform' }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
 
         {/* ── Stats Grid Redesigned ── */}
         <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 40 }}>
-          {stats.map(({ label, value, icon: Icon, color, bg, link }) => (
+          {stats.map(({ label, value, icon: Icon, color, bg, link }, idx) => (
             <motion.div
               key={label}
-              whileHover={{ y: -8, boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)' }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.05 }}
+              whileHover={{ y: -4, boxShadow: '0 10px 20px -10px rgba(0,0,0,0.1)' }}
               className={`admin-stat-card ${link ? 'admin-stat-card--link' : ''}`}
               onClick={() => link && navigate(link)}
               style={{ 
                 background: 'var(--bg-card)', padding: '24px', borderRadius: 28, border: '1px solid var(--border-light)',
-                display: 'flex', alignItems: 'center', gap: 20, cursor: link ? 'pointer' : 'default', transition: 'all 0.3s'
+                display: 'flex', alignItems: 'center', gap: 20, cursor: link ? 'pointer' : 'default', transition: 'all 0.3s',
+                willChange: 'opacity, transform'
               }}
             >
               <div style={{ 
@@ -101,7 +111,13 @@ export default function AdminDashboardPage() {
         {/* ── Bottom Row ── */}
         <div className="admin-bottom-grid">
           {/* Recent Members */}
-          <div className="card admin-recent-card">
+          <motion.div 
+            className="card admin-recent-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            style={{ willChange: 'opacity, transform' }}
+          >
             <div className="admin-card-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Activity size={16} style={{ color: 'var(--admin-accent)' }} />
@@ -161,10 +177,16 @@ export default function AdminDashboardPage() {
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Role Distribution */}
-          <div className="card admin-dist-card">
+          <motion.div 
+            className="card admin-dist-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+            style={{ willChange: 'opacity, transform' }}
+          >
             <div className="admin-card-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <TrendingUp size={16} style={{ color: 'var(--admin-accent)' }} />
@@ -205,10 +227,10 @@ export default function AdminDashboardPage() {
               <Users size={14} />
               Manage Team
             </button>
-          </div>
+          </motion.div>
         </div>
 
-      </div>
+      </motion.div>
     </>
   );
 }
