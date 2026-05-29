@@ -236,10 +236,21 @@ If no existing bugs are similar, return: []`;
 
 // ── RAZORPAY & BILLING ──────────────────────────────────────────────────────
 function getRazorpayConfig() {
+  const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+
+  if (isEmulator) {
+    return {
+      keyId: process.env.RAZORPAY_TEST_KEY_ID || process.env.RAZORPAY_KEY_ID,
+      secret: process.env.RAZORPAY_TEST_SECRET || process.env.RAZORPAY_SECRET,
+      webhookSecret: process.env.RAZORPAY_TEST_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET,
+    };
+  }
+
+  // Live / Deployed mode
   return {
-    keyId: process.env.RAZORPAY_KEY_ID,
-    secret: process.env.RAZORPAY_SECRET,
-    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+    keyId: process.env.RAZORPAY_LIVE_KEY_ID || process.env.RAZORPAY_KEY_ID,
+    secret: process.env.RAZORPAY_LIVE_SECRET || process.env.RAZORPAY_SECRET,
+    webhookSecret: process.env.RAZORPAY_LIVE_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET,
   };
 }
 

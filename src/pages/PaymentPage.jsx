@@ -222,8 +222,12 @@ export default function PaymentPage() {
       });
 
       // 5. Open Razorpay checkout
+      const rzpKey = import.meta.env.DEV 
+        ? (import.meta.env.VITE_RAZORPAY_TEST_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID)
+        : (import.meta.env.VITE_RAZORPAY_LIVE_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID);
+
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: rzpKey,
         amount: order.amount,
         currency: order.currency,
         name: 'Qualia',

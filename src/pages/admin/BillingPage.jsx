@@ -86,7 +86,7 @@ const BillingPage = () => {
     }
 
     const options = {
-      key: "rzp_test_YOUR_KEY_ID", // Replace with actual Key ID
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
       amount: plan.monthlyPricePaise || plan.monthlyPrice * 100,
       currency: "INR",
       name: "Qualia SaaS",
