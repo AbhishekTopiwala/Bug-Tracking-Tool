@@ -24,8 +24,8 @@ const MemberItem = memo(({ user, isAssigned, onToggle }) => {
       whileTap={{ scale: 0.99 }}
       onClick={() => onToggle(user.uid || user.id)}
       style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '24px', borderRadius: 28, border: '2px solid',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+        padding: '24px 20px', borderRadius: 28, border: '2px solid',
         background: isAssigned ? 'var(--admin-accent-light)' : 'var(--bg-card)',
         borderColor: isAssigned ? 'var(--admin-accent)' : 'transparent',
         cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -45,9 +45,10 @@ const MemberItem = memo(({ user, isAssigned, onToggle }) => {
         />
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, overflow: 'hidden' }}>
         <div style={{
-          width: 64, height: 64, borderRadius: 20,
+          flexShrink: 0,
+          width: 60, height: 60, borderRadius: 20,
           background: isAssigned ? 'var(--admin-accent)' : 'var(--bg-primary)',
           color: isAssigned ? 'white' : 'var(--admin-accent)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -57,27 +58,32 @@ const MemberItem = memo(({ user, isAssigned, onToggle }) => {
         }}>
           {initials}
         </div>
-        <div>
-          <div style={{ fontWeight: 900, fontSize: '1.15rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+        <div style={{ minWidth: 0, overflow: 'hidden' }}>
+          <div style={{ 
+            fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+          }}>
             {user.name || user.email.split('@')[0]}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             <span style={{
-              fontSize: '0.7rem', padding: '3px 10px', borderRadius: 8,
+              fontSize: '0.65rem', padding: '3px 8px', borderRadius: 8,
               background: user.role === 'Admin' ? 'rgba(239, 68, 68, 0.1)' : user.role === 'Developer' ? 'rgba(37, 99, 235, 0.1)' : 'rgba(16, 185, 129, 0.1)',
               color: user.role === 'Admin' ? '#DC2626' : user.role === 'Developer' ? '#2563EB' : '#059669',
-              fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em'
+              fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em',
+              whiteSpace: 'nowrap'
             }}>{user.role}</span>
             <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--border)', opacity: 0.5 }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>
-              <Mail size={14} />
-              <span style={{ opacity: 0.8 }}>{user.email}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 500, minWidth: 0 }}>
+              <Mail size={12} style={{ flexShrink: 0 }} />
+              <span style={{ opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</span>
             </div>
           </div>
         </div>
       </div>
 
       <div style={{
+        flexShrink: 0,
         width: 36, height: 36, borderRadius: 14, border: '2px solid',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         borderColor: isAssigned ? 'var(--admin-accent)' : 'var(--border-light)',
@@ -218,10 +224,10 @@ export default function ProjectTeamPage() {
         subtitle={`Configure workspace permissions for ${project?.name}`}
       />
 
-      <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '40px 60px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', marginBottom: 48, gap: 40 }}>
+      <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '40px 20px', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', marginBottom: 48, gap: 20, flexWrap: 'wrap' }}>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               className="btn"
               onClick={() => navigate(`/admin/projects/${project?.id}`)}
@@ -257,11 +263,11 @@ export default function ProjectTeamPage() {
 
         {/* Filters & Stats Bar */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 32, marginBottom: 40, padding: '24px 32px',
+          display: 'flex', alignItems: 'center', gap: 20, marginBottom: 40, padding: '24px',
           background: 'var(--bg-card)', borderRadius: 32, border: '1px solid var(--border-light)',
-          boxShadow: 'var(--shadow-md)', position: 'sticky', top: 92, zIndex: 30
+          boxShadow: 'var(--shadow-md)', position: 'sticky', top: 92, zIndex: 30, flexWrap: 'wrap'
         }}>
-          <div style={{ position: 'relative', flex: 1 }}>
+          <div style={{ position: 'relative', flex: '1 1 300px' }}>
             <Search size={22} style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
@@ -278,7 +284,7 @@ export default function ProjectTeamPage() {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: 8, background: 'var(--bg-primary)', padding: 6, borderRadius: 16, border: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', gap: 8, background: 'var(--bg-primary)', padding: 6, borderRadius: 16, border: '1px solid var(--border-light)', flexWrap: 'wrap' }}>
             {['All', 'Admin', 'Developer', 'QA'].map(role => (
               <button
                 key={role}
@@ -308,9 +314,9 @@ export default function ProjectTeamPage() {
             <CheckCircle2 size={18} color={filteredUsers.every(u => selectedIds.includes(u.uid || u.id)) ? 'var(--admin-accent)' : 'var(--text-muted)'} />
           </button>
 
-          <div style={{ height: 40, width: 2, background: 'var(--border-light)' }} />
+          <div style={{ display: 'none' /* Hide divider on small screens or use media query, easiest is just to let it wrap naturally */ }} />
 
-          <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 16, flex: '1 1 auto', justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Selected</span>
               <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--admin-accent)' }}>{selectedIds.length}</span>
@@ -325,7 +331,7 @@ export default function ProjectTeamPage() {
         {/* Members Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
           gap: 24
         }}>
           <AnimatePresence mode="popLayout">

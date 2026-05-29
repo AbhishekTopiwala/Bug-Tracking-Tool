@@ -473,7 +473,9 @@ export default function TeamManagementPage() {
 
   // ── Filtered list (All Members view) — show ALL users including inactive ──
   const filtered = users.filter((u) => {
-    const matchRole = filterRole === 'All' || u.role === filterRole;
+    const matchRole = filterRole === 'All' 
+      || (filterRole === 'org_admin' && ['org_admin', 'Admin', 'Manager'].includes(u.role))
+      || u.role === filterRole;
     const matchSearch = !search ||
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase());
@@ -489,7 +491,9 @@ export default function TeamManagementPage() {
       const matchSearch = !search ||
         u.name?.toLowerCase().includes(search.toLowerCase()) ||
         u.email?.toLowerCase().includes(search.toLowerCase());
-      const matchRole = filterRole === 'All' || u.role === filterRole;
+      const matchRole = filterRole === 'All' 
+        || (filterRole === 'org_admin' && ['org_admin', 'Admin', 'Manager'].includes(u.role))
+        || u.role === filterRole;
       return matchSearch && matchRole;
     });
     return { project, members };
@@ -653,7 +657,7 @@ export default function TeamManagementPage() {
           </div>
 
           <div className="filter-bar">
-            {['All', ...DB_ROLES].map((r) => (
+            {['All', ...DB_ROLES.filter(r => r !== 'super_admin')].map((r) => (
               <button
                 key={r}
                 className={`filter-chip ${filterRole === r ? 'active' : ''}`}

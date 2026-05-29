@@ -5,7 +5,12 @@ import { getCurrentOrgId } from './firestoreService';
 export async function generateBugFromNote(note) {
   const fn = httpsCallable(functions, 'generateBugFromNote');
   try {
+    console.log("Note:", note);
+    console.log("Organization ID:", getCurrentOrgId());
+    
     const result = await fn({ note, organizationId: getCurrentOrgId() });
+    console.log(result.data);
+
     return result.data;
   } catch (error) {
     console.error("Error calling generateBugFromNote:", error);

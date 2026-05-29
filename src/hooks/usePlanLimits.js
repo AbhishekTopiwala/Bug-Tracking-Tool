@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  doc, getDoc, getDocs, collection, query, where, updateDoc, increment
+  doc, getDocs, collection, query, where, onSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { PLANS } from '../services/paymentService';
@@ -41,40 +41,43 @@ export function usePlanLimits() {
   const [userCount, setUserCount] = useState(0);
   const [loadingLimits, setLoadingLimits] = useState(true);
 
-  // Fetch org subscription + live counts on mount / orgId change
+  // Real-time listener for org subscription + one-time fetch for counts
   useEffect(() => {
     if (!orgId) return;
 
-    let cancelled = false;
+    setLoadingLimits(true);
 
-    async function fetchLimits() {
-      setLoadingLimits(true);
-      try {
-        const [orgSnap, projectsSnap, usersSnap] = await Promise.all([
-          getDoc(doc(db, 'organizations', orgId)),
-          getDocs(query(collection(db, 'projects'), where('organizationId', '==', orgId))),
-          getDocs(query(
-            collection(db, 'users'),
-            where('organizationId', '==', orgId),
-            where('isActive', '!=', false),
-          )),
-        ]);
-
-        if (!cancelled) {
-          const orgData = orgSnap.data() || {};
-          setSubscription(orgData.subscription || { plan: 'free', aiUsed: 0, aiQuota: 50 });
-          setProjectCount(projectsSnap.size);
-          setUserCount(usersSnap.size);
-        }
-      } catch (err) {
-        console.error('[usePlanLimits] Failed to fetch limits:', err);
-      } finally {
-        if (!cancelled) setLoadingLimits(false);
+    // 1. Real-time listener on the org doc so aiUsed updates instantly
+    //    whenever the backend Cloud Function increments it.
+    const unsubOrg = onSnapshot(
+      doc(db, 'organizations', orgId),
+      (snap) => {
+        const orgData = snap.data() || {};
+        setSubscription(orgData.subscription || { plan: 'free', aiUsed: 0, aiQuota: 50 });
+        setLoadingLimits(false);
+      },
+      (err) => {
+        console.error('[usePlanLimits] Org listener error:', err);
+        setLoadingLimits(false);
       }
-    }
+    );
 
-    fetchLimits();
-    return () => { cancelled = true; };
+    // 2. One-time fetch for project and user counts (these don't need to be live)
+    Promise.all([
+      getDocs(query(collection(db, 'projects'), where('organizationId', '==', orgId))),
+      getDocs(query(
+        collection(db, 'users'),
+        where('organizationId', '==', orgId),
+        where('isActive', '!=', false),
+      )),
+    ]).then(([projectsSnap, usersSnap]) => {
+      setProjectCount(projectsSnap.size);
+      setUserCount(usersSnap.size);
+    }).catch((err) => {
+      console.error('[usePlanLimits] Failed to fetch counts:', err);
+    });
+
+    return () => unsubOrg();
   }, [orgId]);
 
   // ── Derived Values ──────────────────────────────────────────────────────────
@@ -146,20 +149,13 @@ export function usePlanLimits() {
   }, [isUnlimitedAI, aiUsed, aiQuota, planLimits.name]);
 
   /**
-   * Atomically increments the org's aiUsed counter after a successful generation.
-   * Call this AFTER a successful AI generation, not before.
+   * Optimistically bumps the local aiUsed counter after a successful generation.
+   * The backend Cloud Function already updated Firestore — the onSnapshot listener
+   * will pick up the real value automatically. This just gives instant UI feedback.
    */
-  const incrementAIUsage = useCallback(async () => {
-    if (!orgId) return;
-    try {
-      await updateDoc(doc(db, 'organizations', orgId), {
-        'subscription.aiUsed': increment(1),
-      });
-      setSubscription(prev => prev ? { ...prev, aiUsed: (prev.aiUsed || 0) + 1 } : prev);
-    } catch (err) {
-      console.error('[usePlanLimits] Failed to increment AI usage:', err);
-    }
-  }, [orgId]);
+  const incrementAIUsage = useCallback(() => {
+    setSubscription(prev => prev ? { ...prev, aiUsed: (prev.aiUsed || 0) + 1 } : prev);
+  }, []);
 
   // ── Return ─────────────────────────────────────────────────────────────────
 

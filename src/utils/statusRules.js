@@ -24,7 +24,7 @@ export const getValidStatusTransitions = (currentStatus, role) => {
     // QA role
     switch (currentStatus) {
       case 'Open':
-        return ['Open', 'In Progress'];
+        return ['Open', 'Reproduced']; // QA can mark as Reproduced but cannot move to In Progress (that's Developer's job)
       case 'In Progress':
         return ['In Progress']; // QA cannot touch in progress bugs
       case 'Done':

@@ -3,6 +3,7 @@ import { TestTube2, Wand2, ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircl
 import Topbar from '../components/Topbar';
 import { generateTestCases } from '../services/geminiService';
 import toast from 'react-hot-toast';
+import { usePlanLimits } from '../hooks/usePlanLimits';
 
 const TypeIcon = {
   positive: CheckCircle2,
@@ -88,6 +89,7 @@ export default function TestCasesPage() {
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
+  const { canUseAI, incrementAIUsage, aiUsed, aiQuota, isUnlimitedAI } = usePlanLimits();
 
   useEffect(() => {
     return () => {
@@ -188,6 +190,10 @@ export default function TestCasesPage() {
     if (!feature.trim() && !image) {
       return toast.error('Please enter a description or upload an image first');
     }
+    
+    // Check AI quota limit
+    if (!canUseAI()) return;
+    
     setLoading(true);
     setResult(null);
     try {
@@ -196,6 +202,10 @@ export default function TestCasesPage() {
         image ? image.base64 : null,
         image ? image.mimeType : null
       );
+      
+      // Track usage AFTER successful generation
+      await incrementAIUsage();
+      
       setResult(cases);
       toast.success(`Generated ${(cases.positive?.length || 0) + (cases.negative?.length || 0) + (cases.edge?.length || 0)
         } test cases! 🧪`);
@@ -350,6 +360,36 @@ export default function TestCasesPage() {
               </button>
             </div>
           </div>
+          
+          {/* AI Quota Usage Bar */}
+          {!isUnlimitedAI && (
+            <div style={{ marginTop: 24, padding: '12px 16px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  AI Credits Used
+                </span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: aiUsed >= aiQuota ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                  {aiUsed} / {aiQuota}
+                </span>
+              </div>
+              <div style={{ height: 6, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 10, transition: 'width 0.4s ease',
+                  width: `${Math.min(100, Math.round((aiUsed / aiQuota) * 100))}%`,
+                  background: aiUsed >= aiQuota
+                    ? 'var(--danger)'
+                    : aiUsed / aiQuota > 0.8
+                      ? '#f59e0b'
+                      : 'var(--accent)',
+                }} />
+              </div>
+              {aiUsed >= aiQuota && (
+                <p style={{ fontSize: '0.7rem', color: 'var(--danger)', marginTop: 8, fontWeight: 600 }}>
+                  Monthly quota exhausted. Upgrade your plan to continue.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Loading */}
