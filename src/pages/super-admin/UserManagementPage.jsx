@@ -20,6 +20,7 @@ import {
   checkUserHasProjects 
 } from '../../services/teamService';
 import { fetchAuditLogs } from '../../services/auditService';
+import { SkeletonDashboard } from '../../components/Skeleton';
 
 export default function UserManagementPage() {
   const { userProfile } = useAuth();
@@ -236,14 +237,7 @@ export default function UserManagementPage() {
   const totalAuditLogsCount = auditLogs.length;
 
   if (loading) {
-    return (
-      <div className="sa-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div style={{ textAlign: 'center' }}>
-          <span className="spinner spinner-lg" />
-          <p style={{ marginTop: 16, color: 'var(--text-muted)', fontWeight: 500 }}>Initializing Security & User Roster control tables…</p>
-        </div>
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   return (

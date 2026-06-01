@@ -7,6 +7,7 @@ import {
 import { collection, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import toast from 'react-hot-toast';
+import { SkeletonTable } from '../../components/Skeleton';
 
 export default function OrganizationsManagementPage() {
   const [organizations, setOrganizations] = useState([]);
@@ -320,9 +321,8 @@ export default function OrganizationsManagementPage() {
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 60 }}>
-            <div className="spinner" style={{ borderTopColor: 'var(--sa-rose)' }} />
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Syncing active organizations...</span>
+          <div style={{ padding: 20 }}>
+            <SkeletonTable rows={5} cols={5} />
           </div>
         ) : filteredOrgs.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 60, gap: 12 }}>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
-import { motion, AnimatePresence } from 'framer-motion';
+
 import {
   Users, Code2, TestTube2, Bug, FolderOpen,
   TrendingUp, Activity, ArrowLeft, AlertCircle,
@@ -386,7 +386,7 @@ export default function ProjectOverviewPage() {
       <div className="admin-layout">
         <AdminTopbar title="Project Not Found" />
         <div className="page-content" style={{ padding: 40, textAlign: 'center' }}>
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="card" style={{ padding: 60, maxWidth: 600, margin: '40px auto' }}>
+          <div className="card" style={{ padding: 60, maxWidth: 600, margin: '40px auto' }}>
             <div style={{ width: 80, height: 80, background: 'var(--bg-primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
               <FolderOpen size={40} style={{ color: 'var(--text-muted)' }} />
             </div>
@@ -395,7 +395,7 @@ export default function ProjectOverviewPage() {
             <button className="btn btn-primary" onClick={() => navigate('/admin/projects')} style={{ borderRadius: 12, padding: '10px 20px', fontWeight: 600, gap: 8, display: 'flex', alignItems: 'center', margin: '0 auto' }}>
               <ArrowLeft size={16} /> Back to Projects
             </button>
-          </motion.div>
+          </div>
         </div>
       </div>
     );
@@ -415,14 +415,9 @@ export default function ProjectOverviewPage() {
         subtitle={project.description || "Project workspace and quality tracking dashboard."}
       />
 
-      <motion.div
-        className="page-content overview-page-content"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
+      <div className="page-content overview-page-content">
         {/* Premium Header Section */}
-        <motion.div variants={itemVariants} style={{ marginBottom: 40 }}>
+        <div style={{ marginBottom: 40 }}>
           <div className="overview-header-wrap">
             <div className="overview-header-info">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -483,16 +478,14 @@ export default function ProjectOverviewPage() {
               </button>
             </div >
           </div >
-        </motion.div >
+        </div>
 
   {/* Stats Row - Minimalist Design */ }
   < div className = "overview-stats-grid" >
   {
     mainStats.map((stat, idx) => (
-      <motion.div
+      <div
         key={idx}
-        variants={itemVariants}
-        whileHover={{ y: -4 }}
         style={{
           background: 'var(--bg-card)', padding: '20px', borderRadius: 20, border: '1px solid var(--border)',
           display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)',
@@ -510,7 +503,7 @@ export default function ProjectOverviewPage() {
           <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{stat.value}</h3>
           <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{stat.desc}</p>
         </div>
-      </motion.div>
+      </div>
     ))
   }
         </div >
@@ -520,7 +513,7 @@ export default function ProjectOverviewPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
 
       {/* Status Distribution Visualization */}
-      <motion.div variants={itemVariants} className="card overview-card-responsive">
+      <div className="card overview-card-responsive">
         <div className="admin-card-header" style={{ border: 'none', padding: 0, marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <TrendingUp size={20} style={{ color: 'var(--admin-accent)' }} />
@@ -538,11 +531,9 @@ export default function ProjectOverviewPage() {
                     <span style={{ color: 'var(--text-muted)' }}>{count} bugs ({stats.total > 0 ? Math.round((count / stats.total) * 100) : 0}%)</span>
                   </div>
                   <div style={{ height: 8, background: 'var(--bg-primary)', borderRadius: 4, overflow: 'hidden' }}>
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${stats.total > 0 ? (count / stats.total) * 100 : 0}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
+                    <div
                       style={{
+                        width: `${stats.total > 0 ? (count / stats.total) * 100 : 0}%`,
                         height: '100%',
                         background: status === 'Open' ? 'var(--info)' :
                           status === 'In Progress' ? 'var(--warning)' :
@@ -563,10 +554,10 @@ export default function ProjectOverviewPage() {
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Bug resolution rate for this project</p>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Recent Bugs Table */}
-      <motion.div variants={itemVariants} className="card">
+      <div className="card">
         <div className="admin-card-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Activity size={20} style={{ color: 'var(--admin-accent)' }} />
@@ -629,14 +620,14 @@ export default function ProjectOverviewPage() {
             </tbody>
           </table>
         </div>
-      </motion.div>
+      </div>
 
     </div>
 
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
 
       {/* Team Members Panel */}
-      <motion.div variants={itemVariants} className="card" style={{ height: 'fit-content' }}>
+      <div className="card" style={{ height: 'fit-content' }}>
         <div className="admin-card-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Users size={18} style={{ color: 'var(--admin-accent)' }} />
@@ -680,10 +671,10 @@ export default function ProjectOverviewPage() {
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Quick Actions Panel - Modern Glass */}
-      <motion.div variants={itemVariants} className="overview-quick-actions-card">
+      <div className="overview-quick-actions-card">
         <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: 200, height: 200, background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
         <h3 style={{ margin: '0 0 24px 0', fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Project Control</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -727,7 +718,7 @@ export default function ProjectOverviewPage() {
             <TrendingUp size={18} /> Generate Full Report
           </button>
         </div>
-      </motion.div>
+      </div>
 
     </div>
 
@@ -735,14 +726,10 @@ export default function ProjectOverviewPage() {
 
 {/* Team Management Modal removed in favor of dedicated page */ }
 
-      </motion.div >
+      </div>
 
-  <AnimatePresence>
     {showReportModal && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+      <div
         style={{
           position: 'fixed',
           top: 0,
@@ -759,11 +746,7 @@ export default function ProjectOverviewPage() {
         }}
         onClick={() => setShowReportModal(false)}
       >
-        <motion.div
-          initial={{ scale: 0.95, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.95, y: 20 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+        <div
           style={{
             background: 'var(--bg-card)',
             width: '100%',
@@ -906,10 +889,9 @@ export default function ProjectOverviewPage() {
               <Printer size={16} /> Print / PDF Report
             </button>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     )}
-  </AnimatePresence>
     </div >
   );
 }

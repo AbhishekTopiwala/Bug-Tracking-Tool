@@ -104,7 +104,6 @@ export default function AIGeneratorPage() {
                 >
                   {loading ? (
                     <>
-                      <div className="spinner" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }} />
                       Generating...
                     </>
                   ) : (
@@ -201,9 +200,8 @@ export default function AIGeneratorPage() {
             {loading && (
               <div className="card" style={{ padding: 40, textAlign: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                  <div style={{ position: 'relative' }}>
-                    <div className="spinner spinner-lg" />
-                    <Zap size={18} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'var(--accent)' }} />
+                  <div style={{ position: 'relative', height: 40, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', borderRadius: '50%' }}>
+                    <Zap size={18} style={{ color: 'var(--accent)' }} />
                   </div>
                   <div>
                     <p style={{ fontWeight: 600, marginBottom: 4 }}>AI is analyzing your note...</p>

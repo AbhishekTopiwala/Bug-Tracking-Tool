@@ -10,6 +10,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import Topbar from '../../components/Topbar';
 import { getBug, updateBug, addComment, updateComment, deleteComment, createNotification, notifyAdmins, getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
+import { SkeletonForm } from '../../components/Skeleton';
 import { getValidStatusTransitions } from '../../utils/statusRules';
 import toast from 'react-hot-toast';
 
@@ -232,9 +233,8 @@ export default function DevBugDetailPage() {
   };
 
   if (loading) return (
-    <div className="loading-screen">
-      <div className="spinner spinner-lg" />
-      <span>Loading bug details...</span>
+    <div className="page-container" style={{ paddingTop: 16 }}>
+      <SkeletonForm fields={4} />
     </div>
   );
 
@@ -449,7 +449,7 @@ export default function DevBugDetailPage() {
                         }}
                       >
                         {isUpdating ? (
-                          <div className="spinner" style={{ width: 12, height: 12, borderWidth: 2, borderTopColor: s.color, borderColor: `${s.color}40` }} />
+                          <span>...</span>
                         ) : isCurrent ? (
                           <CheckCircle2 size={14} />
                         ) : null}

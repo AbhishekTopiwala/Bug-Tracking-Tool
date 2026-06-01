@@ -13,6 +13,7 @@ import {
 } from '../services/firestoreService';
 import { cld } from '../services/cloudinaryService';
 import { useAuth } from '../contexts/AuthContext';
+import { SkeletonForm } from '../components/Skeleton';
 import { getValidStatusTransitions } from '../utils/statusRules';
 import toast from 'react-hot-toast';
 import { auto } from '@cloudinary/url-gen/actions/resize';
@@ -287,9 +288,8 @@ export default function BugDetailPage() {
 
   if (loading) {
     return (
-      <div className="loading-screen">
-        <div className="spinner spinner-lg" />
-        <span>Loading bug details...</span>
+      <div className="page-container" style={{ paddingTop: 16 }}>
+        <SkeletonForm fields={4} />
       </div>
     );
   }
@@ -385,7 +385,7 @@ export default function BugDetailPage() {
                 }}
               >
                 {deleting
-                  ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} /> Deleting...</>
+                  ? 'Deleting...'
                   : <><Trash2 size={14} /> Delete Bug</>
                 }
               </button>

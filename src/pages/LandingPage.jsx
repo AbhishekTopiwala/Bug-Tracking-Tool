@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   ArrowRight, Sparkles, ChevronDown, Clock, Zap,
   Check, X, Globe, Terminal, Users, LayoutDashboard,
   Activity, Folder, Plus, MessageSquare
@@ -53,6 +52,18 @@ const faqData = [
   {
     question: "Is my repository or workspace data secure?",
     answer: "Security is our core value. All screenshots and uploads are safely isolated in access-secured Firestore and Cloud Storage folders. Technical details are never shared or fed into open public LLM datasets."
+  },
+  {
+    question: "What integrations are supported by Qualia?",
+    answer: "Currently we provide direct integrations with Slack for notifications and GitHub/GitLab for automated issue linking and PR tracking. We also have webhook support for custom workflows."
+  },
+  {
+    question: "Can I export my bug reports?",
+    answer: "Yes, you can export your entire test suite or specific project boards in CSV, PDF, and JSON formats for easy sharing with external stakeholders or legacy tools."
+  },
+  {
+    question: "What happens if I exceed my AI generation limit?",
+    answer: "If you hit your AI usage quota on your current billing cycle, you can easily top up your tokens or upgrade to a higher tier directly from the Admin Management portal."
   }
 ];
 
@@ -380,7 +391,7 @@ const tourTabs = [
                 {/* Team Members List */}
                 <div className="mock-admin-members-list">
                   <div className="mock-members-header">Active Team Members</div>
-                  
+
                   {/* Member 1 */}
                   <div className="mock-member-row">
                     <div className="mock-member-avatar blue">AT</div>
@@ -447,23 +458,6 @@ export default function LandingPage() {
     setActiveFaq(activeFaq === index ? null : index);
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.15 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.6, ease: 'easeOut' }
-    }
-  };
-
   return (
     <div className="landing-page">
       <div className="landing-glow-top"></div>
@@ -503,27 +497,22 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="landing-hero">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex-col items-center"
-        >
-          <motion.div variants={itemVariants} className="hero-badge">
+        <div className="flex-col items-center">
+          <div className="hero-badge">
             <Sparkles size={16} />
             AI-Driven QA & Bug Tracking Pipeline
-          </motion.div>
-          
-          <motion.h1 variants={itemVariants} className="hero-title">
+          </div>
+
+          <h1 className="hero-title">
             From visual glance to <br />
             <span className="highlight">structured resolution</span>
-          </motion.h1>
-          
-          <motion.p variants={itemVariants} className="hero-subtitle">
+          </h1>
+
+          <p className="hero-subtitle">
             Qualia seamlessly bridges the gap between QA Engineers and Developers. Upload screens, automatically construct flawless reproduction steps with AI, track tickets via premium Kanbans, and ship clean releases.
-          </motion.p>
-          
-          <motion.div variants={itemVariants} className="hero-actions">
+          </p>
+
+          <div className="hero-actions">
             <Link to="/signup" className="hero-btn-primary">
               Launch Free Sandbox
               <ArrowRight size={20} />
@@ -531,8 +520,8 @@ export default function LandingPage() {
             <a href="#playground" className="hero-btn-secondary">
               See Interactive Demo
             </a>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </section>
 
       {/* Interactive Playground Section */}
@@ -563,7 +552,7 @@ export default function LandingPage() {
                       </div>
                       <div className="screenshot-select-meta">
                         <span className="meta-badge">{bug.id === 'auth-error' ? 'iOS • Safari' : 'macOS • Chrome'}</span>
-                        <span className="meta-severity" style={{ 
+                        <span className="meta-severity" style={{
                           color: bug.severity === 'CRITICAL' ? 'var(--danger)' : '#d97706',
                           fontWeight: 600,
                           fontSize: '0.7rem'
@@ -590,13 +579,13 @@ export default function LandingPage() {
                 </div>
               </div>
               <div className={`mock-upload-area ${isScanning ? 'active' : ''}`}>
-                <img 
-                  src={activeBug.image} 
-                  alt="Mock Bug Screen" 
+                <img
+                  src={activeBug.image}
+                  alt="Mock Bug Screen"
                   className={`mock-preview-image visible`}
                 />
                 <div className={`mock-scanner-line ${isScanning ? 'active' : ''}`}></div>
-                
+
                 {isScanning && (
                   <div className="scanner-overlay">
                     <Zap size={18} className="spin accent-icon" />
@@ -609,16 +598,11 @@ export default function LandingPage() {
 
           <div className="playground-right">
             {showResult && !isScanning ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className="mock-ai-ticket"
-              >
+              <div className="mock-ai-ticket">
                 <div className="ticket-header-meta">
                   <div className="flex items-center gap-2">
-                    <span className="badge badge-critical" style={{ 
-                      background: activeBug.severity === 'CRITICAL' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245,158,11,0.1)', 
+                    <span className="badge badge-critical" style={{
+                      background: activeBug.severity === 'CRITICAL' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245,158,11,0.1)',
                       color: activeBug.severity === 'CRITICAL' ? 'var(--danger)' : 'var(--warning)',
                       border: 'none'
                     }}>
@@ -655,7 +639,7 @@ export default function LandingPage() {
                   <span className="tag-badge">Visual Context Linked</span>
                   <span className="tag-badge">Ready for Sprint</span>
                 </div>
-              </motion.div>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, color: 'var(--text-muted)' }}>
                 <Clock size={32} className="spin" style={{ marginBottom: 12, color: 'var(--accent)' }} />
@@ -689,43 +673,25 @@ export default function LandingPage() {
         </div>
 
         <div className="tour-content-panel">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTourTab.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.25 }}
-              className="tour-visual"
-            >
-              {activeTourTab.preview}
-            </motion.div>
-          </AnimatePresence>
+          <div key={activeTourTab.id} className="tour-visual">
+            {activeTourTab.preview}
+          </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTourTab.id}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-              className="tour-details"
-            >
-              <span className="section-tag" style={{ color: 'var(--accent)' }}>Qualia Workspace</span>
-              <h3>{activeTourTab.heading}</h3>
-              <p>{activeTourTab.description}</p>
-              <div className="tour-features-list">
-                {activeTourTab.features.map((feature, idx) => (
-                  <div key={idx} className="tour-feature-item">
-                    <div className="tour-feature-dot"></div>
-                    <span style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 500 }}>
-                      {feature}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </AnimatePresence>
+          <div key={`${activeTourTab.id}-details`} className="tour-details">
+            <span className="section-tag" style={{ color: 'var(--accent)' }}>Qualia Workspace</span>
+            <h3>{activeTourTab.heading}</h3>
+            <p>{activeTourTab.description}</p>
+            <div className="tour-features-list">
+              {activeTourTab.features.map((feature, idx) => (
+                <div key={idx} className="tour-feature-item">
+                  <div className="tour-feature-dot"></div>
+                  <span style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                    {feature}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1001,22 +967,13 @@ export default function LandingPage() {
                 {faq.question}
                 <ChevronDown size={18} className="faq-icon" />
               </button>
-              <AnimatePresence initial={false}>
-                {activeFaq === index && (
-                  <motion.div
-                    key="content"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div className="faq-answer" style={{ maxHeight: 'none', paddingBottom: 24, paddingTop: 4 }}>
-                      {faq.answer}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {activeFaq === index && (
+                <div style={{ overflow: 'hidden' }}>
+                  <div className="faq-answer" style={{ maxHeight: 'none', paddingBottom: 24, paddingTop: 4 }}>
+                    {faq.answer}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1049,46 +1006,24 @@ export default function LandingPage() {
               <span className="footer-brand-text">Qualia</span>
               <span className="footer-copyright">© {new Date().getFullYear()} Qualia Inc.</span>
             </div>
-            
+
             <div className="footer-right">
               <div className="footer-links">
-                <a href="#playground" className="footer-link">AI Generator</a>
-                <a href="#tour" className="footer-link">Workspace</a>
-                <a href="#pricing" className="footer-link">Pricing</a>
-                <a href="#" className="footer-link">Privacy</a>
-                <a href="#" className="footer-link">Terms</a>
+                <Link to="/privacy" className="footer-link">Privacy</Link>
+                <Link to="/terms" className="footer-link">Terms</Link>
               </div>
-              
-              <div className="footer-separator-vertical"></div>
-              
-              <div className="footer-status-minimal">
-                <span className="status-dot-glow-green"></span>
-                <span>All systems operational</span>
-              </div>
-              
-              <div className="footer-separator-vertical"></div>
-              
+
               <div className="footer-socials-minimal">
-                <a href="#" className="social-link" aria-label="Twitter">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/>
-                  </svg>
-                </a>
                 <a href="#" className="social-link" aria-label="GitHub">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/>
-                  </svg>
-                </a>
-                <a href="#" className="social-link" aria-label="Discord">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
                   </svg>
                 </a>
                 <a href="#" className="social-link" aria-label="LinkedIn">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-                    <rect width="4" height="12" x="2" y="9"/>
-                    <circle cx="4" cy="4" r="2"/>
+                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+                    <rect width="4" height="12" x="2" y="9" />
+                    <circle cx="4" cy="4" r="2" />
                   </svg>
                 </a>
               </div>

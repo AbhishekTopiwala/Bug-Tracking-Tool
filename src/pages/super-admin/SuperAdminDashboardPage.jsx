@@ -9,6 +9,7 @@ import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
+import { SkeletonDashboard } from '../../components/Skeleton';
 
 export default function SuperAdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -82,14 +83,7 @@ export default function SuperAdminDashboardPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="sa-container" style={{ justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          <div className="spinner spinner-lg" style={{ borderTopColor: 'var(--sa-rose)' }} />
-          <p style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem' }}>Analyzing Qualia SaaS Metrics...</p>
-        </div>
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   // Pure SVG Responsive Line Chart Data (Mocking daily records)

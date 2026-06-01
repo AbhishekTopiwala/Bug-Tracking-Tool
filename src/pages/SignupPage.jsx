@@ -8,7 +8,7 @@ import { db } from '../firebase/config';
 import toast from 'react-hot-toast';
 
 // Disposable email domains blocklist (abbreviated)
-const DISPOSABLE_DOMAINS = ['mailinator.com','guerrillamail.com','tempmail.com','throwam.com','yopmail.com','trashmail.com'];
+const DISPOSABLE_DOMAINS = ['mailinator.com', 'guerrillamail.com', 'tempmail.com', 'throwam.com', 'yopmail.com', 'trashmail.com'];
 
 function isDisposableEmail(email) {
   const domain = email.split('@')[1]?.toLowerCase();
@@ -40,7 +40,7 @@ export default function SignupPage() {
   // Pre-selected plan from landing page
   const locationState = location.state;
   const sessionPlan = getSelectedPlan();
-  
+
   const [selectedPlanId, setSelectedPlanId] = useState(locationState?.planId || sessionPlan?.planId || 'free');
   const [billingCycle, setBillingCycle] = useState(locationState?.billingCycle || sessionPlan?.billingCycle || 'monthly');
   const selectedPlanData = PLANS[selectedPlanId];
@@ -205,7 +205,13 @@ export default function SignupPage() {
                 {selectedPlanData.name} Plan
               </div>
               <div className="premium-pricing-price" style={{ marginBottom: '20px' }}>
-                {billingCycle === 'yearly' ? selectedPlanData.priceYearly : selectedPlanData.price}
+                {selectedPlanData.monthlyPrice === 0
+                  ? 'Free forever'
+                  : selectedPlanData.monthlyPrice === null
+                    ? 'Custom pricing'
+                    : billingCycle === 'yearly'
+                      ? `₹${selectedPlanData.yearlyPrice}/yr`
+                      : `₹${selectedPlanData.monthlyPrice}/mo`}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {selectedPlanData.features.filter(f => f.included).slice(0, 4).map((f, i) => (
@@ -257,18 +263,18 @@ export default function SignupPage() {
             <p className="signup-subtitle">Join thousands of modern teams building better software.</p>
 
             <form onSubmit={handleSubmit} noValidate>
-              
+
               {/* Billing Cycle Toggle */}
               <div style={{ opacity: (selectedPlanId === 'free' || selectedPlanId === 'enterprise') ? 0.5 : 1, pointerEvents: (selectedPlanId === 'free' || selectedPlanId === 'enterprise') ? 'none' : 'auto', transition: 'all 0.3s ease' }}>
                 <div className="billing-toggle-wrapper">
                   <div className={`billing-slider ${billingCycle === 'yearly' ? 'yearly' : ''}`}></div>
-                  <div 
+                  <div
                     className={`billing-toggle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
                     onClick={() => setBillingCycle('monthly')}
                   >
                     Monthly
                   </div>
-                  <div 
+                  <div
                     className={`billing-toggle-btn ${billingCycle === 'yearly' ? 'active' : ''}`}
                     onClick={() => setBillingCycle('yearly')}
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
@@ -282,14 +288,20 @@ export default function SignupPage() {
               {/* Plan Selection Grid */}
               <div className="plan-selection-grid">
                 {Object.values(PLANS).map(p => (
-                  <div 
+                  <div
                     key={p.id}
                     className={`plan-card ${selectedPlanId === p.id ? 'active' : ''}`}
                     onClick={() => setSelectedPlanId(p.id)}
                   >
                     <div className="plan-card-name">{p.name}</div>
                     <div className="plan-card-price">
-                      {p.monthlyPrice === 0 ? 'Free forever' : p.monthlyPrice === null ? 'Custom pricing' : `₹${p.monthlyPrice}/mo`}
+                      {p.monthlyPrice === 0
+                        ? 'Free forever'
+                        : p.monthlyPrice === null
+                          ? 'Custom pricing'
+                          : billingCycle === 'yearly'
+                            ? `₹${p.yearlyPrice}/yr`
+                            : `₹${p.monthlyPrice}/mo`}
                     </div>
                   </div>
                 ))}
@@ -310,7 +322,7 @@ export default function SignupPage() {
                   </div>
                   {fieldErrors.workspaceName && <div className="premium-error-text">{fieldErrors.workspaceName}</div>}
                 </div>
-                
+
                 <div className="premium-input-group">
                   <label className="premium-label">Admin Full Name</label>
                   <div className="premium-input-wrapper">
@@ -356,7 +368,7 @@ export default function SignupPage() {
                       {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <div style={{ position: 'absolute', right: '16px', pointerEvents: 'none', color: '#9CA3AF' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
                     </div>
                   </div>
                 </div>
@@ -433,15 +445,15 @@ export default function SignupPage() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px' }}>
-                <input 
-                  type="checkbox" 
-                  id="terms" 
-                  checked={form.terms} 
-                  onChange={update('terms')} 
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={form.terms}
+                  onChange={update('terms')}
                   style={{ width: '16px', height: '16px', accentColor: '#111827', cursor: 'pointer' }}
                 />
                 <label htmlFor="terms" style={{ fontSize: '13px', color: '#4B5563', cursor: 'pointer' }}>
-                  I agree to the <a href="#" style={{ color: '#111827', fontWeight: 500 }}>Terms of Service</a> and <a href="#" style={{ color: '#111827', fontWeight: 500 }}>Privacy Policy</a>
+                  I agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#5b6cff', fontWeight: 500 }}>Terms of Service</Link> and <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#5b6cff', fontWeight: 500 }}>Privacy Policy</Link>
                 </label>
               </div>
               {fieldErrors.terms && <div className="premium-error-text" style={{ marginTop: '8px' }}>{fieldErrors.terms}</div>}
@@ -455,14 +467,6 @@ export default function SignupPage() {
 
             <div className="premium-auth-footer">
               Already have an account? <Link to="/login">Sign in to your workspace</Link>
-            </div>
-
-            <div className="trust-footer">
-              <span>Secured By</span>
-              <div className="trust-logos">
-                <svg viewBox="0 0 60 25" width="60" height="25" fill="currentColor"><path d="M25.7 10.9c0-2.4-1.7-3.8-4.4-3.8-2.9 0-5.3 1.5-6.5 3.5l3.2 2c.6-1.1 1.7-1.8 3.2-1.8 1.1 0 1.8.5 1.8 1.4v.3h-2.9c-3.6 0-5.8 1.6-5.8 4.3 0 2.5 2 4.1 4.7 4.1 2.3 0 3.7-1 4.5-2.2v1.8h3.3v-9.6zm-3.3 4.8c0 1.3-1.1 2.1-2.5 2.1-1.2 0-1.9-.6-1.9-1.5 0-1.1 1-1.6 2.8-1.6h1.6v1zM34.7 6.8c-2.9 0-5.2 2.3-5.2 5.5s2.3 5.5 5.2 5.5c2.1 0 3.8-1.1 4.6-2.9l-3.2-1.7c-.4.7-1 1.1-1.6 1.1-1.2 0-1.8-.8-2-1.9h7.1v-.6c0-3-2-5-4.9-5zm-1.8 4.4c.2-1 1-1.5 1.8-1.5.9 0 1.5.6 1.6 1.5h-3.4zM49.2 6.8c-1.8 0-3.3 1-4.2 2.4V7.1h-3.5v16h3.5v-7.1c.9 1.4 2.4 2.4 4.2 2.4 2.8 0 5-2.2 5-5.5s-2.2-5.5-5-5.5zm-.4 8.1c-1.4 0-2.5-1.1-2.5-2.6 0-1.5 1.1-2.6 2.5-2.6s2.5 1.1 2.5 2.6c0 1.5-1.1 2.6-2.5 2.6zM8 7.1H4.6V1.3L1 2.4v4.7H0v3h1v8h3.5v-8H8v-3zM16.7 6.8c-1.2 0-2.3.5-3 1.4V7.1h-3.5v11h3.5v-6.2c0-1.3.8-2 1.8-2 .3 0 .6.1.8.1v-3.5c-.2-.1-.4-.1-.6-.1zM58.3 10.9c0-2.4-1.7-3.8-4.4-3.8-2.9 0-5.3 1.5-6.5 3.5l3.2 2c.6-1.1 1.7-1.8 3.2-1.8 1.1 0 1.8.5 1.8 1.4v.3h-2.9c-3.6 0-5.8 1.6-5.8 4.3 0 2.5 2 4.1 4.7 4.1 2.3 0 3.7-1 4.5-2.2v1.8h3.3v-9.6zm-3.3 4.8c0 1.3-1.1 2.1-2.5 2.1-1.2 0-1.9-.6-1.9-1.5 0-1.1 1-1.6 2.8-1.6h1.6v1z"/></svg>
-                <svg viewBox="0 0 100 30" width="80" height="24" fill="currentColor"><path d="M52.3 10.8c-4.4 0-7.8 3.5-7.8 8s3.4 8 7.8 8c3.2 0 5.6-1.5 6.9-3.9l-2.6-1.6c-.9 1.5-2.5 2.5-4.3 2.5-2.5 0-4.4-1.8-4.7-4.3h12v-.8c-.1-4.4-3.4-7.9-7.3-7.9zm-4.7 6.4c.5-2 2.2-3.6 4.6-3.6 2.3 0 4.1 1.5 4.5 3.6h-9.1zM70.3 10.8c-4.4 0-7.8 3.5-7.8 8s3.4 8 7.8 8c3.2 0 5.6-1.5 6.9-3.9l-2.6-1.6c-.9 1.5-2.5 2.5-4.3 2.5-2.5 0-4.4-1.8-4.7-4.3h12v-.8c-.1-4.4-3.4-7.9-7.3-7.9zm-4.7 6.4c.5-2 2.2-3.6 4.6-3.6 2.3 0 4.1 1.5 4.5 3.6h-9.1zM34.9 11.2V2.6L32 1.6v9.6c-1.3-1.6-3.3-2.6-5.4-2.6-4.2 0-7.6 3.5-7.6 8s3.4 8 7.6 8c2.2 0 4.2-1 5.4-2.6v2.2h2.9V11.2zm-8.3 12.6c-3 0-5.1-2.3-5.1-5s2.1-5 5.1-5 5.1 2.3 5.1 5-2.1 5-5.1 5zM11.5 11.1L8.3 20l-3-8.9H1.8l4.9 13.5-3.1 8.8h3.3l9.3-22.3h-4.7zM80.5 10.8c-4.2 0-7.5 3.4-7.5 8s3.3 8 7.5 8c2.4 0 4.4-1.1 5.7-2.9v2.5h2.9V2.1L86.2 1v12.7c-1.3-1.8-3.3-2.9-5.7-2.9zm.6 13.2c-2.9 0-5.1-2.2-5.1-5s2.2-5 5.1-5 5.1 2.2 5.1 5-2.2 5-5.1 5zM98.6 11.2l-3.2-1.3-3.2 1.3v5l3.2 1.3 3.2-1.3v-5zm-3.2-3.1c1.2 0 2.2-1 2.2-2.2S96.6 3.7 95.4 3.7c-1.2 0-2.2 1-2.2 2.2s1 2.2 2.2 2.2z"/></svg>
-              </div>
             </div>
           </div>
         </div>

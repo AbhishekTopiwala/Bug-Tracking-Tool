@@ -5,7 +5,7 @@ import {
   Check, Crown, Folder, LayoutGrid, List, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
+
 import AdminTopbar from '../../components/AdminTopbar';
 import {
   fetchAllUsers,
@@ -19,6 +19,7 @@ import {
 import { getProjects } from '../../services/firestoreService';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlanLimits } from '../../hooks/usePlanLimits';
+import { SkeletonTable } from '../../components/Skeleton';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -211,7 +212,7 @@ function InviteModal({ onClose, onSuccess, planId, qasCount, devsCount }) {
             </button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? (
-                <><span className="spinner" style={{ width: 14, height: 14 }} /> Sending…</>
+                <>'Sending…'</>
               ) : (
                 <><UserPlus size={14} /> Send Invite</>
               )}
@@ -591,21 +592,10 @@ export default function TeamManagementPage() {
         title="Team Management"
         subtitle="Manage your team members, roles, and access."
       />
-      <motion.div 
-        className="page-container"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        style={{ willChange: 'opacity, transform' }}
-      >
+      <div className="page-container">
 
         {/* Top actions row */}
-        <motion.div 
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, willChange: 'opacity, transform' }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.05 }}
-        >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
           {/* View toggle */}
           <div className="tm-view-toggle">
             <button
@@ -632,7 +622,7 @@ export default function TeamManagementPage() {
             <UserPlus size={16} />
             Invite Member
           </button>
-        </motion.div>
+        </div>
 
         {/* Stats */}
         <div className="admin-stats-grid tm-stats-grid">
@@ -643,14 +633,7 @@ export default function TeamManagementPage() {
             { label: 'Developers', value: devs, icon: Code2, color: 'var(--info)' },
             { label: 'QA Engineers', value: qas, icon: TestTube2, color: 'var(--success)' },
           ].map(({ label, value, icon: Icon, color }, idx) => (
-            <motion.div 
-              key={label} 
-              className="admin-stat-card"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 + idx * 0.05 }}
-              style={{ willChange: 'opacity, transform' }}
-            >
+            <div key={label} className="admin-stat-card">
               <div className="admin-stat-icon-wrap" style={{ background: `${color}15`, color }}>
                 <Icon size={20} />
               </div>
@@ -658,18 +641,12 @@ export default function TeamManagementPage() {
                 <p className="admin-stat-value">{value}</p>
                 <p className="admin-stat-label">{label}</p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* Toolbar */}
-        <motion.div 
-          className="tm-toolbar"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-          style={{ willChange: 'opacity, transform' }}
-        >
+        <div className="tm-toolbar">
           <div className="search-wrapper tm-search">
             <Search size={15} className="search-icon" />
             <input
@@ -696,21 +673,14 @@ export default function TeamManagementPage() {
           <button className="btn btn-secondary btn-sm" onClick={loadData} title="Refresh">
             <RefreshCw size={14} />
           </button>
-        </motion.div>
+        </div>
 
         {/* ── ALL MEMBERS VIEW ── */}
         {viewMode === 'all' && (
-          <motion.div 
-            className="tm-table-wrap card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
-            style={{ willChange: 'opacity, transform' }}
-          >
+          <div className="tm-table-wrap card">
             {loading ? (
-              <div className="tm-table-loading">
-                <span className="spinner spinner-lg" />
-                <p>Loading team members…</p>
+              <div style={{ padding: 20 }}>
+                <SkeletonTable rows={5} cols={6} />
               </div>
             ) : filtered.length === 0 ? (
               <div className="empty-state">
@@ -751,23 +721,15 @@ export default function TeamManagementPage() {
                 Showing <strong>{filtered.length}</strong> of <strong>{total}</strong> members
               </div>
             )}
-          </motion.div>
+          </div>
         )}
 
         {/* ── PROJECT VIEW ── */}
         {viewMode === 'project' && (
-          <motion.div 
-            style={{ display: 'flex', flexDirection: 'column', gap: 20, willChange: 'opacity, transform' }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
-          >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {loading ? (
-              <div className="tm-table-wrap card">
-                <div className="tm-table-loading">
-                  <span className="spinner spinner-lg" />
-                  <p>Loading projects…</p>
-                </div>
+              <div className="tm-table-wrap card" style={{ padding: 20 }}>
+                <SkeletonTable rows={5} cols={4} />
               </div>
             ) : projectGroups.length === 0 ? (
               <div className="tm-table-wrap card">
@@ -794,9 +756,9 @@ export default function TeamManagementPage() {
                 </div>
               </>
             )}
-          </motion.div>
+          </div>
         )}
-      </motion.div>
+      </div>
 
       {/* ── Invite Modal ── */}
       {showInvite && (

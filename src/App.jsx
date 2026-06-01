@@ -28,6 +28,8 @@ const LandingPage = lazy(() => import('./pages/LandingPage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const PaymentPage = lazy(() => import('./pages/PaymentPage'));
 const PaymentIncompletePage = lazy(() => import('./pages/PaymentIncompletePage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 
 // Lazy-loaded QA Portal pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
@@ -63,20 +65,16 @@ const GlobalSettingsPage = lazy(() => import('./pages/super-admin/GlobalSettings
 const UserManagementPage = lazy(() => import('./pages/super-admin/UserManagementPage'));
 
 import { Loader2 } from 'lucide-react';
+import { SkeletonDashboard } from './components/Skeleton';
 
 function PageLoader() {
   return (
     <div style={{ 
       height: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center',
       background: 'var(--bg-primary)',
-      color: 'var(--text-secondary)'
+      padding: '40px'
     }}>
-      <div className="spinner spinner-lg" style={{ marginBottom: 16 }} />
-      <p style={{ fontWeight: 600, fontSize: '0.95rem', letterSpacing: '0.02em', color: 'var(--text-muted)' }}>Loading Workspace...</p>
+      <SkeletonDashboard />
     </div>
   );
 }
@@ -91,9 +89,8 @@ function RootRedirect() {
 
   if (!userProfile) {
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
-        <Loader2 size={32} className="spin" style={{ marginBottom: 16, color: 'var(--accent)' }} />
-        <p style={{ fontWeight: 500 }}>Initializing your workspace...</p>
+      <div style={{ height: '100vh', background: 'var(--bg-primary)', padding: '40px' }}>
+        <SkeletonDashboard />
       </div>
     );
   }
@@ -236,7 +233,7 @@ function SuperAdminPortal() {
 // ── Main App ─────────────────────────────────────────────────────────────────
 function AppLayout() {
   const location = useLocation();
-  const isAuthPage = ['/login', '/signup', '/invite', '/payment', '/payment-incomplete', '/pricing'].includes(location.pathname);
+  const isAuthPage = ['/login', '/signup', '/invite', '/payment', '/payment-incomplete', '/pricing', '/terms', '/privacy'].includes(location.pathname);
 
   if (isAuthPage) {
     return (
@@ -247,6 +244,8 @@ function AppLayout() {
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/payment-incomplete" element={<PaymentIncompletePage />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
       </Routes>
     );
   }

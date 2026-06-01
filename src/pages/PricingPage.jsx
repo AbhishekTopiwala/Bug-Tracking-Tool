@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, ChevronDown, ArrowRight,
   Zap, Shield, Globe, Terminal, Layers,
@@ -142,8 +141,8 @@ const COMPARE_ROWS = [
 
 /* ── Small Components ──────────────────────────────────────────────────── */
 function CheckMark({ yes }) {
-  if (yes === false)   return <div className="check-icon-wrap"><X size={16} className="check-no" /></div>;
-  if (yes === true)    return <div className="check-icon-wrap"><Check size={16} className="check-yes" strokeWidth={2.5} /></div>;
+  if (yes === false) return <div className="check-icon-wrap"><X size={16} className="check-no" /></div>;
+  if (yes === true) return <div className="check-icon-wrap"><Check size={16} className="check-yes" strokeWidth={2.5} /></div>;
   return <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{yes}</span>;
 }
 
@@ -153,27 +152,18 @@ function FAQItem({ q, a }) {
     <div className="faq-item">
       <button className="faq-trigger" onClick={() => setOpen(!open)}>
         <span>{q}</span>
-        <motion.div
+        <div
           className="faq-icon"
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: 0.25 }}
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s' }}
         >
           <ChevronDown size={14} />
-        </motion.div>
+        </div>
       </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            className="faq-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-          >
-            <p className="faq-answer">{a}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {open && (
+        <div className="faq-body">
+          <p className="faq-answer">{a}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -232,42 +222,22 @@ export default function PricingPage() {
 
       {/* ── Hero ── */}
       <section className="pricing-hero">
-        <motion.div
-          className="pricing-hero-label"
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
+        <div className="pricing-hero-label">
           <Zap size={12} />
           Simple, Transparent Pricing
-        </motion.div>
+        </div>
 
-        <motion.h1
-          className="pricing-h1"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.08 }}
-        >
+        <h1 className="pricing-h1">
           AI-Powered QA Workspace<br />
           for <em>Modern Teams</em>
-        </motion.h1>
+        </h1>
 
-        <motion.p
-          className="pricing-sub"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-        >
+        <p className="pricing-sub">
           Manage bugs, generate AI-powered reports, track test cases, and streamline
           QA workflows — in one powerful platform.
-        </motion.p>
+        </p>
 
-        <motion.div
-          className="billing-row"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.45, delay: 0.22 }}
-        >
+        <div className="billing-row">
           <div className="billing-pill">
             <button
               className={`billing-opt ${!yearly ? 'on' : ''}`}
@@ -281,32 +251,21 @@ export default function PricingPage() {
             >
               Yearly
             </button>
-            <motion.div
+            <div
               className="billing-slider"
-              initial={false}
-              animate={{
+              style={{
                 left: yearly ? 'calc(50% + 1px)' : '4px',
                 width: 'calc(50% - 5px)',
               }}
-              transition={{ type: 'spring', stiffness: 340, damping: 32 }}
             />
           </div>
 
-          <AnimatePresence mode="wait">
-            {yearly && (
-              <motion.div
-                className="yearly-chip"
-                key="chip"
-                initial={{ opacity: 0, x: -8, scale: 0.9 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -8, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-              >
-                🎉 Save 20% with yearly billing
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+          {yearly && (
+            <div className="yearly-chip">
+              🎉 Save 20% with yearly billing
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ── Pricing Cards ── */}
@@ -315,12 +274,9 @@ export default function PricingPage() {
           const price = getPrice(plan);
           const savings = getSavings(plan);
           return (
-            <motion.div
+            <div
               key={plan.id}
               className={`plan-card ${plan.featured ? 'featured' : ''}`}
-              initial={{ opacity: 0, y: 32 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 + idx * 0.08 }}
             >
               {plan.featured && <div className="featured-ribbon">Most Popular</div>}
 
@@ -335,46 +291,28 @@ export default function PricingPage() {
                 ) : (
                   <>
                     <span className="pc-currency">₹</span>
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={`${plan.id}-${price}`}
-                        className="pc-amount"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        {price === 0 ? '0' : price.toLocaleString('en-IN')}
-                      </motion.span>
-                    </AnimatePresence>
+                    <span className="pc-amount">
+                      {price === 0 ? '0' : price.toLocaleString('en-IN')}
+                    </span>
                     <span className="pc-period">/mo</span>
                   </>
                 )}
               </div>
 
-              {/* Yearly savings tag */}
               <div className="pc-savings">
-                <AnimatePresence mode="wait">
-                  {yearly && savings ? (
-                    <motion.span
-                      key="save"
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.18 }}
-                    >
-                      ✓ {savings} on yearly billing
-                    </motion.span>
-                  ) : price === null ? (
-                    <motion.span key="custom">Custom contract terms</motion.span>
-                  ) : price === 0 ? (
-                    <motion.span key="free">Free forever — no credit card</motion.span>
-                  ) : (
-                    <motion.span key="monthly" style={{ color: 'var(--text-muted)' }}>
-                      Switch to yearly to save 20%
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                {yearly && savings ? (
+                  <span>
+                    ✓ {savings} on yearly billing
+                  </span>
+                ) : price === null ? (
+                  <span>Custom contract terms</span>
+                ) : price === 0 ? (
+                  <span>Free forever — no credit card</span>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    Switch to yearly to save 20%
+                  </span>
+                )}
               </div>
 
               {/* CTA */}
@@ -405,19 +343,13 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </section>
 
       {/* ── Trust Bar ── */}
-      <motion.section
-        className="trust-bar"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
-      >
+      <section className="trust-bar">
         <div className="trust-bar-inner">
           <div className="trust-bar-label">Trusted by modern QA teams worldwide</div>
           <div className="trust-logos-row">
@@ -449,16 +381,10 @@ export default function PricingPage() {
             ))}
           </div>
         </div>
-      </motion.section>
+      </section>
 
       {/* ── Feature Comparison Table ── */}
-      <motion.section
-        className="compare-section"
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.55 }}
-      >
+      <section className="compare-section">
         <h2 className="compare-heading">Compare All Plans</h2>
         <p className="compare-sub">
           Everything side-by-side so you can pick with confidence.
@@ -500,30 +426,18 @@ export default function PricingPage() {
             </tbody>
           </table>
         </div>
-      </motion.section>
+      </section>
 
       {/* ── FAQ ── */}
-      <motion.section
-        className="faq-section"
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.55 }}
-      >
+      <section className="faq-section">
         <h2 className="faq-heading">Frequently Asked Questions</h2>
         {FAQ_ITEMS.map((item) => (
           <FAQItem key={item.q} q={item.q} a={item.a} />
         ))}
-      </motion.section>
+      </section>
 
       {/* ── Final CTA ── */}
-      <motion.section
-        className="final-cta-section"
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-60px' }}
-        transition={{ duration: 0.5 }}
-      >
+      <section className="final-cta-section">
         <div className="final-cta-tag">Get started today</div>
         <h2 className="final-cta-h2">
           Start Building Better<br />QA Workflows Today
@@ -541,7 +455,7 @@ export default function PricingPage() {
           </button>
         </div>
         <div className="fcta-note">No credit card required · Cancel anytime</div>
-      </motion.section>
+      </section>
     </div>
   );
 }

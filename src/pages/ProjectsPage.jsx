@@ -4,11 +4,12 @@ import {
   Plus, Folder, Trash2, Calendar, Layout, Loader2, Users, Check, X as XIcon, 
   Search, ArrowRight, Activity, Shield, CheckCircle2, CheckCircle, Info, ChevronRight, MoreVertical, LayoutGrid, List
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import { getProjects, createProject, deleteProject, subscribeToBugs, updateProject, getUsers, subscribeToProjects } from '../services/firestoreService';
 import Topbar from '../components/Topbar';
 import AdminTopbar from '../components/AdminTopbar';
 import { toast } from 'react-hot-toast';
+import { SkeletonStatsStrip } from '../components/Skeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlanLimits } from '../hooks/usePlanLimits';
 
@@ -17,9 +18,7 @@ const MemberItem = memo(({ user, isAssigned, onToggle }) => {
   const initials = (user.name || user.email || '?').charAt(0).toUpperCase();
 
   return (
-    <motion.div 
-      whileHover={{ x: 4 }}
-      whileTap={{ scale: 0.98 }}
+    <div 
       onClick={() => onToggle(user.uid)}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -58,7 +57,7 @@ const MemberItem = memo(({ user, isAssigned, onToggle }) => {
       }}>
         {isAssigned && <Check size={16} color="#fff" />}
       </div>
-    </motion.div>
+    </div>
   );
 });
 
@@ -175,24 +174,6 @@ export default function ProjectsPage() {
     p.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1
-    }
-  };
-
   return (
     <>
       {isAdmin ? (
@@ -236,18 +217,11 @@ export default function ProjectsPage() {
 
         {/* Projects Grid - Redesigned */}
         {loading ? (
-          <div style={{ height: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-            <motion.div 
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-              style={{ width: 40, height: 40, border: '4px solid var(--border)', borderTopColor: 'var(--admin-accent)', borderRadius: '50%' }}
-            />
-            <p style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1rem' }}>Preparing your workspace...</p>
+          <div style={{ marginTop: 20 }}>
+            <SkeletonStatsStrip count={3} height={120} />
           </div>
         ) : filteredProjects.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+          <div
             style={{ 
               height: 450, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
               textAlign: 'center', background: 'var(--bg-card)', borderRadius: 32, border: '1px solid var(--border)', 
@@ -277,16 +251,12 @@ export default function ProjectsPage() {
                 Create First Project
               </button>
             )}
-          </motion.div>
+          </div>
         ) : (
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
+          <div 
             className="grid-auto"
             style={{ gap: 32 }}
           >
-            <AnimatePresence>
               {filteredProjects.map((project) => {
                 const projectBugs = bugs.filter(bug => bug.projectId === project.id);
                 const totalBugs = projectBugs.length;
@@ -301,19 +271,14 @@ export default function ProjectsPage() {
                 else if (openBugs > 5) healthColor = "#f59e0b"; // Warning
 
                 return (
-                  <motion.div 
+                  <div 
                     key={project.id} 
-                    variants={itemVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="hidden"
-                    layout
-                    whileHover={{ y: -8, boxShadow: '0 30px 60px -12px rgba(0,0,0,0.12)' }}
                     onClick={() => isAdmin ? navigate(`/admin/projects/${project.id}`, { state: { project } }) : navigate(`${isDeveloper ? '/dev/bugs' : '/qa/bugs'}?project=${encodeURIComponent(project.name)}`)}
                     style={{ 
                       padding: 32, borderRadius: 28, border: '1px solid var(--border)', background: 'var(--bg-card)',
                       cursor: 'pointer', position: 'relative', display: 'flex', flexDirection: 'column', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                     }}
+                    className="project-card"
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -361,11 +326,7 @@ export default function ProjectsPage() {
                         <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-primary)' }}>{progress}%</span>
                       </div>
                       <div style={{ height: 6, background: 'var(--bg-primary)', borderRadius: 10, overflow: 'hidden', marginBottom: 24, border: '1px solid var(--border-light)' }}>
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progress}%` }}
-                          transition={{ duration: 1.2, ease: 'circOut' }}
-                          style={{ height: '100%', background: 'linear-gradient(90deg, var(--admin-accent), #3D49DF)', borderRadius: 10 }}
+                      <div style={{ height: '100%', background: 'linear-gradient(90deg, var(--admin-accent), #3D49DF)', borderRadius: 10, width: `${progress}%` }}
                         />
                       </div>
 
@@ -384,11 +345,10 @@ export default function ProjectsPage() {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
-            </AnimatePresence>
-          </motion.div>
+          </div>
         )}
       </div>
 
@@ -469,7 +429,7 @@ export default function ProjectsPage() {
                 }}
               >
                 {deleting
-                  ? <><div className="spinner" style={{ width: 14, height: 14, borderWidth: 2, borderTopColor: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} /> Deleting...</>
+                  ? 'Deleting...'
                   : <><Trash2 size={14} /> Delete Project</>
                 }
               </button>
@@ -479,13 +439,9 @@ export default function ProjectsPage() {
       )}
 
       {/* Premium Create Project Modal */}
-      <AnimatePresence>
-        {showModal && (
+      {showModal && (
           <div className="modal-overlay" onClick={() => setShowModal(false)} style={{ zIndex: 1000, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)' }}>
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            <div 
               className="card" 
               style={{ maxWidth: 500, width: '95%', padding: 0, borderRadius: 32, overflow: 'hidden', boxShadow: '0 25px 50px rgba(0,0,0,0.2)' }} 
               onClick={(e) => e.stopPropagation()}
@@ -556,10 +512,9 @@ export default function ProjectsPage() {
                   </button>
                 </div>
               </form>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
 
       <style dangerouslySetInnerHTML={{ __html: `
         .project-card {

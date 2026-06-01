@@ -353,7 +353,7 @@ export default function TestCasesPage() {
                 style={{ whiteSpace: 'nowrap', height: 38 }}
               >
                 {loading ? (
-                  <><div className="spinner" style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', marginRight: 6 }} /> Generating...</>
+                  'Generating...'
                 ) : (
                   <><Wand2 size={14} style={{ marginRight: 6 }} /> Generate Test Cases</>
                 )}

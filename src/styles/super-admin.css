@@ -29,7 +29,6 @@
   max-width: 1600px;
   width: 100%;
   margin: 0 auto;
-  animation: saFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -853,11 +852,7 @@
   100% { background-position: -200% 0; }
 }
 
-/* ── Animations ── */
-@keyframes saSaFadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+
 
 @keyframes saSlideDown {
   from { opacity: 0; transform: translateY(-8px); }

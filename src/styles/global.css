@@ -434,26 +434,7 @@ textarea.form-control {
 }
 
 /* ── Loading ───────────────────────────────────────────────────────────────── */
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
 
-.spinner-lg {
-  width: 40px;
-  height: 40px;
-  border-width: 3px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 .loading-screen {
   display: flex;
@@ -494,7 +475,6 @@ textarea.form-control {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  animation: fadeIn 0.15s ease;
 }
 
 .modal {
@@ -506,7 +486,6 @@ textarea.form-control {
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
-  animation: slideUp 0.2s ease;
 }
 
 .modal-lg {
@@ -537,40 +516,6 @@ textarea.form-control {
 }
 
 /* ── Animations ────────────────────────────────────────────────────────────── */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
 @keyframes pulse {
 
   0%,
@@ -581,14 +526,6 @@ textarea.form-control {
   50% {
     opacity: 0.5;
   }
-}
-
-.animate-fade {
-  animation: fadeIn 0.3s ease;
-}
-
-.animate-slide {
-  animation: slideUp 0.3s ease;
 }
 
 /* ── Misc ──────────────────────────────────────────────────────────────────── */
@@ -769,7 +706,6 @@ textarea.form-control {
     background: rgba(15, 23, 42, 0.3);
     backdrop-filter: blur(4px);
     z-index: 999;
-    animation: fadeIn 0.2s ease;
   }
 
   body.sidebar-open .sidebar-backdrop {
@@ -1118,15 +1054,5 @@ textarea.form-control {
 
   .attachment-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
   }
 }

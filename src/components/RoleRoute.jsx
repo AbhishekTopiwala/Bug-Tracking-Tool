@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { SkeletonDashboard } from './Skeleton';
 
 /**
  * RoleRoute — restricts access to a specific role.
@@ -10,24 +11,14 @@ export default function RoleRoute({ children, allowedRoles, redirectTo = '/' }) 
   const { currentUser, userProfile, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner spinner-lg" />
-        <span>Checking access...</span>
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   if (!currentUser) return <Navigate to="/login" replace />;
 
   if (!userProfile) {
     // Profile still loading — wait
-    return (
-      <div className="loading-screen">
-        <div className="spinner spinner-lg" />
-        <span>Loading profile...</span>
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   if (!allowedRoles.includes(userProfile.role)) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Bell, CheckCheck, BellOff, Trash2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+
 import Topbar from '../components/Topbar';
 import AdminTopbar from '../components/AdminTopbar';
 import { subscribeToNotifications, markNotificationRead, clearAllNotifications, deleteNotification } from '../services/firestoreService';
@@ -68,13 +68,7 @@ export default function NotificationsPage() {
           subtitle={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
         />
       )}
-      <motion.div 
-        className="page-container"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        style={{ willChange: 'opacity, transform' }}
-      >
+      <div className="page-container">
         {!isAdmin && notifications.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 24 }}>
             {unreadCount > 0 && (
@@ -118,16 +112,12 @@ export default function NotificationsPage() {
         ) : (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {notifications.map((n, idx) => (
-              <motion.div
+              <div
                 key={n.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: Math.min(idx * 0.05, 0.5) + 0.1 }}
                 className={`notif-item ${!n.read ? 'unread' : ''}`}
                 style={{
                   borderBottom: idx < notifications.length - 1 ? '1px solid var(--border)' : 'none',
                   padding: '16px 20px',
-                  willChange: 'opacity, transform'
                 }}
                 onClick={() => handleClick(n)}
               >
@@ -156,11 +146,11 @@ export default function NotificationsPage() {
                 >
                   <X size={16} />
                 </button>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
-      </motion.div>
+      </div>
     </>
   );
 }

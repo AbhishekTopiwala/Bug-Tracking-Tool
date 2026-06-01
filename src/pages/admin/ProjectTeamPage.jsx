@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import {
   Users, Search, ArrowLeft, CheckCircle2, Loader2,
   UserPlus, Shield, Mail, ShieldCheck, Check
@@ -17,11 +17,7 @@ const MemberItem = memo(({ user, isAssigned, onToggle }) => {
   const initials = (user.name || user.email || '?').charAt(0).toUpperCase();
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ y: -4, backgroundColor: 'var(--bg-card-hover)', borderColor: isAssigned ? 'var(--admin-accent)' : 'var(--admin-accent-light)' }}
-      whileTap={{ scale: 0.99 }}
+    <div
       onClick={() => onToggle(user.uid || user.id)}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
@@ -33,11 +29,11 @@ const MemberItem = memo(({ user, isAssigned, onToggle }) => {
         position: 'relative',
         overflow: 'hidden'
       }}
+      onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = isAssigned ? '0 16px 32px rgba(91, 108, 255, 0.2)' : '0 8px 24px rgba(0,0,0,0.06)'; }}
+      onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = isAssigned ? '0 12px 24px rgba(91, 108, 255, 0.12)' : '0 4px 12px rgba(0,0,0,0.03)'; }}
     >
       {isAssigned && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+        <div
           style={{
             position: 'absolute', top: 0, left: 0, width: 6, height: '100%',
             background: 'var(--admin-accent)', borderRadius: '0 4px 4px 0'
@@ -96,7 +92,7 @@ const MemberItem = memo(({ user, isAssigned, onToggle }) => {
           <UserPlus size={18} color="var(--text-muted)" />
         )}
       </div>
-    </motion.div>
+    </div>
   );
 });
 
@@ -334,7 +330,7 @@ export default function ProjectTeamPage() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
           gap: 24
         }}>
-          <AnimatePresence mode="popLayout">
+          <div className="members-grid-wrapper">
             {filteredUsers.length > 0 ? (
               filteredUsers.map(user => (
                 <MemberItem
@@ -345,9 +341,7 @@ export default function ProjectTeamPage() {
                 />
               ))
             ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+              <div
                 style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '120px 0', opacity: 0.5 }}
               >
                 <div style={{
@@ -359,9 +353,9 @@ export default function ProjectTeamPage() {
                 </div>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)' }}>No members found</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Try adjusting your search criteria or role filters</p>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </div>
         </div>
 
 

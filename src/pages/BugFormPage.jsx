@@ -11,6 +11,7 @@ import { createBug, updateBug, getBug, getUsers, addAttachmentToBug, createNotif
 import { uploadToCloudinary, cld } from '../services/cloudinaryService';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlanLimits } from '../hooks/usePlanLimits';
+import { SkeletonForm } from '../components/Skeleton';
 import { getValidStatusTransitions } from '../utils/statusRules';
 import { auto } from "@cloudinary/url-gen/actions/resize";
 import { autoGravity } from "@cloudinary/url-gen/qualifiers/gravity";
@@ -492,9 +493,8 @@ export default function BugFormPage() {
 
   if (initialLoading) {
     return (
-      <div className="loading-screen">
-        <div className="spinner spinner-lg" />
-        <span>Loading bug details...</span>
+      <div className="page-container" style={{ paddingTop: 16 }}>
+        <SkeletonForm fields={6} />
       </div>
     );
   }
@@ -599,7 +599,7 @@ export default function BugFormPage() {
                     disabled={aiLoading}
                     style={{ whiteSpace: 'nowrap', borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
                   >
-                    {aiLoading ? <div className="spinner" style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }} /> : <Wand2 size={16} />}
+                    {aiLoading ? null : <Wand2 size={16} />}
                     {aiLoading ? 'Filling...' : 'AI Fill'}
                   </button>
                 </div>
@@ -1086,7 +1086,7 @@ export default function BugFormPage() {
                 style={{ width: '100%', justifyContent: 'center' }}
               >
                 {loading ? (
-                  <><div className="spinner" style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff' }} /> {isEditing ? 'Updating...' : 'Submitting...'}</>
+                  <>{isEditing ? 'Updating...' : 'Submitting...'}</>
                 ) : (
                   <><AlertCircle size={18} /> {isEditing ? 'Update Bug Details' : 'Submit Bug Report'}</>
                 )}

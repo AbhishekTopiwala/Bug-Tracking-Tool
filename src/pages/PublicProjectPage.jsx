@@ -8,6 +8,7 @@ import {
 import { getPublicProjectData, getBrandingSettings } from '../services/firestoreService';
 import { formatDistanceToNow } from 'date-fns';
 import { toSafeDate } from '../utils/dateUtils';
+import { SkeletonDashboard } from '../components/Skeleton';
 
 
 export default function PublicProjectPage() {
@@ -47,9 +48,8 @@ export default function PublicProjectPage() {
   }, [projectId]);
 
   if (loading) return (
-    <div className="loading-screen" style={{ background: '#f8fafc' }}>
-      <div className="spinner spinner-lg" />
-      <span>Fetching project status...</span>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 24px', maxWidth: 1200, margin: '0 auto' }}>
+      <SkeletonDashboard />
     </div>
   );
 

@@ -6,6 +6,7 @@ import {
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import toast from 'react-hot-toast';
+import { SkeletonTable } from '../../components/Skeleton';
 
 export default function SubscriptionsManagementPage() {
   const [loading, setLoading] = useState(true);
@@ -325,8 +326,8 @@ export default function SubscriptionsManagementPage() {
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', padding: 40, justifyContent: 'center' }}>
-            <div className="spinner" style={{ borderTopColor: 'var(--sa-rose)' }} />
+          <div style={{ padding: 20 }}>
+            <SkeletonTable rows={5} cols={6} />
           </div>
         ) : (
           <div className="sa-table-wrapper">

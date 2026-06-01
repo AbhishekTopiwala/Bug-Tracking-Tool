@@ -9,7 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { getUserPaymentHistory, formatPrice, PLANS } from '../../services/paymentService';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import './BillingPage.css';
 
 
@@ -278,12 +278,7 @@ const BillingPage = () => {
   };
 
   return (
-    <motion.div
-      className="billing-container"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
+    <div className="billing-container">
 
       {/* 1. Header */}
       <div className="billing-header">
@@ -299,12 +294,7 @@ const BillingPage = () => {
 
       {/* 2. Usage Overview */}
       <div className="usage-dashboard">
-        <motion.div
-          className="usage-card"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
+        <div className="usage-card">
           <div className="usage-card-header">
             <div className="usage-icon-wrapper projects-icon">
               <FolderGit2 size={20} />
@@ -327,14 +317,9 @@ const BillingPage = () => {
               {limits.projectCount} of {limits.isUnlimitedProjects ? '∞' : limits.maxProjects} limit
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          className="usage-card"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
+        <div className="usage-card">
           <div className="usage-card-header">
             <div className="usage-icon-wrapper team-icon">
               <Users size={20} />
@@ -357,14 +342,9 @@ const BillingPage = () => {
               {limits.userCount} of {limits.isUnlimitedUsers ? '∞' : limits.maxUsers} limit
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          className="usage-card"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-        >
+        <div className="usage-card">
           <div className="usage-card-header">
             <div className="usage-icon-wrapper ai-icon">
               <Sparkles size={20} />
@@ -390,7 +370,7 @@ const BillingPage = () => {
               {limits.aiUsed} of {limits.isUnlimitedAI ? '∞' : limits.aiQuota} limit
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* 3. Subscription & Upgrade Grid */}
@@ -398,12 +378,7 @@ const BillingPage = () => {
 
         {/* Current Plan Summary */}
         <div className="billing-sidebar">
-          <motion.div
-            className="billing-card current-plan-card"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
+          <div className="billing-card current-plan-card">
             <div className="card-header">
               <h3>Current Subscription</h3>
               <span className={`plan-status ${organization?.subscription?.status === 'active' ? 'active' : 'inactive'}`}>
@@ -481,7 +456,7 @@ const BillingPage = () => {
                 </button>
               )}
             </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Upgrade Plans */}
@@ -491,12 +466,9 @@ const BillingPage = () => {
               <h3 className="section-title" style={{ margin: 0 }}>Upgrade Your Plan</h3>
               <div className={`plans-selection-grid ${upgradePlans.length === 1 ? 'single-plan' : ''}`}>
                 {upgradePlans.map((plan, index) => (
-                  <motion.div
+                  <div
                     key={plan.id}
                     className={`billing-plan-card ${plan.popular ? 'popular' : ''}`}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.2 + (index * 0.1) }}
                   >
                     {plan.popular && <div className="popular-tag">Most Popular</div>}
                     <div className="plan-header">
@@ -536,7 +508,7 @@ const BillingPage = () => {
                         {processingPlan === plan.id ? 'Processing...' : `Upgrade to ${plan.name}`}
                       </button>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -546,12 +518,7 @@ const BillingPage = () => {
 
       {/* 4. Payment History (Full Width) */}
       <div className="payment-history-container" style={{ marginTop: '32px' }}>
-        <motion.div
-          className="billing-card payment-history-card"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
+        <div className="billing-card payment-history-card">
           <div className="card-header">
             <h3>Payment History</h3>
           </div>
@@ -602,7 +569,7 @@ const BillingPage = () => {
               </tbody>
             </table>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* 5. Additional Billing Features */}
@@ -637,22 +604,14 @@ const BillingPage = () => {
       </div>
 
       {/* Cancel Subscription Modal */}
-      <AnimatePresence>
-        {showCancelModal && (
-          <motion.div
+      {showCancelModal && (
+          <div
             className="modal-overlay"
             onClick={() => setShowCancelModal(false)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
           >
-            <motion.div
+            <div
               className="modal-content"
               onClick={e => e.stopPropagation()}
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2 }}
             >
               <div className="modal-header warning">
                 <AlertCircle size={24} className="warning-icon" />
@@ -683,11 +642,10 @@ const BillingPage = () => {
                   Yes, Downgrade
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
-    </motion.div>
+    </div>
   );
 };
 
