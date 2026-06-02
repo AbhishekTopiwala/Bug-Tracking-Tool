@@ -36,9 +36,13 @@ export default function UserManagementPage() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   // Sorting
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   // Audit reason dialog state
   const [selectedUser, setSelectedUser] = useState(null);
@@ -219,8 +223,13 @@ export default function UserManagementPage() {
       let valA = a[sortBy] || '';
       let valB = b[sortBy] || '';
 
-      if (typeof valA === 'string') valA = valA.toLowerCase();
-      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (sortBy === 'createdAt') {
+        valA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        valB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      } else {
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+      }
 
       if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
       if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
@@ -229,6 +238,12 @@ export default function UserManagementPage() {
   };
 
   const filteredUsersList = getFilteredUsers();
+
+  const totalUserPages = Math.ceil(filteredUsersList.length / itemsPerPage) || 1;
+  const paginatedUsers = filteredUsersList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const totalLogPages = Math.ceil(auditLogs.length / itemsPerPage) || 1;
+  const paginatedLogs = auditLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // Metrics computing
   const totalGlobalUsersCount = users.length;
@@ -324,7 +339,7 @@ export default function UserManagementPage() {
           {/* Tabs Nav */}
           <div style={{ display: 'flex', gap: 8, background: '#F1F5F9', padding: 4, borderRadius: 10 }}>
             <button
-              onClick={() => setActiveTab('all')}
+              onClick={() => { setActiveTab('all'); setCurrentPage(1); }}
               style={{
                 border: 'none',
                 background: activeTab === 'all' ? 'white' : 'transparent',
@@ -341,7 +356,7 @@ export default function UserManagementPage() {
               All Users
             </button>
             <button
-              onClick={() => setActiveTab('deleted')}
+              onClick={() => { setActiveTab('deleted'); setCurrentPage(1); }}
               style={{
                 border: 'none',
                 background: activeTab === 'deleted' ? 'white' : 'transparent',
@@ -358,7 +373,7 @@ export default function UserManagementPage() {
               Archived & Soft-Deleted
             </button>
             <button
-              onClick={() => setActiveTab('logs')}
+              onClick={() => { setActiveTab('logs'); setCurrentPage(1); }}
               style={{
                 border: 'none',
                 background: activeTab === 'logs' ? 'white' : 'transparent',
@@ -385,7 +400,7 @@ export default function UserManagementPage() {
                   type="text"
                   placeholder="Search name, email, UID..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                   style={{
                     padding: '8px 12px 8px 34px',
                     borderRadius: 10,
@@ -402,7 +417,7 @@ export default function UserManagementPage() {
                 <Building2 size={13} style={{ color: '#64748B' }} />
                 <select
                   value={orgFilter}
-                  onChange={(e) => setOrgFilter(e.target.value)}
+                  onChange={(e) => { setOrgFilter(e.target.value); setCurrentPage(1); }}
                   style={{
                     padding: '8px 10px',
                     borderRadius: 10,
@@ -425,7 +440,7 @@ export default function UserManagementPage() {
                 <Shield size={13} style={{ color: '#64748B' }} />
                 <select
                   value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
+                  onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
                   style={{
                     padding: '8px 10px',
                     borderRadius: 10,
@@ -471,7 +486,7 @@ export default function UserManagementPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsersList.map((user) => {
+                  {paginatedUsers.map((user) => {
                     const userId = user.id || user.uid;
                     const isUserActive = user.isActive !== false;
                     const isUserDeleted = user.isDeleted === true || user.is_deleted === true;
@@ -519,7 +534,6 @@ export default function UserManagementPage() {
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           <span className={`sa-status-pill ${isUserActive ? 'sa-status-active' : 'sa-status-suspended'}`}>
-                            <span className="sa-pulse-dot" />
                             {isUserActive ? 'Active' : 'Inactive'}
                           </span>
                         </td>
@@ -592,6 +606,22 @@ export default function UserManagementPage() {
                 </tbody>
               </table>
             )}
+            {/* Pagination Footer */}
+            {filteredUsersList.length > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '16px 24px', borderTop: '1px solid rgba(226, 232, 240, 0.6)',
+                background: 'rgba(255, 255, 255, 0.3)'
+              }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                  Showing {Math.min(filteredUsersList.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredUsersList.length, currentPage * itemsPerPage)} of {filteredUsersList.length} users
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)} className="btn btn-secondary btn-sm" style={{ borderRadius: 8, height: 32, padding: '0 12px' }}>Previous</button>
+                  <button disabled={currentPage >= totalUserPages} onClick={() => setCurrentPage(currentPage + 1)} className="btn btn-secondary btn-sm" style={{ borderRadius: 8, height: 32, padding: '0 12px' }}>Next</button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* ── AUDIT LOGS TAB ── */
@@ -613,7 +643,7 @@ export default function UserManagementPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {auditLogs.map((log) => {
+                  {paginatedLogs.map((log) => {
                     const date = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp);
                     const formattedDate = isNaN(date.getTime()) ? '—' : date.toLocaleString('en-IN', {
                       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
@@ -674,6 +704,22 @@ export default function UserManagementPage() {
                   })}
                 </tbody>
               </table>
+            )}
+            {/* Pagination Footer */}
+            {auditLogs.length > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '16px 24px', borderTop: '1px solid rgba(226, 232, 240, 0.6)',
+                background: 'rgba(255, 255, 255, 0.3)'
+              }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                  Showing {Math.min(auditLogs.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(auditLogs.length, currentPage * itemsPerPage)} of {auditLogs.length} logs
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)} className="btn btn-secondary btn-sm" style={{ borderRadius: 8, height: 32, padding: '0 12px' }}>Previous</button>
+                  <button disabled={currentPage >= totalLogPages} onClick={() => setCurrentPage(currentPage + 1)} className="btn btn-secondary btn-sm" style={{ borderRadius: 8, height: 32, padding: '0 12px' }}>Next</button>
+                </div>
+              </div>
             )}
           </div>
         )}

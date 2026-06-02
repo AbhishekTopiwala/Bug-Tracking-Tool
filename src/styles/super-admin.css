@@ -25,13 +25,13 @@
 
 /* ── Container Layout ── */
 .sa-container {
-  padding: 32px;
+  padding: 24px;
   max-width: 1600px;
   width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 20px;
 }
 
 .sa-header {
@@ -40,7 +40,7 @@
   justify-content: space-between;
   gap: 20px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-  padding-bottom: 24px;
+  padding-bottom: 16px;
 }
 
 .sa-title-area {
@@ -298,7 +298,7 @@
 
 .sa-table th {
   background: rgba(248, 250, 252, 0.8);
-  padding: 16px 28px;
+  padding: 12px 24px;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -308,7 +308,7 @@
 }
 
 .sa-table td {
-  padding: 18px 28px;
+  padding: 10px 24px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.5);
   font-size: 0.875rem;
   color: #334155;
@@ -327,18 +327,18 @@
 .sa-org-cell {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .sa-avatar-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: white;
   box-shadow: 0 4px 10px rgba(0,0,0,0.05);
   position: relative;
@@ -382,26 +382,10 @@
   border: 1px solid rgba(16, 185, 129, 0.15);
 }
 
-.sa-status-active .sa-pulse-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--sa-emerald);
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
-  animation: saStatusPulse 2s infinite;
-}
-
 .sa-status-suspended {
   background: var(--sa-rose-light);
   color: #DC2626;
   border: 1px solid rgba(244, 63, 94, 0.15);
-}
-
-.sa-status-suspended .sa-pulse-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--sa-rose);
-  border-radius: 50%;
 }
 
 .sa-status-trial {
@@ -410,19 +394,7 @@
   border: 1px solid rgba(99, 102, 241, 0.15);
 }
 
-.sa-status-trial .sa-pulse-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--sa-indigo);
-  border-radius: 50%;
-  animation: saStatusPulse 2.5s infinite;
-}
 
-@keyframes saStatusPulse {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-  70% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
 
 /* Expandable organization info card drawer */
 .sa-expandable-row-content {

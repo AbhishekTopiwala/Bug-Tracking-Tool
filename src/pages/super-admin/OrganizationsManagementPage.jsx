@@ -17,13 +17,13 @@ export default function OrganizationsManagementPage() {
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('name'); // name, createdAt, plan, status
-  const [sortOrder, setSortOrder] = useState('asc'); // asc, desc
+  const [sortBy, setSortBy] = useState('createdAt'); // name, createdAt, plan, status
+  const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
   
   // Drawer & Pagination
   const [expandedOrgId, setExpandedOrgId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   const fetchOrgs = async () => {
     setLoading(true);
@@ -201,8 +201,8 @@ export default function OrganizationsManagementPage() {
         valA = a.name?.toLowerCase() || '';
         valB = b.name?.toLowerCase() || '';
       } else if (sortBy === 'createdAt') {
-        valA = a.createdAt?.seconds || 0;
-        valB = b.createdAt?.seconds || 0;
+        valA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        valB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
       } else if (sortBy === 'plan') {
         valA = a.subscription?.plan || a.subscription?.planId || 'free';
         valB = b.subscription?.plan || b.subscription?.planId || 'free';
@@ -247,7 +247,7 @@ export default function OrganizationsManagementPage() {
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
-          padding: 24,
+          padding: 16,
           borderBottom: '1px solid rgba(226, 232, 240, 0.6)',
           background: 'rgba(255, 255, 255, 0.4)'
         }}>
@@ -379,9 +379,11 @@ export default function OrganizationsManagementPage() {
 
                   const projectsCount = org.projectsCount ?? 0;
                   const membersCount = org.membersCount ?? 0;
-                  const lastActiveDate = org.createdAt?.seconds 
-                    ? new Date(org.createdAt.seconds * 1000).toLocaleDateString()
-                    : new Date().toLocaleDateString();
+                  const lastActiveDate = org.createdAt?.toDate 
+                    ? org.createdAt.toDate().toLocaleDateString()
+                    : org.createdAt 
+                      ? new Date(org.createdAt).toLocaleDateString()
+                      : new Date().toLocaleDateString();
 
                   return (
                     <>
@@ -416,12 +418,11 @@ export default function OrganizationsManagementPage() {
                         </td>
                         <td>
                           <div className={`sa-status-pill ${!isSuspended ? 'sa-status-active' : 'sa-status-suspended'}`}>
-                            <span className="sa-pulse-dot" />
                             {!isSuspended ? 'Active' : 'Suspended'}
                           </div>
                         </td>
                         <td>
-                          {org.createdAt?.seconds ? new Date(org.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                          {org.createdAt?.toDate ? org.createdAt.toDate().toLocaleDateString() : (org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A')}
                         </td>
                         <td style={{ textAlign: 'right', paddingRight: 28 }}>
                           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>

@@ -13,6 +13,7 @@ export default function AIAnalyticsPage() {
   const [search, setSearch] = useState('');
   const [modelFilter, setModelFilter] = useState('all');
   const [logs, setLogs] = useState([]);
+  const [hoveredDataPoint, setHoveredDataPoint] = useState(null);
 
   // Compute platform AI statistics
   const [stats, setStats] = useState({
@@ -85,24 +86,40 @@ export default function AIAnalyticsPage() {
 
   // Pure SVG Linear splines chart metrics
   const svgWidth = 800;
-  const svgHeight = 240;
-  const paddingX = 50;
+  const svgHeight = 260;
+  const paddingX = 60;
   const paddingY = 30;
   const chartWidth = svgWidth - paddingX * 2;
   const chartHeight = svgHeight - paddingY * 2;
 
-  const generationTrends = [
-    { hour: '08:00', val: 420 },
-    { hour: '10:00', val: 680 },
-    { hour: '12:00', val: 540 },
-    { hour: '14:00', val: 980 },
-    { hour: '16:00', val: 1200 },
-    { hour: '18:00', val: 890 },
-    { hour: '20:00', val: 1100 }
-  ];
+  // Generate dynamic hourly generation trends based on total current stats
+  const generateHourlyTrends = () => {
+    const baseVal = Math.max(10, Math.round((stats.totalGenerations || 1000) * 0.1));
+    const variance = [0.8, 1.2, 0.9, 1.5, 1.8, 1.1, 1.4];
+    const times = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'];
+    
+    return times.map((hour, idx) => {
+      const val = Math.round(baseVal * variance[idx]);
+      return {
+        hour,
+        val,
+        label: hour,
+        display: `${val.toLocaleString()} tokens`
+      };
+    });
+  };
 
-  const maxGen = 1400;
-  const minGen = 200;
+  const generationTrends = generateHourlyTrends();
+  const rawMax = Math.max(...generationTrends.map(t => t.val));
+  const rawMin = Math.min(...generationTrends.map(t => t.val));
+  const maxGen = (rawMax === 0 ? 100 : rawMax) * 1.2;
+  const minGen = rawMin * 0.8;
+
+  const formatGenYAxis = (val) => {
+    if (val === 0) return '0';
+    if (val >= 1000) return (val / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return Math.round(val).toString();
+  };
 
   const splinePoints = generationTrends.map((t, idx) => {
     const x = paddingX + (idx / (generationTrends.length - 1)) * chartWidth;
@@ -200,36 +217,94 @@ export default function AIAnalyticsPage() {
             </div>
           </div>
 
-          <div className="sa-chart-container" style={{ height: 200 }}>
+          <div className="sa-chart-container">
+            {/* Tooltip Overlay */}
+            {hoveredDataPoint && (
+              <div style={{
+                position: 'absolute',
+                top: hoveredDataPoint.y - 50,
+                left: hoveredDataPoint.x - 60,
+                background: '#0F172A',
+                color: '#fff',
+                padding: '6px 10px',
+                borderRadius: '8px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                pointerEvents: 'none',
+                zIndex: 10,
+                textAlign: 'center',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <div style={{ fontSize: '0.65rem', color: '#94A3B8' }}>{hoveredDataPoint.label}</div>
+                <div>{hoveredDataPoint.display}</div>
+              </div>
+            )}
+
             <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} width="100%" height="100%">
               <defs>
                 <linearGradient id="aiChartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--sa-rose)" stopOpacity="0.15" />
+                  <stop offset="0%" stopColor="var(--sa-rose)" stopOpacity="0.18" />
                   <stop offset="100%" stopColor="var(--sa-rose)" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
               {/* Grid Lines */}
-              <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="rgba(226, 232, 240, 0.4)" strokeWidth="1" strokeDasharray="4" />
-              <line x1={paddingX} y1={paddingY + chartHeight / 2} x2={svgWidth - paddingX} y2={paddingY + chartHeight / 2} stroke="rgba(226, 232, 240, 0.4)" strokeWidth="1" strokeDasharray="4" />
-              <line x1={paddingX} y1={svgHeight - paddingY} x2={svgWidth - paddingX} y2={svgHeight - paddingY} stroke="rgba(226, 232, 240, 0.4)" strokeWidth="1" strokeDasharray="4" />
+              <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} className="sa-chart-grid-line" />
+              <line x1={paddingX} y1={paddingY + chartHeight / 2} x2={svgWidth - paddingX} y2={paddingY + chartHeight / 2} className="sa-chart-grid-line" />
+              <line x1={paddingX} y1={svgHeight - paddingY} x2={svgWidth - paddingX} y2={svgHeight - paddingY} className="sa-chart-grid-line" />
 
               {/* Path and Fill */}
               <path d={splineArea} fill="url(#aiChartGradient)" />
-              <path d={splinePath} fill="none" stroke="var(--sa-rose)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              <path 
+                d={splinePath} 
+                className="sa-chart-path"
+                stroke="var(--sa-rose)" 
+                fill="none" 
+              />
 
-              {/* Data Nodes */}
+              {/* Interactive Data Nodes */}
               {splinePoints.map((pt, idx) => (
                 <g key={idx}>
-                  <circle cx={pt.x} cy={pt.y} r="4" fill="#FFF" stroke="var(--sa-rose)" strokeWidth="2.5" />
-                  <text x={pt.x} y={svgHeight - 10} textAnchor="middle" fill="#94A3B8" fontSize="11" fontWeight="600">{pt.hour}</text>
+                  <circle 
+                    cx={pt.x} 
+                    cy={pt.y} 
+                    r={hoveredDataPoint?.hour === pt.hour ? "6" : "4"} 
+                    fill="#FFF" 
+                    stroke="var(--sa-rose)" 
+                    strokeWidth="3"
+                    style={{ transition: 'all 0.15s ease', cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredDataPoint(pt)}
+                    onMouseLeave={() => setHoveredDataPoint(null)}
+                  />
+                  {/* Invisible touch target */}
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r="20"
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredDataPoint(pt)}
+                    onMouseLeave={() => setHoveredDataPoint(null)}
+                  />
+                  {/* X Axis Labels */}
+                  <text 
+                    x={pt.x} 
+                    y={svgHeight - 10} 
+                    textAnchor="middle" 
+                    fill="#94A3B8" 
+                    fontSize="11" 
+                    fontWeight="500"
+                  >
+                    {pt.hour}
+                  </text>
                 </g>
               ))}
 
               {/* Y Axis labels */}
-              <text x={10} y={paddingY + 4} fill="#94A3B8" fontSize="11" fontWeight="600">1.4k</text>
-              <text x={10} y={paddingY + chartHeight / 2 + 4} fill="#94A3B8" fontSize="11" fontWeight="600">800</text>
-              <text x={10} y={svgHeight - paddingY + 4} fill="#94A3B8" fontSize="11" fontWeight="600">200</text>
+              <text x={12} y={paddingY + 4} fill="#94A3B8" fontSize="11" fontWeight="500">{formatGenYAxis(maxGen)}</text>
+              <text x={12} y={paddingY + chartHeight / 2 + 4} fill="#94A3B8" fontSize="11" fontWeight="500">{formatGenYAxis((maxGen + minGen) / 2)}</text>
+              <text x={12} y={svgHeight - paddingY + 4} fill="#94A3B8" fontSize="11" fontWeight="500">{formatGenYAxis(minGen)}</text>
             </svg>
           </div>
         </div>
@@ -238,21 +313,28 @@ export default function AIAnalyticsPage() {
         <div className="sa-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <h3 className="sa-card-title" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A' }}>Model Breakdown</h3>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Proportional share of generative tasks</p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 20 }}>Proportional share of generative tasks</p>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
-            <svg width="120" height="120" viewBox="0 0 42 42">
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#E2E8F0" strokeWidth="4.5" />
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
+            <svg width="150" height="150" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#E2E8F0" strokeWidth="4" />
               {/* Gemini: 50% (emerald) */}
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-emerald)" strokeWidth="4.5"
-                strokeDasharray="50 50" strokeDashoffset="25" />
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-emerald)" strokeWidth="4"
+                strokeDasharray="50 50" strokeDashoffset="25" className="sa-donut-segment" />
               {/* Claude: 30% (indigo) */}
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-indigo)" strokeWidth="4.5"
-                strokeDasharray="30 70" strokeDashoffset="75" />
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-indigo)" strokeWidth="4"
+                strokeDasharray="30 70" strokeDashoffset="75" className="sa-donut-segment" />
               {/* GPT-4o: 20% (rose) */}
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-rose)" strokeWidth="4.5"
-                strokeDasharray="20 80" strokeDashoffset="45" />
+              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-rose)" strokeWidth="4"
+                strokeDasharray="20 80" strokeDashoffset="45" className="sa-donut-segment" />
+              
+              <text x="50%" y="49%" dominantBaseline="middle" textAnchor="middle" fontSize="5" fontWeight="800" fill="#0F172A">
+                Models
+              </text>
+              <text x="50%" y="61%" dominantBaseline="middle" textAnchor="middle" fontSize="3" fontWeight="600" fill="#94A3B8">
+                SHARE
+              </text>
             </svg>
           </div>
 
@@ -260,21 +342,21 @@ export default function AIAnalyticsPage() {
             <div className="sa-donut-label">
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <span className="sa-donut-indicator" style={{ background: 'var(--sa-emerald)' }} />
-                <span style={{ fontSize: '0.78rem' }}>Gemini-1.5-Pro</span>
+                <span>Gemini-1.5-Pro</span>
               </div>
               <span style={{ fontWeight: 700 }}>50%</span>
             </div>
             <div className="sa-donut-label">
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <span className="sa-donut-indicator" style={{ background: 'var(--sa-indigo)' }} />
-                <span style={{ fontSize: '0.78rem' }}>Claude-3.5-Sonnet</span>
+                <span>Claude-3.5-Sonnet</span>
               </div>
               <span style={{ fontWeight: 700 }}>30%</span>
             </div>
             <div className="sa-donut-label" style={{ borderBottom: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <span className="sa-donut-indicator" style={{ background: 'var(--sa-rose)' }} />
-                <span style={{ fontSize: '0.78rem' }}>GPT-4o</span>
+                <span>GPT-4o</span>
               </div>
               <span style={{ fontWeight: 700 }}>20%</span>
             </div>

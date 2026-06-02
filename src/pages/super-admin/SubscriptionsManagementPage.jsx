@@ -13,6 +13,8 @@ export default function SubscriptionsManagementPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [mrrData, setMrrData] = useState([]);
+  const [revenueHistory, setRevenueHistory] = useState([]);
+  const [maxVal, setMaxVal] = useState(60000);
   
   // Standardized dynamic states representing real business analytics
   const [metrics, setMetrics] = useState({
@@ -45,11 +47,54 @@ export default function SubscriptionsManagementPage() {
       }, 0);
 
       setMetrics({
-        mrr: calculatedMrr || 28500,
+        mrr: calculatedMrr || 0,
         activePlans: activeSubs.length,
         avgContractValue: activeSubs.length ? Math.round(calculatedMrr / activeSubs.length) : 0,
-        churnRate: 1.8
+        churnRate: orgs.length > 0 ? ((orgs.length - activeSubs.length) / orgs.length * 100).toFixed(1) : 0
       });
+
+      // Compute dynamic revenue history (last 6 months)
+      const today = new Date();
+      const last6Months = Array.from({ length: 6 }).map((_, i) => {
+        const d = new Date(today.getFullYear(), today.getMonth() - (5 - i), 1);
+        return {
+          month: d.toLocaleString('default', { month: 'short' }),
+          year: d.getFullYear(),
+          monthIndex: d.getMonth(),
+          pro: 0,
+          ent: 0
+        };
+      });
+
+      orgs.forEach(org => {
+        const status = org.subscription?.status?.toLowerCase() || 'inactive';
+        if (status !== 'active') return;
+
+        const plan = org.subscription?.plan || org.subscription?.planId || 'free';
+        const price = plan === 'starter' ? 999 : plan === 'growth' ? 2999 : plan === 'enterprise' ? 9999 : 0;
+        
+        let createdDate = new Date();
+        if (org.createdAt?.toDate) {
+          createdDate = org.createdAt.toDate();
+        } else if (org.createdAt?.seconds) {
+          createdDate = new Date(org.createdAt.seconds * 1000);
+        } else if (org.createdAt) {
+          createdDate = new Date(org.createdAt);
+        }
+
+        last6Months.forEach(m => {
+          const mDate = new Date(m.year, m.monthIndex, 1);
+          const cDate = new Date(createdDate.getFullYear(), createdDate.getMonth(), 1);
+          if (cDate <= mDate) {
+            if (plan === 'growth' || plan === 'starter') m.pro += price;
+            else if (plan === 'enterprise') m.ent += price;
+          }
+        });
+      });
+      
+      setRevenueHistory(last6Months);
+      const computedMaxVal = Math.max(20000, ...last6Months.map(d => d.pro + d.ent)) * 1.2;
+      setMaxVal(computedMaxVal);
 
       // Map organizations to high-fidelity subscription rows
       const list = orgs.map(org => {
@@ -98,17 +143,10 @@ export default function SubscriptionsManagementPage() {
   const chartWidth = svgWidth - paddingX * 2;
   const chartHeight = svgHeight - paddingY * 2;
 
-  // Monthly Revenue growth milestones (Stacked bar charts)
-  const monthlyRevenueGrowth = [
-    { month: 'Dec', pro: 9000, ent: 10000 },
-    { month: 'Jan', pro: 12000, ent: 10000 },
-    { month: 'Feb', pro: 15000, ent: 19998 },
-    { month: 'Mar', pro: 18000, ent: 19998 },
-    { month: 'Apr', pro: 24000, ent: 29997 },
-    { month: 'May', pro: (metrics.mrr || 60000) * 0.5, ent: (metrics.mrr || 60000) * 0.5 }
+  // Use dynamic revenue history from state
+  const monthlyRevenueGrowth = revenueHistory.length > 0 ? revenueHistory : [
+    { month: '...', pro: 0, ent: 0 }
   ];
-
-  const maxVal = 60000;
 
   return (
     <div className="sa-container">
@@ -265,8 +303,8 @@ export default function SubscriptionsManagementPage() {
             })}
 
             {/* Y Axis labels */}
-            <text x={10} y={paddingY + 4} fill="#94A3B8" fontSize="11" fontWeight="600">₹60k</text>
-            <text x={10} y={paddingY + chartHeight / 2 + 4} fill="#94A3B8" fontSize="11" fontWeight="600">₹30k</text>
+            <text x={10} y={paddingY + 4} fill="#94A3B8" fontSize="11" fontWeight="600">₹{(maxVal / 1000).toFixed(0)}k</text>
+            <text x={10} y={paddingY + chartHeight / 2 + 4} fill="#94A3B8" fontSize="11" fontWeight="600">₹{(maxVal / 2000).toFixed(0)}k</text>
             <text x={10} y={svgHeight - paddingY + 4} fill="#94A3B8" fontSize="11" fontWeight="600">₹0</text>
           </svg>
         </div>

@@ -296,17 +296,7 @@ export default function SuperAdminSidebar() {
                     objectFit: 'cover'
                   }}
                 />
-                <span className="sa-pulse-dot" style={{
-                  position: 'absolute',
-                  bottom: -1,
-                  right: -1,
-                  width: 8,
-                  height: 8,
-                  background: 'var(--sa-emerald)',
-                  borderRadius: '50%',
-                  border: '1.5px solid #FFF',
-                  boxShadow: '0 0 0 1px rgba(16, 185, 129, 0.2)'
-                }} />
+
               </div>
               {!isCollapsed && (
                 <div className="user-info" style={{ textAlign: 'left', minWidth: 0 }}>
