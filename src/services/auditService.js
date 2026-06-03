@@ -3,8 +3,9 @@
  * Centered service for logging system audit logs, deletion events, and user modifications.
  */
 
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../firebase/config';
 
 /**
  * Creates an audit log entry in Firestore.
@@ -19,14 +20,10 @@ import { db } from '../firebase/config';
  */
 export async function createAuditLog({ actor, targetUser, action, reason, isPermanent = false, details = {} }) {
   try {
-    const logData = {
+    console.log(`[auditService] Sending audit log request for ${action}`);
+    const createAuditLogCF = httpsCallable(functions, 'createAuditLog');
+    await createAuditLogCF({
       action,
-      actor: {
-        uid: actor?.uid || 'system',
-        email: actor?.email || 'system@qualia.io',
-        name: actor?.name || actor?.displayName || 'System',
-        role: actor?.role || 'system',
-      },
       targetUser: {
         uid: targetUser?.uid || targetUser?.id || '',
         email: targetUser?.email || '',
@@ -37,14 +34,9 @@ export async function createAuditLog({ actor, targetUser, action, reason, isPerm
       reason: reason || 'No reason provided',
       isPermanent,
       details,
-      timestamp: serverTimestamp(),
-      createdAt: serverTimestamp() // Double safety key
-    };
-
-    console.log(`[auditService] Creating audit log for ${action} by ${logData.actor.email} on ${logData.targetUser.email}`);
-    await addDoc(collection(db, 'audit_logs'), logData);
+    });
   } catch (error) {
-    console.error('[auditService] Error writing audit log:', error);
+    console.error('[auditService] Error writing audit log via Cloud Function:', error);
   }
 }
 

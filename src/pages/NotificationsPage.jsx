@@ -9,6 +9,7 @@ import { subscribeToNotifications, markNotificationRead, clearAllNotifications, 
 import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import SafeNotificationMessage from '../components/SafeNotificationMessage';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
@@ -125,7 +126,9 @@ export default function NotificationsPage() {
                   <Bell size={14} />
                 </div>
                 <div className="notif-content">
-                  <p className="notif-text" dangerouslySetInnerHTML={{ __html: n.message }} />
+                  <p className="notif-text">
+                    <SafeNotificationMessage message={n.message} />
+                  </p>
                   <p className="notif-time">
                     {n.createdAt?.seconds
                       ? formatDistanceToNow(new Date(n.createdAt.seconds * 1000), { addSuffix: true })

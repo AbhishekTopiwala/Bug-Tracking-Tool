@@ -3,7 +3,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { getFirestore } = require("firebase-admin/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const Razorpay = require("razorpay"); // Force reload
+const Razorpay = require("razorpay");
 
 const crypto = require("crypto");
 
@@ -27,7 +27,7 @@ async function checkAndIncrementQuota(orgId) {
   const currentUsage = typeof sub.aiUsed === 'number' ? sub.aiUsed : (data.aiUsage?.currentUsage || 0);
   const monthlyLimit = typeof sub.aiQuota === 'number' ? sub.aiQuota : (data.aiUsage?.monthlyLimit || 50);
 
-  if (currentUsage >= monthlyLimit) {
+  if (monthlyLimit !== -1 && currentUsage >= monthlyLimit) {
     throw new HttpsError("resource-exhausted", "AI Generation quota exceeded for this organization.");
   }
 
@@ -41,7 +41,6 @@ async function checkAndIncrementQuota(orgId) {
 }
 
 // ── GEMINI FUNCTIONS ─────────────────────────────────────────────────────────
-// Using a generic API key variable. In production, use Firebase Secret Manager.
 function getGeminiApiKey() {
   return process.env.GEMINI_API_KEY;
 } 
@@ -82,6 +81,22 @@ async function generateGeminiContentWithRetry(genAI, defaultModel, systemInstruc
   }
 }
 
+// Securely check if the authenticated user belongs to the specified organization
+async function validateUserOrg(authUid, organizationId) {
+  if (!organizationId) {
+    throw new HttpsError("invalid-argument", "Organization ID is required.");
+  }
+  const userDoc = await db.collection("users").doc(authUid).get();
+  if (!userDoc.exists) {
+    throw new HttpsError("not-found", "User not found.");
+  }
+  const userData = userDoc.data();
+  const isSuper = userData.role === 'super_admin' || userData.role === 'Superadmin';
+  if (!isSuper && userData.organizationId !== organizationId) {
+    throw new HttpsError("permission-denied", "You do not belong to this organization.");
+  }
+}
+
 exports.generateBugFromNote = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be logged in to generate bugs.");
@@ -94,10 +109,12 @@ exports.generateBugFromNote = onCall(async (request) => {
 
   const { note, organizationId } = request.data;
   
-  // Phase 4: Quota checking (Optional for now, but implemented as architecture specifies)
-  if (organizationId) {
-     await checkAndIncrementQuota(organizationId);
+  if (!note || typeof note !== 'string') {
+    throw new HttpsError("invalid-argument", "Note is required and must be a string.");
   }
+
+  await validateUserOrg(request.auth.uid, organizationId);
+  await checkAndIncrementQuota(organizationId);
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const systemInstruction = `You are a QA engineer assistant. Convert the short QA note into a formal bug report.
@@ -141,9 +158,8 @@ exports.generateTestCases = onCall(async (request) => {
 
   const { featureDescription, imageBase64, imageMimeType, organizationId } = request.data;
 
-  if (organizationId) {
-     await checkAndIncrementQuota(organizationId);
-  }
+  await validateUserOrg(request.auth.uid, organizationId);
+  await checkAndIncrementQuota(organizationId);
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const systemInstruction = `You are a QA engineer. Generate comprehensive test cases for the provided feature description or image of a website page.
@@ -207,9 +223,8 @@ exports.suggestSimilarBugs = onCall(async (request) => {
 
   const { title, existingBugs, organizationId } = request.data;
 
-  if (organizationId) {
-     await checkAndIncrementQuota(organizationId);
-  }
+  await validateUserOrg(request.auth.uid, organizationId);
+  await checkAndIncrementQuota(organizationId);
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const systemInstruction = `Given a new bug title, analyze the provided list of existing bugs and identify any that are highly similar or duplicates.
@@ -246,7 +261,6 @@ function getRazorpayConfig() {
     };
   }
 
-  // Live / Deployed mode
   return {
     keyId: process.env.RAZORPAY_LIVE_KEY_ID || process.env.RAZORPAY_KEY_ID,
     secret: process.env.RAZORPAY_LIVE_SECRET || process.env.RAZORPAY_SECRET,
@@ -254,13 +268,69 @@ function getRazorpayConfig() {
   };
 }
 
-// ── Create Razorpay Order (idempotent) ───────────────────────────────────────
+// ── Create Razorpay Order (idempotent & secure) ──────────────────────────────
 exports.createRazorpayOrder = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Must be logged in.");
 
-  const { amount, currency = "INR", planId, billingCycle, userId, notes } = request.data;
+  const userId = request.auth.uid;
+  const { planId, billingCycle, couponCode, currency = "INR", notes } = request.data;
   const { keyId, secret } = getRazorpayConfig();
   if (!keyId || !secret) throw new HttpsError("internal", "Razorpay not configured.");
+
+  // Validation
+  if (!planId || !billingCycle) {
+    throw new HttpsError("invalid-argument", "Plan ID and billing cycle are required.");
+  }
+  if (planId !== "starter" && planId !== "growth") {
+    throw new HttpsError("invalid-argument", "Invalid plan ID.");
+  }
+  if (billingCycle !== "monthly" && billingCycle !== "yearly") {
+    throw new HttpsError("invalid-argument", "Invalid billing cycle.");
+  }
+
+  // Calculate pricing on the server side
+  const PLAN_PRICES = {
+    starter: { monthly: 699, yearly: 6708 },
+    growth: { monthly: 2499, yearly: 23988 }
+  };
+  const basePrice = PLAN_PRICES[planId][billingCycle];
+
+  // Validate and apply coupon
+  let discount = 0;
+  let finalAmount = basePrice;
+  if (couponCode) {
+    const couponSnap = await db.collection("coupons")
+      .where("code", "==", couponCode.toUpperCase())
+      .where("active", "==", true)
+      .limit(1)
+      .get();
+    if (!couponSnap.empty) {
+      const coupon = couponSnap.docs[0].data();
+      const now = new Date();
+      
+      let expiresAt = null;
+      if (coupon.expiresAt) {
+        expiresAt = coupon.expiresAt.toDate ? coupon.expiresAt.toDate() : new Date(coupon.expiresAt);
+      }
+      
+      const isExpired = expiresAt && expiresAt < now;
+      const isLimitReached = coupon.usageLimit && (coupon.usageCount || 0) >= coupon.usageLimit;
+      
+      if (!isExpired && !isLimitReached) {
+        if (coupon.type === 'percent') {
+          discount = Math.round(basePrice * (coupon.value / 100));
+          if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+        } else if (coupon.type === 'fixed') {
+          discount = Math.min(coupon.value, basePrice);
+        }
+        finalAmount = basePrice - discount;
+      }
+    }
+  }
+
+  // Apply 18% tax
+  const tax = Math.round(finalAmount * 0.18);
+  const totalAmount = finalAmount + tax;
 
   // Idempotency: check if a PENDING order already exists for this user+plan
   const existingOrders = await db.collection("payments")
@@ -274,7 +344,7 @@ exports.createRazorpayOrder = onCall(async (request) => {
     const existing = existingOrders.docs[0].data();
     if (existing.razorpayOrderId) {
       console.log(`[createOrder] Returning existing order ${existing.razorpayOrderId}`);
-      return { id: existing.razorpayOrderId, amount: amount * 100, currency };
+      return { id: existing.razorpayOrderId, amount: Math.round(totalAmount * 100), currency };
     }
   }
 
@@ -282,7 +352,7 @@ exports.createRazorpayOrder = onCall(async (request) => {
 
   try {
     const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // paise
+      amount: Math.round(totalAmount * 100), // paise
       currency,
       receipt: `qua_${userId.slice(0, 8)}_${Date.now()}`,
       notes: {
@@ -299,13 +369,14 @@ exports.createRazorpayOrder = onCall(async (request) => {
       planId,
       billingCycle,
       razorpayOrderId: order.id,
-      amount,
+      amount: totalAmount, // Securely calculated amount
       currency,
       status: "PENDING",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       webhookProcessed: false,
       attempts: 1,
+      couponCode: couponCode || null,
     });
 
     return order;
@@ -315,29 +386,44 @@ exports.createRazorpayOrder = onCall(async (request) => {
   }
 });
 
-// ── Verify Payment & Activate Subscription ────────────────────────────────────
-// CRITICAL: This is the single source of truth. The frontend NEVER activates
-// a subscription — only this verified backend function does.
+// ── Verify Payment & Activate Subscription (secure) ───────────────────────────
 exports.verifyRazorpayPayment = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Must be logged in.");
 
+  const userId = request.auth.uid;
   const {
     razorpay_order_id,
     razorpay_payment_id,
     razorpay_signature,
-    userId,
-    planId,
-    billingCycle,
     workspaceName,
     gstNumber,
-    couponCode,
-    amount,
   } = request.data;
 
   const { secret } = getRazorpayConfig();
   if (!secret) throw new HttpsError("internal", "Razorpay not configured.");
 
-  // 1. Verify Razorpay signature (anti-tampering)
+  // Fetch the order from payments collection to verify ownership and amount
+  const payQuery = await db.collection("payments")
+    .where("razorpayOrderId", "==", razorpay_order_id)
+    .limit(1)
+    .get();
+
+  if (payQuery.empty) {
+    throw new HttpsError("not-found", "Payment order not found.");
+  }
+
+  const payDoc = payQuery.docs[0];
+  const payData = payDoc.data();
+  if (payData.userId !== userId) {
+    throw new HttpsError("permission-denied", "Payment order does not belong to you.");
+  }
+
+  const planId = payData.planId;
+  const billingCycle = payData.billingCycle;
+  const amount = payData.amount;
+  const couponCode = payData.couponCode || null;
+
+  // Verify Razorpay signature
   const expectedSig = crypto
     .createHmac("sha256", secret)
     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -348,7 +434,7 @@ exports.verifyRazorpayPayment = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Payment signature verification failed.");
   }
 
-  // 2. Check for duplicate webhook/verification (idempotency)
+  // Check for duplicate payment processing
   const paymentRef = await db.collection("payments")
     .where("razorpayOrderId", "==", razorpay_order_id)
     .where("status", "==", "PAID")
@@ -360,61 +446,66 @@ exports.verifyRazorpayPayment = onCall(async (request) => {
     return { success: true, duplicate: true };
   }
 
-  // 3. Fetch user document
+  // Fetch user document
   const userDoc = await db.collection("users").doc(userId).get();
   if (!userDoc.exists) throw new HttpsError("not-found", "User not found.");
   const userData = userDoc.data();
 
-  // 4. Prevent duplicate subscription (user already has PAID status)
-  if (userData.paymentStatus === "PAID") {
-    console.log(`[verifyPayment] User ${userId} already has PAID status — skipping.`);
-    return { success: true, duplicate: true };
-  }
-
   const PLAN_CONFIG = {
-    free:       { aiQuota: 50, maxUsers: 1, maxProjects: 2 },
-    starter:    { aiQuota: 500, maxUsers: 5, maxProjects: 10 },
+    free:       { aiQuota: 30, maxUsers: 3, maxProjects: 2 },
+    starter:    { aiQuota: 300, maxUsers: 5, maxProjects: 15 },
     growth:     { aiQuota: 2000, maxUsers: 25, maxProjects: -1 },
     enterprise: { aiQuota: -1, maxUsers: -1, maxProjects: -1 },
   };
   const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.starter;
 
-  // 5. Use Firestore batch for atomic multi-document write
+  // Use Firestore batch for atomic multi-document write
   const batch = db.batch();
 
-  // 5a. Create Organization (ONLY after successful payment)
-  const orgRef = db.collection("organizations").doc();
-  const orgId = orgRef.id;
+  let orgId = userData.organizationId;
+  const isUpgrade = !!orgId;
+  const orgRef = isUpgrade ? db.collection("organizations").doc(orgId) : db.collection("organizations").doc();
+  if (!orgId) orgId = orgRef.id;
+
   const now = new Date();
   const periodEnd = billingCycle === "yearly"
     ? new Date(now.setFullYear(now.getFullYear() + 1))
     : new Date(now.setMonth(now.getMonth() + 1));
 
-  batch.set(orgRef, {
-    name: workspaceName || (userData.displayName + "'s Workspace"),
-    ownerId: userId,
+  const subscriptionDetails = {
+    plan: planId,
     status: "ACTIVE",
-    createdAt: new Date().toISOString(),
-    subscription: {
-      plan: planId,
-      status: "ACTIVE",
-      billingCycle,
-      startDate: new Date().toISOString(),
-      currentPeriodEnd: periodEnd.toISOString(),
-      autoRenew: true,
-      aiQuota: planConfig.aiQuota,
-      aiUsed: 0,
-      maxUsers: planConfig.maxUsers,
-      maxProjects: planConfig.maxProjects,
-      lastPaymentId: razorpay_payment_id,
-      lastPaymentAt: new Date().toISOString(),
-      resetDate: periodEnd.toISOString(),
-    },
-    gstNumber: gstNumber || null,
-    country: userData.country || "India",
-  });
+    billingCycle,
+    startDate: new Date().toISOString(),
+    currentPeriodEnd: periodEnd.toISOString(),
+    autoRenew: true,
+    aiQuota: planConfig.aiQuota,
+    aiUsed: 0,
+    maxUsers: planConfig.maxUsers,
+    maxProjects: planConfig.maxProjects,
+    lastPaymentId: razorpay_payment_id,
+    lastPaymentAt: new Date().toISOString(),
+    resetDate: periodEnd.toISOString(),
+  };
 
-  // 5b. Update user document
+  if (isUpgrade) {
+    batch.update(orgRef, {
+      subscription: subscriptionDetails,
+      gstNumber: gstNumber || null,
+    });
+  } else {
+    batch.set(orgRef, {
+      name: workspaceName || (userData.displayName + "'s Workspace"),
+      ownerId: userId,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      subscription: subscriptionDetails,
+      gstNumber: gstNumber || null,
+      country: userData.country || "India",
+    });
+  }
+
+  // Update user document
   batch.update(db.collection("users").doc(userId), {
     organizationId: orgId,
     paymentStatus: "PAID",
@@ -427,34 +518,22 @@ exports.verifyRazorpayPayment = onCall(async (request) => {
     pendingBillingCycle: null,
   });
 
-  // 5c. Create payment record
-  const invoiceNumber = `QUA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  const paymentDocRef = db.collection("payments").doc();
-  batch.set(paymentDocRef, {
-    userId,
+  // Update the pending payment document
+  batch.update(payDoc.ref, {
     organizationId: orgId,
-    planId,
-    billingCycle,
-    razorpayOrderId: razorpay_order_id,
-    razorpayPaymentId: razorpay_payment_id,
-    amount,
-    currency: "INR",
-    gstNumber: gstNumber || null,
     status: "PAID",
-    invoiceNumber,
-    createdAt: new Date().toISOString(),
+    razorpayPaymentId: razorpay_payment_id,
     updatedAt: new Date().toISOString(),
-    webhookProcessed: false,
-    couponCode: couponCode || null,
   });
 
-  // 5d. Create invoice record
+  // Create invoice record
+  const invoiceNumber = `QUA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   const invoiceRef = db.collection("invoices").doc();
   batch.set(invoiceRef, {
     userId,
     organizationId: orgId,
     invoiceNumber,
-    paymentId: paymentDocRef.id,
+    paymentId: payDoc.id,
     planId,
     billingCycle,
     amount,
@@ -467,11 +546,11 @@ exports.verifyRazorpayPayment = onCall(async (request) => {
     email: userData.email,
   });
 
-  // 5e. Audit log
+  // Audit log
   const auditRef = db.collection("audit_logs").doc();
   batch.set(auditRef, {
     userId,
-    action: "PAYMENT_VERIFIED_AND_ORG_CREATED",
+    action: isUpgrade ? "PLAN_UPGRADED" : "PAYMENT_VERIFIED_AND_ORG_CREATED",
     details: {
       planId, billingCycle, orgId,
       paymentId: razorpay_payment_id,
@@ -481,11 +560,111 @@ exports.verifyRazorpayPayment = onCall(async (request) => {
     timestamp: new Date().toISOString(),
   });
 
-  // 6. Commit all writes atomically
   await batch.commit();
 
   console.log(`[verifyPayment] SUCCESS: org=${orgId}, user=${userId}, plan=${planId}`);
   return { success: true, organizationId: orgId, invoiceNumber };
+});
+
+// ── Activate Free Plan Cloud Function (secure) ────────────────────────────────
+exports.activateFreePlan = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be logged in.");
+
+  const userId = request.auth.uid;
+  const userDoc = await db.collection("users").doc(userId).get();
+  if (!userDoc.exists) throw new HttpsError("not-found", "User not found.");
+  const userData = userDoc.data();
+
+  let orgId = userData.organizationId;
+  const isUpgrade = !!orgId;
+  const orgRef = isUpgrade ? db.collection("organizations").doc(orgId) : db.collection("organizations").doc();
+  if (!orgId) orgId = orgRef.id;
+
+  const batch = db.batch();
+  const now = new Date();
+  const resetDate = new Date(now.setMonth(now.getMonth() + 1));
+
+  const subscriptionDetails = {
+    plan: 'free',
+    status: 'ACTIVE',
+    aiQuota: 30,
+    aiUsed: 0,
+    billingCycle: null,
+    startDate: new Date().toISOString(),
+    resetDate: resetDate.toISOString(),
+    maxUsers: 3,
+    maxProjects: 2,
+  };
+
+  if (isUpgrade) {
+    batch.update(orgRef, {
+      subscription: subscriptionDetails,
+    });
+  } else {
+    batch.set(orgRef, {
+      name: userData.workspaceName || (userData.displayName + "'s Workspace"),
+      ownerId: userId,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      subscription: subscriptionDetails,
+    });
+  }
+
+  batch.update(db.collection("users").doc(userId), {
+    organizationId: orgId,
+    planId: 'free',
+    paymentStatus: 'NOT_REQUIRED',
+    subscriptionStatus: 'ACTIVE',
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Audit log
+  const auditRef = db.collection("audit_logs").doc();
+  batch.set(auditRef, {
+    userId,
+    action: isUpgrade ? "PLAN_DOWNGRADED_TO_FREE" : "FREE_PLAN_ACTIVATED",
+    details: { planId: 'free', orgId },
+    timestamp: new Date().toISOString(),
+  });
+
+  await batch.commit();
+  return { success: true, organizationId: orgId };
+});
+
+// ── Secure Server-Side Audit Log Cloud Function (secure) ──────────────────────
+exports.createAuditLog = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Must be logged in.");
+
+  const { action, targetUser, reason, isPermanent, details } = request.data;
+  
+  const actorUid = request.auth.uid;
+  const actorDoc = await db.collection("users").doc(actorUid).get();
+  const actorData = actorDoc.exists ? actorDoc.data() : null;
+
+  const logData = {
+    action,
+    actor: {
+      uid: actorUid,
+      email: actorData?.email || request.auth.token.email || 'unknown',
+      name: actorData?.displayName || actorData?.name || 'Unknown',
+      role: actorData?.role || 'user',
+    },
+    targetUser: {
+      uid: targetUser?.uid || targetUser?.id || '',
+      email: targetUser?.email || '',
+      name: targetUser?.name || targetUser?.displayName || '',
+      role: targetUser?.role || '',
+      organizationId: targetUser?.organizationId || '',
+    },
+    reason: reason || 'No reason provided',
+    isPermanent: !!isPermanent,
+    details: details || {},
+    timestamp: new Date().toISOString(),
+    createdAt: new Date().toISOString()
+  };
+
+  await db.collection("audit_logs").add(logData);
+  return { success: true };
 });
 
 // ── Secure Razorpay Webhook ───────────────────────────────────────────────────

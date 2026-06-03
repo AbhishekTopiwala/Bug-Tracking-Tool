@@ -10,6 +10,7 @@ import Topbar from '../components/Topbar';
 import { subscribeToBugs, getProjects, subscribeToNotifications } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
+import SafeNotificationMessage from '../components/SafeNotificationMessage';
 
 const PRIORITY_COLOR = {
   Critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)' },
@@ -510,8 +511,9 @@ function ActivityItem({ notif, navigate }) {
             color: 'var(--text-secondary)', 
             lineHeight: 1.45,
           }}
-          dangerouslySetInnerHTML={{ __html: notif.message }}
-        />
+        >
+          <SafeNotificationMessage message={notif.message} />
+        </div>
         <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span>{timeAgo}</span>
           {!notif.read && (

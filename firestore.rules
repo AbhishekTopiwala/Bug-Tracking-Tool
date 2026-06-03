@@ -49,9 +49,7 @@ service cloud.firestore {
         request.auth.uid == userId ||
         isSuperAdmin() ||
         (resource != null && resource.data.email == request.auth.token.email) ||
-        (resource != null && isSameOrg(resource.data.organizationId)) ||
-        // Allow collection query by email during signup (new user has no Firestore profile yet)
-        request.auth.token.email != null
+        (resource != null && isSameOrg(resource.data.organizationId))
       );
 
       // KEY FIX: Removed 'organizationId' from the blocked fields list.
@@ -138,8 +136,7 @@ service cloud.firestore {
 
     match /audit_logs/{logId} {
       allow read: if isSuperAdmin();
-      allow create: if isSignedIn();
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     // ── Payment Collections ──────────────────────────────────────────────────

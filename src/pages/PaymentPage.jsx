@@ -114,34 +114,9 @@ export default function PaymentPage() {
   const activateFreePlan = async () => {
     setPaymentLoading(true);
     try {
-      const orgRef = doc(collection(db, 'organizations'));
-      const orgId = orgRef.id;
+      const activateFreePlanCF = httpsCallable(functions, 'activateFreePlan');
+      await activateFreePlanCF();
 
-      await setDoc(orgRef, {
-        name: userProfile.workspaceName || userProfile.displayName + "'s Workspace",
-        ownerId: currentUser.uid,
-        createdAt: serverTimestamp(),
-        status: 'ACTIVE',
-        subscription: {
-          plan: 'free',
-          status: SUBSCRIPTION_STATUS.ACTIVE,
-          aiQuota: 50,
-          aiUsed: 0,
-          billingCycle: null,
-          startDate: serverTimestamp(),
-          resetDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
-        },
-      });
-
-      await updateDoc(doc(db, 'users', currentUser.uid), {
-        organizationId: orgId,
-        planId: 'free',
-        paymentStatus: PAYMENT_STATUS.NOT_REQUIRED,
-        subscriptionStatus: SUBSCRIPTION_STATUS.ACTIVE,
-        updatedAt: serverTimestamp(),
-      });
-
-      await logAuditEvent(currentUser.uid, 'FREE_PLAN_ACTIVATED', { planId: 'free' });
       clearSelectedPlan();
       clearPendingPaymentSession();
       toast.success('Free plan activated! Welcome to Qualia 🎉');

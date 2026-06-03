@@ -9,6 +9,7 @@ import {
   subscribeToNotifications,
 } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
+import SafeNotificationMessage from './SafeNotificationMessage';
 
 /**
  * AdminTopbar — same notification logic as Topbar but styled for the Admin portal.
@@ -20,6 +21,7 @@ export default function AdminTopbar({ title, subtitle, onSearch }) {
   const notifRef = useRef(null);
   const { currentUser } = useAuth();
   const [searchVal, setSearchVal] = useState('');
+  const navigate = useNavigate();
 
   const handleSearch = (e) => {
     setSearchVal(e.target.value);
@@ -138,7 +140,9 @@ export default function AdminTopbar({ title, subtitle, onSearch }) {
                         <Bell size={14} />
                       </div>
                       <div className="notif-content">
-                        <p className="notif-text" dangerouslySetInnerHTML={{ __html: n.message }} />
+                        <p className="notif-text">
+                          <SafeNotificationMessage message={n.message} />
+                        </p>
                         <p className="notif-time">
                           {n.createdAt?.seconds
                             ? formatDistanceToNow(new Date(n.createdAt.seconds * 1000), { addSuffix: true })

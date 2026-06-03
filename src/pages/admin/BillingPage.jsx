@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../firebase/config';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { db, functions } from '../../firebase/config';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import {
   CreditCard, CheckCircle2, Zap, ShieldCheck, BarChart3, RefreshCcw,
   Sparkles, Users, FolderGit2, Calendar, FileText, AlertCircle, Download
@@ -85,58 +86,68 @@ const BillingPage = () => {
       return;
     }
 
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-      amount: plan.monthlyPricePaise || plan.monthlyPrice * 100,
-      currency: "INR",
-      name: "Qualia SaaS",
-      description: `Upgrade to ${plan.name} Plan`,
-      image: branding.logoUrl || "https://firebasestorage.googleapis.com/v0/b/demo2-659f2.firebasestorage.app/o/branding%2Fqualia_logo.png?alt=media",
-      handler: async function (response) {
-        try {
-          const renewsAt = new Date();
-          renewsAt.setMonth(renewsAt.getMonth() + 1);
+    try {
+      toast.loading("Initiating upgrade payment...", { id: "upgrade-toast" });
+      const createOrderCF = httpsCallable(functions, 'createRazorpayOrder');
+      const orderRes = await createOrderCF({
+        planId: plan.id,
+        billingCycle: 'monthly',
+      });
+      const order = orderRes.data;
 
-          await updateDoc(doc(db, 'organizations', userProfile.organizationId), {
-            'subscription.plan': plan.id,
-            'subscription.status': 'active',
-            'subscription.lastPaymentId': response.razorpay_payment_id,
-            'subscription.renewsAt': renewsAt.toISOString(),
-            'aiUsage.monthlyLimit': plan.aiQuota
-          });
-          toast.success(`Welcome to ${plan.name}! Your plan has been upgraded.`);
-        } catch (error) {
-          console.error("Upgrade error:", error);
-          toast.error("Payment successful but failed to update subscription. Contact support.");
-        }
-      },
-      prefill: {
-        name: userProfile.displayName,
-        email: userProfile.email,
-      },
-      theme: {
-        color: branding.primaryColor || "#6366f1",
-      },
-    };
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Qualia SaaS",
+        description: `Upgrade to ${plan.name} Plan`,
+        image: branding.logoUrl || "https://firebasestorage.googleapis.com/v0/b/demo2-659f2.firebasestorage.app/o/branding%2Fqualia_logo.png?alt=media",
+        order_id: order.id,
+        handler: async function (response) {
+          try {
+            toast.loading("Verifying payment...", { id: "upgrade-toast" });
+            const verifyCF = httpsCallable(functions, 'verifyRazorpayPayment');
+            await verifyCF({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            toast.success(`Welcome to ${plan.name}! Your plan has been upgraded.`, { id: "upgrade-toast" });
+          } catch (error) {
+            console.error("Upgrade verification error:", error);
+            toast.error("Payment successful but failed to update subscription. Contact support.", { id: "upgrade-toast" });
+          }
+        },
+        prefill: {
+          name: userProfile.displayName,
+          email: userProfile.email,
+        },
+        theme: {
+          color: branding.primaryColor || "#6366f1",
+        },
+      };
 
-    const paymentObject = new window.Razorpay(options);
-    paymentObject.open();
-    setProcessingPlan(null);
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+      toast.dismiss("upgrade-toast");
+    } catch (error) {
+      console.error("Upgrade error:", error);
+      toast.error(error.message || "Failed to initiate upgrade payment.", { id: "upgrade-toast" });
+    } finally {
+      setProcessingPlan(null);
+    }
   };
 
   const handleDowngradeToFree = async () => {
     try {
-      await updateDoc(doc(db, 'organizations', userProfile.organizationId), {
-        'subscription.plan': 'free',
-        'subscription.status': 'active',
-        'subscription.renewsAt': null,
-        'aiUsage.monthlyLimit': 100
-      });
-      toast.success('Successfully downgraded to Starter plan');
+      toast.loading("Downgrading subscription...", { id: "downgrade-toast" });
+      const activateFreePlanCF = httpsCallable(functions, 'activateFreePlan');
+      await activateFreePlanCF();
+      toast.success('Successfully downgraded to Free plan', { id: "downgrade-toast" });
       setShowCancelModal(false);
     } catch (error) {
       console.error("Downgrade error:", error);
-      toast.error("Failed to downgrade. Please try again.");
+      toast.error("Failed to downgrade. Please try again.", { id: "downgrade-toast" });
     }
   };
 

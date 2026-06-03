@@ -234,7 +234,7 @@ const PAYMENT_SESSION_KEY = 'qualia_payment_session';
 
 export function savePendingPaymentSession(data) {
   try {
-    localStorage.setItem(PAYMENT_SESSION_KEY, JSON.stringify({
+    sessionStorage.setItem(PAYMENT_SESSION_KEY, JSON.stringify({
       ...data,
       savedAt: Date.now(),
     }));
@@ -243,7 +243,7 @@ export function savePendingPaymentSession(data) {
 
 export function getPendingPaymentSession() {
   try {
-    const raw = localStorage.getItem(PAYMENT_SESSION_KEY);
+    const raw = sessionStorage.getItem(PAYMENT_SESSION_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
     // Expire after 24 hours
@@ -259,7 +259,7 @@ export function getPendingPaymentSession() {
 
 export function clearPendingPaymentSession() {
   try {
-    localStorage.removeItem(PAYMENT_SESSION_KEY);
+    sessionStorage.removeItem(PAYMENT_SESSION_KEY);
   } catch (e) {}
 }
 
