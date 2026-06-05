@@ -330,32 +330,30 @@ export default function ProjectTeamPage() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
           gap: 24
         }}>
-          <div className="members-grid-wrapper">
-            {filteredUsers.length > 0 ? (
-              filteredUsers.map(user => (
-                <MemberItem
-                  key={user.uid || user.id}
-                  user={user}
-                  isAssigned={selectedIds.includes(user.uid || user.id)}
-                  onToggle={handleToggle}
-                />
-              ))
-            ) : (
-              <div
-                style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '120px 0', opacity: 0.5 }}
-              >
-                <div style={{
-                  width: 100, height: 100, background: 'var(--bg-card)', borderRadius: 32,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px',
-                  border: '1px solid var(--border-light)'
-                }}>
-                  <Users size={48} style={{ color: 'var(--text-muted)' }} />
-                </div>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)' }}>No members found</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Try adjusting your search criteria or role filters</p>
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map(user => (
+              <MemberItem
+                key={user.uid || user.id}
+                user={user}
+                isAssigned={selectedIds.includes(user.uid || user.id)}
+                onToggle={handleToggle}
+              />
+            ))
+          ) : (
+            <div
+              style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '120px 0', opacity: 0.5 }}
+            >
+              <div style={{
+                width: 100, height: 100, background: 'var(--bg-card)', borderRadius: 32,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px',
+                border: '1px solid var(--border-light)'
+              }}>
+                <Users size={48} style={{ color: 'var(--text-muted)' }} />
               </div>
-            )}
-          </div>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)' }}>No members found</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Try adjusting your search criteria or role filters</p>
+            </div>
+          )}
         </div>
 
 
