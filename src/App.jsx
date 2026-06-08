@@ -6,6 +6,7 @@ import './styles/components.css';
 import './styles/developer.css';
 import './styles/admin.css';
 import './styles/super-admin.css';
+import './styles/org-portal.css';
 import './styles/landing.css';
 import './styles/payment.css';
 
@@ -17,6 +18,7 @@ import Sidebar from './components/Sidebar';
 import DevSidebar from './components/DevSidebar';
 import AdminSidebar from './components/AdminSidebar';
 import SuperAdminSidebar from './components/super-admin/SuperAdminSidebar';
+import OrgSidebar from './components/org/OrgSidebar';
 import PrivateRoute from './components/PrivateRoute';
 import RoleRoute from './components/RoleRoute';
 
@@ -55,6 +57,16 @@ const ProjectTeamPage = lazy(() => import('./pages/admin/ProjectTeamPage'));
 const PublicProjectPage = lazy(() => import('./pages/PublicProjectPage'));
 const BillingPage = lazy(() => import('./pages/admin/BillingPage'));
 
+// Lazy-loaded Organization Portal pages
+const OrgDashboardPage = lazy(() => import('./pages/org/OrgDashboardPage'));
+const AdminManagementPage = lazy(() => import('./pages/org/AdminManagementPage'));
+const OrgProjectsPage = lazy(() => import('./pages/org/OrgProjectsPage'));
+const TeamVisibilityPage = lazy(() => import('./pages/org/TeamVisibilityPage'));
+const ReportsPage = lazy(() => import('./pages/org/ReportsPage'));
+const OrgSettingsPage = lazy(() => import('./pages/org/OrgSettingsPage'));
+const OrgBillingPage = lazy(() => import('./pages/org/OrgBillingPage'));
+const OrgAuditLogsPage = lazy(() => import('./pages/org/OrgAuditLogsPage'));
+
 // Lazy-loaded Super Admin Portal pages
 const SuperAdminDashboardPage = lazy(() => import('./pages/super-admin/SuperAdminDashboardPage'));
 const OrganizationsManagementPage = lazy(() => import('./pages/super-admin/OrganizationsManagementPage'));
@@ -82,7 +94,7 @@ function PageLoader() {
 
 // ── Root redirect based on role ──────────────────────────────────────────────
 function RootRedirect() {
-  const { currentUser, userProfile, loading, isSuperAdmin, isAdmin } = useAuth();
+  const { currentUser, userProfile, loading, isSuperAdmin, isAdmin, isOrgOwner } = useAuth();
 
   if (loading) return <PageLoader />;
   if (!currentUser) return <LandingPage />;
@@ -100,6 +112,7 @@ function RootRedirect() {
   if (needsPayment) return <Navigate to="/payment-incomplete" replace />;
 
   if (isSuperAdmin) return <Navigate to="/super-admin" replace />;
+  if (isOrgOwner) return <Navigate to="/org" replace />;
   if (userProfile.role === 'Developer') return <Navigate to="/dev" replace />;
   if (isAdmin) return <Navigate to="/admin" replace />;
   return <Navigate to="/qa" replace />;
@@ -209,6 +222,40 @@ function AdminPortal() {
   );
 }
 
+// ── Organization Portal Layout ────────────────────────────────────────────────
+function OrgPortal() {
+  const { currentUser } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsub = subscribeToNotifications(currentUser.uid, setNotifications);
+    return () => unsub();
+  }, [currentUser]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  return (
+    <div className="app-layout">
+      <OrgSidebar unreadCount={unreadCount} />
+      <div className="main-content">
+        <Routes>
+          <Route index element={<OrgDashboardPage />} />
+          <Route path="admins" element={<AdminManagementPage />} />
+          <Route path="projects" element={<OrgProjectsPage />} />
+          <Route path="team" element={<TeamVisibilityPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="settings" element={<OrgSettingsPage />} />
+          <Route path="billing" element={<OrgBillingPage />} />
+          <Route path="audit-logs" element={<OrgAuditLogsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="*" element={<Navigate to="/org" replace />} />
+        </Routes>
+      </div>
+    </div>
+  );
+}
+
 // ── Super Admin Portal Layout ───────────────────────────────────────────────────
 function SuperAdminPortal() {
   return (
@@ -289,6 +336,18 @@ function AppLayout() {
           <PrivateRoute>
             <RoleRoute allowedRoles={['Admin', 'org_admin', 'super_admin', 'Superadmin', 'Manager']} redirectTo="/">
               <AdminPortal />
+            </RoleRoute>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Organization Portal — /org/* */}
+      <Route
+        path="/org/*"
+        element={
+          <PrivateRoute>
+            <RoleRoute allowedRoles={['OrgOwner']} redirectTo="/">
+              <OrgPortal />
             </RoleRoute>
           </PrivateRoute>
         }

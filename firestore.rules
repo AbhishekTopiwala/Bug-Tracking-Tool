@@ -28,7 +28,11 @@ service cloud.firestore {
     }
 
     function isOrgAdmin() {
-      return isSignedIn() && hasUserData() && isUserActive() && getUserData().role in ['org_admin', 'super_admin', 'Admin', 'Superadmin', 'Manager'];
+      return isSignedIn() && hasUserData() && isUserActive() && getUserData().role in ['org_admin', 'super_admin', 'Admin', 'Superadmin', 'Manager', 'OrgOwner'];
+    }
+
+    function isOrgOwner(orgId) {
+      return isSignedIn() && hasUserData() && isUserActive() && getUserData().role == 'OrgOwner' && getUserData().organizationId == orgId;
     }
 
     match /organizations/{orgId} {
@@ -137,6 +141,12 @@ service cloud.firestore {
     match /audit_logs/{logId} {
       allow read: if isSuperAdmin();
       allow write: if false;
+    }
+
+    match /org_audit_logs/{logId} {
+      allow read: if isSuperAdmin() || (isSignedIn() && hasUserData() && isUserActive() && getUserData().role == 'OrgOwner' && resource.data.organizationId == getUserData().organizationId);
+      allow create: if isSignedIn() && isUserActive() && (isSuperAdmin() || (hasUserData() && getUserData().role == 'OrgOwner' && request.resource.data.organizationId == getUserData().organizationId) || isOrgAdmin());
+      allow update, delete: if false;
     }
 
     // ── Payment Collections ──────────────────────────────────────────────────

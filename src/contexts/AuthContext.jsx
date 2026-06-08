@@ -166,7 +166,7 @@ export function AuthProvider({ children }) {
           // Leave orgId empty; user doc gets paymentStatus = PAYMENT_PENDING.
           console.log("[AuthContext] Payment-pending mode: skipping org creation.");
           orgId = '';
-          finalRole = 'Admin';
+          finalRole = 'OrgOwner';
         } else {
           const orgRef = doc(collection(db, 'organizations'));
           orgId = orgRef.id;
@@ -188,7 +188,7 @@ export function AuthProvider({ children }) {
             console.error("[AuthContext] Error creating organization:", orgErr);
             throw orgErr;
           }
-          finalRole = 'Admin';
+          finalRole = 'OrgOwner';
         }
 
         console.log("[AuthContext] Phase 5: Saving user profile...");
@@ -366,7 +366,7 @@ export function AuthProvider({ children }) {
         paymentStatus = 'NOT_REQUIRED';
         subscriptionStatus = 'ACTIVE';
       }
-      finalRole = 'Admin';
+      finalRole = 'OrgOwner';
     }
 
     const userData = {
@@ -544,7 +544,8 @@ export function AuthProvider({ children }) {
     branding,
     loading,
     isSuperAdmin: userProfile?.role === 'super_admin' || userProfile?.role === 'Superadmin',
-    isAdmin: ['org_admin', 'Admin', 'super_admin', 'Superadmin', 'Manager'].includes(userProfile?.role),
+    isOrgOwner: userProfile?.role === 'OrgOwner',
+    isAdmin: ['org_admin', 'Admin', 'super_admin', 'Superadmin', 'Manager', 'OrgOwner'].includes(userProfile?.role),
   };
 
   return (

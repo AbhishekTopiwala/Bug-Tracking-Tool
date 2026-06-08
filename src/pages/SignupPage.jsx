@@ -120,7 +120,7 @@ export default function SignupPage() {
         form.email.trim(),
         form.password,
         form.name.trim(),
-        'Admin',
+        'OrgOwner',
         '6366f1',
         form.workspaceName.trim(),
         {
@@ -324,7 +324,7 @@ export default function SignupPage() {
                 </div>
 
                 <div className="premium-input-group">
-                  <label className="premium-label">Admin Full Name</label>
+                  <label className="premium-label">Owner Full Name</label>
                   <div className="premium-input-wrapper">
                     <User size={18} className="premium-input-icon" />
                     <input

@@ -1,0 +1,451 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Qualia Organization Portal — Premium Enterprise Styling
+   Theme: Deep Violet Accent (#7C3AED), Glassmorphism, Professional SaaS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --org-purple: #7C3AED;
+  --org-purple-hover: #6D28D9;
+  --org-purple-glow: rgba(124, 58, 237, 0.15);
+  --org-purple-light: rgba(124, 58, 237, 0.06);
+  --org-violet: #8B5CF6;
+  --org-violet-light: rgba(139, 92, 246, 0.08);
+}
+
+/* ── Sidebar active item ── */
+.admin-nav-link.active.org-owner {
+  color: var(--org-purple) !important;
+  background: rgba(124, 58, 237, 0.06) !important;
+  border-color: rgba(124, 58, 237, 0.15) !important;
+  font-weight: 600;
+  position: relative;
+  box-shadow: inset 3px 0 0 var(--org-purple);
+}
+
+.admin-nav-link.active.org-owner svg {
+  color: var(--org-purple) !important;
+  filter: drop-shadow(0 0 3px rgba(124, 58, 237, 0.4));
+}
+
+/* ── Org Container ── */
+.org-container {
+  padding: 28px 36px;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Org Page Header ── */
+.org-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.org-page-title {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0F172A;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.org-page-subtitle {
+  font-size: 0.875rem;
+  color: #64748B;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* ── Org Stats Grid ── */
+.org-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.org-stat-card {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.org-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.org-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -15px rgba(124, 58, 237, 0.1), 0 0 0 1px rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.12);
+}
+
+.org-stat-card--purple::before { background: linear-gradient(90deg, #7C3AED, #A78BFA); }
+.org-stat-card--blue::before { background: linear-gradient(90deg, #3B82F6, #93C5FD); }
+.org-stat-card--emerald::before { background: linear-gradient(90deg, #10B981, #6EE7B7); }
+.org-stat-card--amber::before { background: linear-gradient(90deg, #F59E0B, #FDE047); }
+.org-stat-card--rose::before { background: linear-gradient(90deg, #F43F5E, #FDA4AF); }
+.org-stat-card--indigo::before { background: linear-gradient(90deg, #6366F1, #A5B4FC); }
+
+.org-stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.org-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.org-stat-card:hover .org-stat-icon {
+  transform: scale(1.08) rotate(2deg);
+}
+
+.org-stat-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748B;
+  margin: 0;
+}
+
+.org-stat-value {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.org-stat-footer {
+  font-size: 0.78rem;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+/* ── Org Cards ── */
+.org-card {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.04);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.org-card:hover {
+  border-color: rgba(124, 58, 237, 0.1);
+}
+
+.org-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.org-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.org-card-body {
+  padding: 24px;
+}
+
+/* ── Org Table ── */
+.org-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+}
+
+.org-table th {
+  background: rgba(248, 250, 252, 0.8);
+  padding: 12px 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748B;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.org-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  font-size: 0.875rem;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.org-table tr:last-child td {
+  border-bottom: none;
+}
+
+.org-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.org-table tbody tr:hover {
+  background: rgba(124, 58, 237, 0.015);
+}
+
+/* ── Status Pills ── */
+.org-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.org-status-active {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.org-status-inactive {
+  background: rgba(239, 68, 68, 0.06);
+  color: #DC2626;
+  border: 1px solid rgba(239, 68, 68, 0.12);
+}
+
+.org-status-invited {
+  background: rgba(124, 58, 237, 0.06);
+  color: #7C3AED;
+  border: 1px solid rgba(124, 58, 237, 0.12);
+}
+
+/* ── Health Indicators ── */
+.org-health-healthy {
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.org-health-at-risk {
+  background: rgba(245, 158, 11, 0.08);
+  color: #D97706;
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.org-health-critical {
+  background: rgba(239, 68, 68, 0.06);
+  color: #DC2626;
+  border: 1px solid rgba(239, 68, 68, 0.12);
+}
+
+/* ── Org Grid Layouts ── */
+.org-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.org-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.org-grid-2-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+/* ── Progress Bars ── */
+.org-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.8);
+  overflow: hidden;
+}
+
+.org-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Org Buttons ── */
+.org-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--org-purple);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.2);
+}
+
+.org-btn-primary:hover {
+  background: var(--org-purple-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+}
+
+.org-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.org-btn-secondary:hover {
+  border-color: var(--org-purple);
+  color: var(--org-purple);
+}
+
+/* ── Modal Overrides ── */
+.org-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.org-modal {
+  background: #fff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+}
+
+.org-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.org-modal-body {
+  padding: 24px;
+}
+
+.org-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+/* ── Audit Log Item ── */
+.org-audit-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+}
+
+.org-audit-item:last-child {
+  border-bottom: none;
+}
+
+.org-audit-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1200px) {
+  .org-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .org-grid-2-1 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .org-container {
+    padding: 16px;
+  }
+  .org-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .org-grid-2,
+  .org-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .org-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
