@@ -51,6 +51,7 @@ export default function PaymentPage() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState('');
+  const [usersCount, setUsersCount] = useState(1);
   const paymentInProgress = useRef(false);
 
   // ── Load plan data ─────────────────────────────────────────────────────────
@@ -72,19 +73,33 @@ export default function PaymentPage() {
       return;
     }
 
-    // If user already paid, redirect to dashboard
-    if (userProfile?.paymentStatus === PAYMENT_STATUS.PAID) {
+    // If user already paid, redirect to dashboard, UNLESS they are upgrading
+    // To allow upgrades, we don't strictly redirect if they come with a stateData plan.
+    if (userProfile?.paymentStatus === PAYMENT_STATUS.PAID && !stateData) {
       navigate('/admin');
       return;
     }
 
-    setPageLoading(false);
+    if (userProfile?.organizationId) {
+      getDoc(doc(db, 'organizations', userProfile.organizationId)).then(snap => {
+        if (snap.exists() && snap.data().memberCount) {
+          setUsersCount(snap.data().memberCount);
+        }
+        setPageLoading(false);
+      }).catch(err => {
+        console.error("Failed to load org:", err);
+        setPageLoading(false);
+      });
+    } else {
+      setPageLoading(false);
+    }
   }, [currentUser, userProfile, navigate, location.state]);
 
   // ── Price calculations ─────────────────────────────────────────────────────
-  const basePrice = selectedPlan
+  const basePricePerMonth = selectedPlan
     ? (billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice) ?? 0
     : 0;
+  const basePrice = (billingCycle === 'yearly' ? basePricePerMonth * 12 : basePricePerMonth) * usersCount;
   const { discount, finalAmount: afterCoupon } = applyCoupon(basePrice, appliedCoupon);
   const taxData = calculateTaxBreakdown(afterCoupon, userProfile?.gstNumber);
   const isFree = selectedPlan?.id === 'free' || taxData.totalAmount === 0;
@@ -162,6 +177,7 @@ export default function PaymentPage() {
         currency: 'INR',
         planId: selectedPlan.id,
         billingCycle,
+        usersCount,
         userId: currentUser.uid,
         couponCode: appliedCoupon?.code || null,
         notes: {
@@ -380,7 +396,7 @@ export default function PaymentPage() {
                 onClick={() => setBillingCycle('yearly')}
               >
                 Yearly
-                <span className="cycle-save-badge">Save 17%</span>
+                <span className="cycle-save-badge">Save 20%</span>
               </button>
             </div>
           )}
@@ -389,7 +405,7 @@ export default function PaymentPage() {
           {!isFree && selectedPlan.id !== 'enterprise' && (
             <div className="payment-breakdown">
               <div className="breakdown-row">
-                <span>Plan ({billingCycle})</span>
+                <span>Plan ({billingCycle}) × {usersCount} User{usersCount !== 1 ? 's' : ''}</span>
                 <span>{formatPrice(basePrice)}</span>
               </div>
               {discount > 0 && (

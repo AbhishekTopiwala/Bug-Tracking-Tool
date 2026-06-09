@@ -209,9 +209,13 @@ export default function SignupPage() {
                   ? 'Free forever'
                   : selectedPlanData.monthlyPrice === null
                     ? 'Custom pricing'
-                    : billingCycle === 'yearly'
-                      ? `₹${selectedPlanData.yearlyPrice}/yr`
-                      : `₹${selectedPlanData.monthlyPrice}/mo`}
+                    : selectedPlanData.isPerUser
+                      ? billingCycle === 'yearly'
+                        ? `₹${selectedPlanData.pricePerUserYearly || selectedPlanData.yearlyPrice}/user/mo`
+                        : `₹${selectedPlanData.pricePerUser}/user/mo`
+                      : billingCycle === 'yearly'
+                        ? `₹${selectedPlanData.yearlyPrice}/yr`
+                        : `₹${selectedPlanData.monthlyPrice}/mo`}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {selectedPlanData.features.filter(f => f.included).slice(0, 4).map((f, i) => (
@@ -299,9 +303,13 @@ export default function SignupPage() {
                         ? 'Free forever'
                         : p.monthlyPrice === null
                           ? 'Custom pricing'
-                          : billingCycle === 'yearly'
-                            ? `₹${p.yearlyPrice}/yr`
-                            : `₹${p.monthlyPrice}/mo`}
+                          : p.isPerUser
+                            ? billingCycle === 'yearly'
+                              ? `₹${p.pricePerUserYearly || p.yearlyPrice}/user/mo`
+                              : `₹${p.pricePerUser}/user/mo`
+                            : billingCycle === 'yearly'
+                              ? `₹${p.yearlyPrice}/yr`
+                              : `₹${p.monthlyPrice}/mo`}
                     </div>
                   </div>
                 ))}

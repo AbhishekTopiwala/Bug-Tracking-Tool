@@ -1,32 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Building2, Users, FolderKanban, Bug, Code2, TestTube2,
   TrendingUp, ArrowRight, Crown, Activity, CheckCircle2,
-  AlertTriangle, BarChart3, Shield,
+  AlertTriangle, BarChart3, Shield, RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getOrgDashboardStats, getDefectTrends } from '../../services/orgService';
+import { getOrgDashboardStats, getDefectTrends, subscribeToOrgData } from '../../services/orgService';
 
 export default function OrgDashboardPage() {
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+
+  const loadStats = useCallback(async () => {
+    if (!userProfile?.organizationId) return;
+    try {
+      const data = await getOrgDashboardStats(userProfile.organizationId);
+      setStats(data);
+      setLastRefreshed(new Date());
+    } catch (e) {
+      console.error('[OrgDashboard] Error:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [userProfile?.organizationId]);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await getOrgDashboardStats(userProfile?.organizationId);
-        setStats(data);
-      } catch (e) {
-        console.error('[OrgDashboard] Error:', e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    if (userProfile?.organizationId) load();
-  }, [userProfile?.organizationId]);
+    if (!userProfile?.organizationId) return;
+    // Initial load
+    loadStats();
+    // Real-time subscription — re-fetch whenever any org data changes
+    const unsub = subscribeToOrgData(userProfile.organizationId, () => {
+      loadStats();
+    });
+    return () => unsub();
+  }, [userProfile?.organizationId, loadStats]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -68,39 +79,54 @@ export default function OrgDashboardPage() {
             {greeting}, {firstName} 👋 — Here's your organization at a glance.
           </p>
         </div>
-        <button className="org-btn-primary" onClick={() => navigate('/org/admins')}>
-          <Users size={16} />
-          Manage Admins
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {lastRefreshed && (
+            <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 500 }}>
+              Live · Updated {lastRefreshed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          )}
+          <button className="org-btn-secondary" onClick={loadStats} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RefreshCw size={13} /> Refresh
+          </button>
+          <button className="org-btn-primary" onClick={() => navigate('/org/admins')}>
+            <Users size={16} />
+            Manage Admins
+          </button>
+        </div>
       </div>
 
       {/* ── Stats Grid ── */}
       <div className="org-stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {statCards.map(({ label, value, icon: Icon, color, bg, accent, link }) => (
-          <div
-            key={label}
-            className={`org-stat-card org-stat-card--${accent}`}
-            onClick={() => link && navigate(link)}
-            style={{ cursor: link ? 'pointer' : 'default' }}
-          >
-            <div className="org-stat-header">
-              <p className="org-stat-label">{label}</p>
-              <div className="org-stat-icon" style={{ background: bg, color }}>
-                <Icon size={18} />
-              </div>
+        {loading ? (
+          Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="org-stat-card" style={{ padding: 20 }}>
+              <div className="skeleton" style={{ width: 80, height: 14, borderRadius: 4, marginBottom: 12 }} />
+              <div className="skeleton" style={{ width: 50, height: 28, borderRadius: 6 }} />
             </div>
-            {loading ? (
-              <div className="skeleton" style={{ width: 60, height: 28, borderRadius: 6 }} />
-            ) : (
-              <p className="org-stat-value">{value}</p>
-            )}
-            {link && (
-              <p className="org-stat-footer" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                View details <ArrowRight size={12} />
-              </p>
-            )}
-          </div>
-        ))}
+          ))
+        ) : (
+          statCards.map(({ label, value, icon: Icon, color, bg, accent, link }) => (
+            <div
+              key={label}
+              className={`org-stat-card org-stat-card--${accent}`}
+              onClick={() => link && navigate(link)}
+              style={{ cursor: link ? 'pointer' : 'default' }}
+            >
+              <div className="org-stat-header">
+                <p className="org-stat-label">{label}</p>
+                <div className="org-stat-icon" style={{ background: bg, color }}>
+                  <Icon size={18} />
+                </div>
+              </div>
+              <p className="org-stat-value">{value ?? '—'}</p>
+              {link && (
+                <p className="org-stat-footer" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  View details <ArrowRight size={12} />
+                </p>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       {/* ── Bottom Section ── */}
@@ -120,6 +146,11 @@ export default function OrgDashboardPage() {
             {loading ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 20, borderRadius: 6 }} />)}
+              </div>
+            ) : defectTrends.every(d => d.opened === 0) ? (
+              <div style={{ padding: 32, textAlign: 'center', color: '#94A3B8' }}>
+                <Bug size={32} style={{ opacity: 0.3, marginBottom: 10 }} />
+                <p style={{ fontSize: '0.85rem', fontWeight: 600 }}>No defects reported in the last 30 days</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -182,7 +213,8 @@ export default function OrgDashboardPage() {
               </div>
             ) : recentProjects.length === 0 ? (
               <div style={{ padding: 32, textAlign: 'center', color: '#94A3B8', fontSize: '0.85rem' }}>
-                No projects yet
+                <FolderKanban size={32} style={{ opacity: 0.3, marginBottom: 10 }} />
+                <p style={{ fontWeight: 600 }}>No projects yet</p>
               </div>
             ) : (
               recentProjects.map(project => (
@@ -226,7 +258,7 @@ export default function OrgDashboardPage() {
           { label: 'QA Engineers', count: stats?.totalQA || 0, icon: TestTube2, color: '#10B981' },
         ].map(({ label, count, icon: Icon, color }) => {
           const total = stats?.totalMembers || 1;
-          const pct = Math.round((count / total) * 100);
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
           return (
             <div key={label} className="org-card" style={{ padding: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>

@@ -46,14 +46,14 @@ service cloud.firestore {
       allow create: if isSignedIn() && (
         request.auth.uid == userId ||
         isSuperAdmin() ||
-        (isOrgAdmin() && request.resource.data.organizationId == getUserData().organizationId)
+        (request.resource.data.organizationId == getUserData().organizationId && isOrgAdmin())
       );
       
       allow read: if isSignedIn() && (
         request.auth.uid == userId ||
         isSuperAdmin() ||
-        (resource != null && resource.data.email == request.auth.token.email) ||
-        (resource != null && isSameOrg(resource.data.organizationId))
+        resource.data.email == request.auth.token.email ||
+        isSameOrg(resource.data.organizationId)
       );
 
       // KEY FIX: Removed 'organizationId' from the blocked fields list.

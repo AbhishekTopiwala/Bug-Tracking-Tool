@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Users, UserPlus, Search, MoreVertical, Mail, Shield,
-  UserX, UserCheck, Trash2, X, Building2, Edit3,
+  UserX, UserCheck, Trash2, X, Edit3, RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   getOrgTeamMembers, inviteAdmin, updateAdmin,
-  deactivateAdmin, activateAdmin, removeAdmin,
+  deactivateAdmin, activateAdmin, removeAdmin, subscribeToOrgData,
 } from '../../services/orgService';
 import toast from 'react-hot-toast';
 
@@ -16,6 +16,7 @@ export default function AdminManagementPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [actionMenu, setActionMenu] = useState(null);
   const [inviteForm, setInviteForm] = useState({
@@ -23,37 +24,61 @@ export default function AdminManagementPage() {
   });
   const [inviting, setInviting] = useState(false);
 
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
+    if (!userProfile?.organizationId) return;
     try {
-      const data = await getOrgTeamMembers(userProfile?.organizationId);
+      const data = await getOrgTeamMembers(userProfile.organizationId);
       setMembers(data);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [userProfile?.organizationId]);
 
-  useEffect(() => { if (userProfile?.organizationId) loadMembers(); }, [userProfile?.organizationId]);
+  useEffect(() => {
+    if (!userProfile?.organizationId) return;
+    loadMembers();
+    // Real-time updates
+    const unsub = subscribeToOrgData(userProfile.organizationId, () => loadMembers());
+    return () => unsub();
+  }, [userProfile?.organizationId, loadMembers]);
+
+  // Close action menu on outside click
+  useEffect(() => {
+    const handler = () => setActionMenu(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, []);
 
   const admins = members.filter(u => ['Admin', 'Manager', 'org_admin', 'OrgOwner'].includes(u.role));
   const filtered = admins.filter(u => {
     const matchSearch = !search || (u.displayName || u.name || u.email || '').toLowerCase().includes(search.toLowerCase());
     const matchRole = filterRole === 'all' || u.role === filterRole;
-    return matchSearch && matchRole;
+    const matchStatus = filterStatus === 'all'
+      || (filterStatus === 'active' && u.isActive !== false && !u.invited)
+      || (filterStatus === 'inactive' && u.isActive === false)
+      || (filterStatus === 'pending' && u.invited);
+    return matchSearch && matchRole && matchStatus;
   });
 
   const handleInvite = async () => {
     if (!inviteForm.name || !inviteForm.email) { toast.error('Name and email are required'); return; }
     setInviting(true);
     try {
-      await inviteAdmin({
+      const result = await inviteAdmin({
         ...inviteForm,
         invitedBy: currentUser?.displayName || 'Organization Owner',
         invitedByEmail: currentUser?.email || '',
         orgId: userProfile?.organizationId,
       });
-      toast.success(`Invitation sent to ${inviteForm.email}`);
+      
+      if (result.emailSent) {
+        toast.success(`Invitation sent to ${inviteForm.email}`);
+      } else {
+        toast.success(`Admin added. (Email bypassed - config missing)`);
+      }
+      
       setShowInviteModal(false);
       setInviteForm({ name: '', email: '', designation: '', department: '', permissionLevel: 'full' });
       await loadMembers();
@@ -109,16 +134,21 @@ export default function AdminManagementPage() {
             Manage administrators and project managers in your organization.
           </p>
         </div>
-        <button className="org-btn-primary" onClick={() => setShowInviteModal(true)}>
-          <UserPlus size={16} /> Invite Admin
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="org-btn-secondary" onClick={loadMembers} style={{ padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RefreshCw size={13} /> Refresh
+          </button>
+          <button className="org-btn-primary" onClick={() => setShowInviteModal(true)}>
+            <UserPlus size={16} /> Invite Admin
+          </button>
+        </div>
       </div>
 
       {/* ── Stats Row ── */}
       <div className="org-stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {[
           { label: 'Total Admins', value: admins.length, color: '#7C3AED', bg: 'rgba(124,58,237,0.08)' },
-          { label: 'Active', value: admins.filter(u => u.isActive !== false).length, color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
+          { label: 'Active', value: admins.filter(u => u.isActive !== false && !u.invited).length, color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
           { label: 'Inactive', value: admins.filter(u => u.isActive === false).length, color: '#F43F5E', bg: 'rgba(244,63,94,0.08)' },
           { label: 'Pending Invite', value: admins.filter(u => u.invited).length, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)' },
         ].map(({ label, value, color, bg }) => (
@@ -133,7 +163,7 @@ export default function AdminManagementPage() {
       </div>
 
       {/* ── Filters ── */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, maxWidth: 340 }}>
           <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }} />
           <input
@@ -162,6 +192,20 @@ export default function AdminManagementPage() {
           <option value="Admin">Admin</option>
           <option value="Manager">Manager</option>
         </select>
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          style={{
+            height: 42, padding: '0 32px 0 14px', border: '1px solid rgba(226,232,240,0.8)',
+            borderRadius: 10, fontSize: '0.85rem', background: '#fff', color: '#334155',
+            cursor: 'pointer', outline: 'none',
+          }}
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="pending">Pending Invite</option>
+        </select>
       </div>
 
       {/* ── Admins Table ── */}
@@ -189,7 +233,9 @@ export default function AdminManagementPage() {
             ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center', padding: 48, color: '#94A3B8' }}>
-                  No admins found
+                  <Users size={36} style={{ opacity: 0.25, marginBottom: 10 }} />
+                  <p style={{ fontWeight: 600, fontSize: '0.9rem', margin: 0 }}>No admins found</p>
+                  <p style={{ fontSize: '0.8rem', margin: '4px 0 0' }}>Try adjusting your filters or invite a new admin.</p>
                 </td>
               </tr>
             ) : (
@@ -209,6 +255,9 @@ export default function AdminManagementPage() {
                         <div>
                           <p style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0F172A', margin: 0 }}>
                             {user.displayName || user.name || 'Unnamed'}
+                            {isCurrentUser && (
+                              <span style={{ marginLeft: 6, fontSize: '0.65rem', background: 'rgba(124,58,237,0.1)', color: '#7C3AED', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>You</span>
+                            )}
                           </p>
                           {user.designation && (
                             <p style={{ fontSize: '0.72rem', color: '#94A3B8', margin: '1px 0 0' }}>{user.designation}</p>
@@ -245,7 +294,7 @@ export default function AdminManagementPage() {
                     </td>
                     <td>
                       {!isCurrentUser && (
-                        <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => setActionMenu(actionMenu === user.id ? null : user.id)}
                             style={{

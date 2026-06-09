@@ -399,7 +399,7 @@ export default function OrganizationsManagementPage() {
                             <div className="sa-avatar-logo" style={{ 
                               background: planId === 'enterprise' 
                                 ? 'linear-gradient(135deg, var(--sa-rose) 0%, #FDA4AF 100%)' 
-                                : planId === 'growth' || planId === 'pro'
+                                : planId === 'business' || planId === 'pro'
                                   ? 'linear-gradient(135deg, var(--sa-indigo) 0%, #C7D2FE 100%)'
                                   : 'linear-gradient(135deg, var(--sa-amber) 0%, #FDE047 100%)'
                             }}>

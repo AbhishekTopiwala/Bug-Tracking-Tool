@@ -49,19 +49,20 @@ export default function SuperAdminDashboardPage() {
         free: 0
       };
 
-      // Mock revenue calculation (Free: 0, Starter: 999, Growth: 2999, Enterprise: 9999)
+      // Mock revenue calculation
       const revenue = orgs.reduce((acc, o) => {
         const plan = (o.subscription?.plan || o.subscription?.planId || 'free').toLowerCase();
 
         // Count plans for distribution chart
         if (plan === 'enterprise') planCounts.enterprise++;
-        else if (plan === 'pro' || plan === 'growth' || plan === 'starter') planCounts.pro++;
+        else if (plan === 'pro' || plan === 'business') planCounts.pro++;
         else planCounts.free++;
 
         const status = o.subscription?.status?.toLowerCase() || 'inactive';
         if (status === 'active') {
-          if (plan === 'starter') return acc + 999;
-          if (plan === 'growth') return acc + 2999;
+          const users = o.memberCount || 1;
+          if (plan === 'pro') return acc + (99 * users);
+          if (plan === 'business') return acc + (199 * users);
           if (plan === 'enterprise') return acc + 9999;
         }
         return acc;
@@ -603,7 +604,7 @@ export default function SuperAdminDashboardPage() {
                           <div className="sa-avatar-logo" style={{
                             background: planId === 'enterprise'
                               ? 'linear-gradient(135deg, var(--sa-rose) 0%, #FDA4AF 100%)'
-                              : planId === 'growth' || planId === 'pro'
+                              : planId === 'business' || planId === 'pro'
                                 ? 'linear-gradient(135deg, var(--sa-indigo) 0%, #C7D2FE 100%)'
                                 : 'linear-gradient(135deg, var(--sa-amber) 0%, #FDE047 100%)'
                           }}>

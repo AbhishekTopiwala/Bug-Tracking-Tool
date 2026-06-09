@@ -874,11 +874,11 @@ export default function LandingPage() {
       <section id="pricing" className="landing-pricing">
         <div className="pricing-container">
           <div className="section-header">
-            <span className="section-tag">Simple Pricing</span>
-            <h2 className="section-title">AI-Powered QA Workspace for Modern Teams</h2>
+            <span className="section-tag">Per-User Pricing</span>
+            <h2 className="section-title">Pay Only for Users You Actually Need</h2>
             <p className="section-subtitle">
-              Manage bugs, generate AI-powered reports, and streamline QA workflows — all in one platform.
-              Start free, upgrade as your team grows.
+              No minimums. No forced upgrades. Add or remove users anytime — billing adjusts automatically.
+              85% cheaper than Jira, with built-in AI bug generation included.
             </p>
           </div>
 
@@ -915,16 +915,21 @@ export default function LandingPage() {
                   ) : (
                     <>
                       <span className="pricing-amount">
-                        {formatPrice(billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice)}
+                        ₹{billingCycle === 'yearly'
+                          ? (plan.pricePerUserYearly || plan.yearlyPrice)
+                          : plan.pricePerUser}
                       </span>
-                      <span className="pricing-period">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                      <span className="pricing-period">/user/mo</span>
                     </>
                   )}
                 </div>
-                {billingCycle === 'yearly' && plan.yearlyPrice > 0 && plan.monthlyPrice > 0 && (
-                  <div className="pricing-yearly-note">
-                    ₹{Math.round(plan.yearlyPrice / 12).toLocaleString('en-IN')}/mo · billed annually
+                {plan.isPerUser && (
+                  <div className="pricing-yearly-note" style={{ color: billingCycle === 'yearly' ? '#15803d' : '#94a3b8' }}>
+                    {billingCycle === 'yearly' ? 'Save 20% · billed annually' : 'No minimum users · cancel anytime'}
                   </div>
+                )}
+                {plan.id === 'free' && (
+                  <div className="pricing-yearly-note" style={{ color: '#94a3b8' }}>Up to 5 users · no credit card needed</div>
                 )}
                 <div className="pricing-features">
                   {plan.features.map((feature, fIdx) => (
@@ -940,12 +945,16 @@ export default function LandingPage() {
                   id={`plan-cta-${plan.id}`}
                   className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
                   style={{ textAlign: 'center', display: 'block', fontWeight: 600, width: '100%' }}
-                  onClick={() => handleSelectPlan(plan.id, billingCycle)}
+                  onClick={() => plan.id === 'enterprise' ? window.location.href = 'mailto:sales@qualia.app' : handleSelectPlan(plan.id, billingCycle)}
                 >
                   {plan.cta}
                 </button>
               </div>
             ))}
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: 24, fontSize: '0.875rem', color: '#64748b' }}>
+            All paid plans include a 14-day free trial · No credit card required · Cancel anytime
           </div>
         </div>
       </section>

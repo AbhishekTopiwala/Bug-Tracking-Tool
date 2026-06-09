@@ -39,8 +39,9 @@ export default function SubscriptionsManagementPage() {
         const plan = o.subscription?.plan || o.subscription?.planId || 'free';
         const status = o.subscription?.status?.toLowerCase() || 'inactive';
         if (status === 'active') {
-          if (plan === 'starter') return acc + 999;
-          if (plan === 'growth') return acc + 2999;
+          const users = o.memberCount || 1;
+          if (plan === 'pro') return acc + (99 * users);
+          if (plan === 'business') return acc + (199 * users);
           if (plan === 'enterprise') return acc + 9999;
         }
         return acc;
@@ -71,7 +72,8 @@ export default function SubscriptionsManagementPage() {
         if (status !== 'active') return;
 
         const plan = org.subscription?.plan || org.subscription?.planId || 'free';
-        const price = plan === 'starter' ? 999 : plan === 'growth' ? 2999 : plan === 'enterprise' ? 9999 : 0;
+        const users = org.memberCount || 1;
+        const price = plan === 'pro' ? 99 * users : plan === 'business' ? 199 * users : plan === 'enterprise' ? 9999 : 0;
         
         let createdDate = new Date();
         if (org.createdAt?.toDate) {
@@ -86,7 +88,7 @@ export default function SubscriptionsManagementPage() {
           const mDate = new Date(m.year, m.monthIndex, 1);
           const cDate = new Date(createdDate.getFullYear(), createdDate.getMonth(), 1);
           if (cDate <= mDate) {
-            if (plan === 'growth' || plan === 'starter') m.pro += price;
+            if (plan === 'business' || plan === 'pro') m.pro += price;
             else if (plan === 'enterprise') m.ent += price;
           }
         });
@@ -99,7 +101,8 @@ export default function SubscriptionsManagementPage() {
       // Map organizations to high-fidelity subscription rows
       const list = orgs.map(org => {
         const plan = org.subscription?.plan || org.subscription?.planId || 'free';
-        const price = plan === 'starter' ? 999 : plan === 'growth' ? 2999 : plan === 'enterprise' ? 9999 : 0;
+        const users = org.memberCount || 1;
+        const price = plan === 'pro' ? 99 * users : plan === 'business' ? 199 * users : plan === 'enterprise' ? 9999 : 0;
         const normalizedStatus = (org.subscription?.status || 'active').toLowerCase();
         return {
           id: org.id,

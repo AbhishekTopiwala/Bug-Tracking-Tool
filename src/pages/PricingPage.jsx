@@ -2,144 +2,83 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Check, X, ChevronDown, ArrowRight,
-  Zap, Shield, Globe, Terminal, Layers,
-  Bot
+  Zap, Shield, Globe, Terminal, Layers, Bot,
+  Users, Calculator, TrendingDown, Star, Sparkles, Package
 } from 'lucide-react';
+import { PLANS, AI_CREDIT_PACKS, calculatePlanCost } from '../services/paymentService';
 import '../styles/pricing.css';
 
-/* ── Constants ─────────────────────────────────────────────────────────── */
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Free Sandbox',
-    desc: 'For indie developers and proofs of concept',
-    monthly: 0,
-    yearly: 0,
-    cta: 'Start Free',
-    ctaStyle: 'outline',
-    features: [
-      { text: '3 Users', bold: true },
-      { text: '2 Projects' },
-      { text: '30 AI Bug Reports / month', note: 'Resets monthly' },
-      { text: 'Basic Kanban Board' },
-      { text: 'Public Bug Sharing' },
-      { text: '100 MB Storage' },
-      { text: 'Community Support' },
-    ],
-  },
-  {
-    id: 'starter',
-    name: 'Starter',
-    desc: 'For startups and small QA teams',
-    monthly: 699,
-    yearly: 559,
-    cta: 'Start 14-Day Trial',
-    ctaStyle: 'solid-accent',
-    featured: true,
-    features: [
-      { text: '5 Users', bold: true },
-      { text: '15 Projects' },
-      { text: '300 AI Bug Reports / month', note: 'Resets monthly' },
-      { text: 'Full Kanban Board' },
-      { text: 'Playwright Integration' },
-      { text: 'Slack Notifications' },
-      { text: 'Email Support' },
-      { text: 'Basic Analytics' },
-      { text: 'API Access' },
-      { text: '5 GB Storage' },
-    ],
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    desc: 'For scaling companies and active QA teams',
-    monthly: 2499,
-    yearly: 1999,
-    cta: 'Get Growth Plan',
-    ctaStyle: 'solid-dark',
-    features: [
-      { text: '25 Users', bold: true },
-      { text: 'Unlimited Projects' },
-      { text: '2,000 AI Bug Reports / month', note: 'Resets monthly' },
-      { text: 'Sprint + Kanban Boards' },
-      { text: 'Test Case Management' },
-      { text: 'Playwright + Cypress + Selenium' },
-      { text: 'CI/CD Integrations' },
-      { text: 'Advanced Analytics' },
-      { text: 'Priority Support' },
-      { text: 'Webhooks' },
-      { text: 'Custom Branding' },
-      { text: 'Audit Logs' },
-      { text: '50 GB Storage' },
-    ],
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    desc: 'For large organizations and enterprise infrastructure',
-    monthly: null,
-    yearly: null,
-    cta: 'Contact Sales',
-    ctaStyle: 'outline',
-    features: [
-      { text: 'Unlimited Users', bold: true },
-      { text: 'Unlimited AI Usage' },
-      { text: 'SSO / SAML' },
-      { text: 'Dedicated Account Manager' },
-      { text: 'SLA Support' },
-      { text: 'Self Hosting / Private Cloud' },
-      { text: 'Advanced Security & Compliance' },
-      { text: 'Custom Integrations' },
-      { text: 'AI Model Training' },
-    ],
-  },
-];
-
+/* ── FAQ data ──────────────────────────────────────────────────────────────── */
 const FAQ_ITEMS = [
+  {
+    q: 'How does per-user pricing work?',
+    a: 'You pay only for the users you actually have active in your workspace. If you have 3 users on the Pro plan, you pay ₹297/month. Add a 4th user? Your bill becomes ₹396/month. No user minimums, no forced tiers.',
+  },
+  {
+    q: 'What counts as an "active user"?',
+    a: 'An active user is anyone who has accepted their invite and has access to your workspace. You can remove users at any time — billing adjusts automatically with prorated credits.',
+  },
+  {
+    q: 'How does the 20% annual discount work?',
+    a: 'On annual billing you pay ₹79/user/month (Pro) or ₹159/user/month (Business) — billed as a single upfront payment. This saves you 20% compared to monthly billing.',
+  },
   {
     q: 'How does AI bug generation work?',
     a: 'When your QA team uploads a screenshot, our AI engine analyzes visual elements, extracts metadata, reconstructs user paths, and auto-generates a structured bug ticket — complete with a title, steps to reproduce, severity rating, and root-cause summary.',
   },
   {
-    q: 'Can I upgrade anytime?',
-    a: "Yes, absolutely. You can upgrade or downgrade your plan at any time. Upgrades take effect immediately and we'll prorate any remaining balance. No long-term contracts — ever.",
-  },
-  {
-    q: 'Do you support Playwright?',
-    a: 'Yes. Playwright integration is available starting on the Starter plan. On Growth and above, you also get Cypress and Selenium, plus full CI/CD pipeline hooks.',
+    q: 'What are AI Credit Add-Ons?',
+    a: 'Need more AI power? Purchase additional credits at any time. Credits roll over for 30 days. Packs: 500 credits for ₹199, 2,000 credits for ₹699, or 10,000 credits for ₹2,499.',
   },
   {
     q: 'Is there a free trial?',
-    a: 'Yes. The Free Sandbox tier is permanently free. Starter and Growth plans come with a 14-day trial — no credit card required to start.',
+    a: 'Yes! Free Sandbox is permanently free (up to 5 users). Pro and Business plans come with a 14-day free trial — no credit card required.',
   },
   {
-    q: 'Do you offer enterprise deployment?',
-    a: 'Our Enterprise plan supports self-hosted, private cloud, and hybrid deployment models. We work with your security team to meet SOC 2, ISO 27001, and custom compliance requirements.',
+    q: 'How does Qualia compare to Jira in cost?',
+    a: 'Jira charges $8.15/user/month (Standard) with a minimum of 1 user — that\'s about ₹680/user. Qualia Pro is just ₹99/user/month — that\'s ~85% cheaper, with built-in AI bug generation that Jira doesn\'t offer at any price.',
   },
 ];
 
-// Comparison table data
+/* ── Feature comparison data ───────────────────────────────────────────────── */
 const COMPARE_ROWS = [
+  { group: 'Users & Projects' },
+  { label: 'Users', vals: ['Up to 5', 'Unlimited', 'Unlimited', 'Unlimited'] },
+  { label: 'Projects', vals: ['2', '10', '20', 'Unlimited'] },
   { group: 'AI & Reporting' },
-  { label: 'AI Bug Reports', note: 'Limits reset monthly', vals: ['30 / mo', '300 / mo', '2,000 / mo', 'Unlimited'] },
-  { label: 'Test Case Management', vals: [false, false, true, true] },
-  { group: 'Integrations' },
-  { label: 'Automation Integrations', vals: ['—', 'Playwright', 'All Frameworks', 'Custom'] },
-  { label: 'CI/CD Integrations', vals: [false, false, true, true] },
+  { label: 'AI Bug Reports', note: 'Limits reset monthly', vals: ['30/mo org', '100/user/mo', '250/user/mo', 'Unlimited'] },
+  { label: 'AI Credit Add-Ons', vals: [false, true, true, true] },
+  { label: 'Test Case Management', vals: [false, true, true, true] },
+  { group: 'Collaboration' },
+  { label: 'Kanban Board', vals: ['Basic', 'Full', 'Full', 'Custom'] },
+  { label: 'Bug Tracking', vals: [false, true, true, true] },
+  { label: 'Email Notifications', vals: [false, true, true, true] },
+  { label: 'Role-Based Access Control', vals: [false, false, true, true] },
+  { group: 'Integrations & API' },
+  { label: 'API Access', vals: [false, false, true, true] },
   { label: 'Webhooks', vals: [false, false, true, true] },
-  { label: 'API Access', vals: [false, true, true, true] },
-  { group: 'Platform' },
+  { label: 'Custom Workflows', vals: [false, false, true, true] },
+  { group: 'Analytics' },
   { label: 'Analytics', vals: ['—', 'Basic', 'Advanced', 'Custom'] },
-  { label: 'Storage', vals: ['100 MB', '5 GB', '50 GB', 'Unlimited'] },
-  { label: 'Custom Branding', vals: [false, false, true, true] },
-  { label: 'Audit Logs', vals: [false, false, true, true] },
+  { label: 'Audit Logs', vals: [false, false, false, true] },
   { group: 'Security & Support' },
+  { label: 'Support', vals: ['Community', 'Email', 'Priority', 'SLA + Dedicated'] },
   { label: 'SSO / SAML', vals: [false, false, false, true] },
-  { label: 'Priority Support', vals: [false, false, true, 'SLA'] },
-  { label: 'Self Hosting', vals: [false, false, false, true] },
+  { label: 'Private Cloud / On-Premise', vals: [false, false, false, true] },
+  { label: 'Advanced Security Controls', vals: [false, false, false, true] },
 ];
 
-/* ── Small Components ──────────────────────────────────────────────────── */
+/* ── ROI comparison data ───────────────────────────────────────────────────── */
+const ROI_ROWS = [
+  { feature: 'Starting Price (per user/mo)', qualia: '₹99', jira: '~₹680', note: '85% cheaper' },
+  { feature: 'AI Bug Report Generation', qualia: '✓ Built-in', jira: '✗ Not available', note: 'Qualia exclusive' },
+  { feature: 'Screenshot-to-Ticket AI', qualia: '✓ Instant', jira: '✗ Manual', note: 'Save hours daily' },
+  { feature: 'User minimum requirement', qualia: '✓ None', jira: '✗ Varies by plan', note: 'Pay only what you need' },
+  { feature: 'Test Case Management', qualia: '✓ All paid plans', jira: '✗ Add-on required', note: 'Included for free' },
+  { feature: 'Setup time', qualia: '< 5 minutes', jira: '1–3 days', note: 'Start instantly' },
+];
+
+/* ── Small Components ──────────────────────────────────────────────────────── */
 function CheckMark({ yes }) {
   if (yes === false) return <div className="check-icon-wrap"><X size={16} className="check-no" /></div>;
   if (yes === true) return <div className="check-icon-wrap"><Check size={16} className="check-yes" strokeWidth={2.5} /></div>;
@@ -168,20 +107,126 @@ function FAQItem({ q, a }) {
   );
 }
 
-/* ── Main Component ─────────────────────────────────────────────────────── */
+/* ── Team Cost Calculator ──────────────────────────────────────────────────── */
+function CostCalculator() {
+  const [users, setUsers] = useState(5);
+  const [yearly, setYearly] = useState(false);
+
+  const proPricePerUser = yearly ? 79 : 99;
+  const bizPricePerUser = yearly ? 159 : 199;
+
+  const proTotal = users * proPricePerUser;
+  const bizTotal = users * bizPricePerUser;
+  const jiraTotal = Math.round(users * 680); // approx ₹680/user/mo Jira Standard
+
+  const proSavingsVsJira = jiraTotal - proTotal;
+
+  return (
+    <section className="calculator-section">
+      <div className="calculator-header">
+        <div className="pricing-hero-label">
+          <Calculator size={13} />
+          Team Cost Calculator
+        </div>
+        <h2 className="calc-heading">See exactly what you'll pay</h2>
+        <p className="calc-sub">No surprises. No minimums. Adjust the slider to calculate your team's cost.</p>
+      </div>
+
+      <div className="calculator-card">
+        <div className="calc-slider-row">
+          <div className="calc-slider-label">
+            <Users size={16} />
+            <span><strong>{users}</strong> {users === 1 ? 'user' : 'users'}</span>
+          </div>
+          <div className="calc-billing-toggle">
+            <button
+              className={`calc-toggle-btn ${!yearly ? 'active' : ''}`}
+              onClick={() => setYearly(false)}
+            >Monthly</button>
+            <button
+              className={`calc-toggle-btn ${yearly ? 'active' : ''}`}
+              onClick={() => setYearly(true)}
+            >
+              Yearly
+              <span className="calc-save-badge">Save 20%</span>
+            </button>
+          </div>
+        </div>
+
+        <input
+          type="range"
+          min={1}
+          max={100}
+          value={users}
+          onChange={e => setUsers(Number(e.target.value))}
+          className="calc-range"
+        />
+        <div className="calc-range-labels">
+          <span>1 user</span>
+          <span>100 users</span>
+        </div>
+
+        <div className="calc-results">
+          <div className="calc-result-card pro">
+            <div className="calc-result-plan">Pro Plan</div>
+            <div className="calc-result-rate">₹{proPricePerUser}/user/mo</div>
+            <div className="calc-result-total">
+              ₹{proTotal.toLocaleString('en-IN')}
+              <span>/mo</span>
+            </div>
+            {yearly && (
+              <div className="calc-result-annual">₹{(proTotal * 12).toLocaleString('en-IN')}/yr billed annually</div>
+            )}
+          </div>
+
+          <div className="calc-result-card business">
+            <div className="calc-result-plan">Business Plan</div>
+            <div className="calc-result-rate">₹{bizPricePerUser}/user/mo</div>
+            <div className="calc-result-total">
+              ₹{bizTotal.toLocaleString('en-IN')}
+              <span>/mo</span>
+            </div>
+            {yearly && (
+              <div className="calc-result-annual">₹{(bizTotal * 12).toLocaleString('en-IN')}/yr billed annually</div>
+            )}
+          </div>
+
+          <div className="calc-result-card jira-compare">
+            <div className="calc-result-plan">Jira Standard (est.)</div>
+            <div className="calc-result-rate">~₹680/user/mo</div>
+            <div className="calc-result-total" style={{ color: '#ef4444' }}>
+              ₹{jiraTotal.toLocaleString('en-IN')}
+              <span>/mo</span>
+            </div>
+            <div className="calc-savings-pill">
+              <TrendingDown size={12} />
+              Save ₹{proSavingsVsJira.toLocaleString('en-IN')}/mo with Qualia Pro
+            </div>
+          </div>
+        </div>
+
+        <div className="calc-disclaimer">
+          * Jira estimate based on Standard plan at approx. ₹680/user/month. Qualia Pro includes AI bug generation — not available in Jira at any price tier.
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Main Component ─────────────────────────────────────────────────────────── */
 export default function PricingPage() {
   const navigate = useNavigate();
-  const [yearly, setYearly] = useState(true);
+  const [yearly, setYearly] = useState(false);
 
-  const getPrice = (plan) => {
-    if (plan.monthly === null) return null;
-    return yearly ? plan.yearly : plan.monthly;
-  };
-
-  const getSavings = (plan) => {
-    if (!plan.monthly || !plan.yearly) return null;
-    const saved = (plan.monthly - plan.yearly) * 12;
-    return saved > 0 ? `Save ₹${saved.toLocaleString('en-IN')}/yr` : null;
+  const getPriceDisplay = (plan) => {
+    if (plan.id === 'free') return { amount: '0', period: '/mo', sub: 'Free forever' };
+    if (plan.id === 'enterprise') return { amount: null, period: '', sub: 'Custom contract terms' };
+    const price = yearly ? (plan.pricePerUserYearly || plan.yearlyPrice) : plan.pricePerUser;
+    return {
+      amount: price.toString(),
+      period: '/user/mo',
+      sub: yearly ? `Billed annually — save 20%` : 'Billed monthly · cancel anytime',
+    };
   };
 
   return (
@@ -224,18 +269,25 @@ export default function PricingPage() {
       <section className="pricing-hero">
         <div className="pricing-hero-label">
           <Zap size={12} />
-          Simple, Transparent Pricing
+          Per-User Pricing — Pay Only for What You Need
         </div>
 
         <h1 className="pricing-h1">
-          AI-Powered QA Workspace<br />
-          for <em>Modern Teams</em>
+          Flexible AI-Powered QA<br />
+          <em>Starting at ₹99/user/month</em>
         </h1>
 
         <p className="pricing-sub">
-          Manage bugs, generate AI-powered reports, track test cases, and streamline
-          QA workflows — in one powerful platform.
+          No minimum users. No forced plan upgrades. No surprises.
+          Add or remove users anytime — billing adjusts automatically.
         </p>
+
+        <div className="pricing-hero-pills">
+          <div className="hero-pill">✓ No user minimums</div>
+          <div className="hero-pill">✓ Cancel anytime</div>
+          <div className="hero-pill">✓ 85% cheaper than Jira</div>
+          <div className="hero-pill">✓ Built-in AI</div>
+        </div>
 
         <div className="billing-row">
           <div className="billing-pill">
@@ -270,54 +322,58 @@ export default function PricingPage() {
 
       {/* ── Pricing Cards ── */}
       <section className="pricing-grid">
-        {PLANS.map((plan, idx) => {
-          const price = getPrice(plan);
-          const savings = getSavings(plan);
+        {Object.values(PLANS).map((plan) => {
+          const display = getPriceDisplay(plan);
           return (
             <div
               key={plan.id}
-              className={`plan-card ${plan.featured ? 'featured' : ''}`}
+              className={`plan-card ${plan.popular ? 'featured' : ''}`}
             >
-              {plan.featured && <div className="featured-ribbon">Most Popular</div>}
+              {plan.popular && <div className="featured-ribbon">Most Popular</div>}
 
               {/* Plan identity */}
               <div className="pc-name">{plan.name}</div>
-              <div className="pc-desc">{plan.desc}</div>
+              <div className="pc-desc">{plan.tagline}</div>
 
               {/* Pricing */}
               <div className="pc-price-block">
-                {price === null ? (
+                {display.amount === null ? (
                   <span className="pc-amount custom-price">Custom</span>
                 ) : (
                   <>
                     <span className="pc-currency">₹</span>
                     <span className="pc-amount">
-                      {price === 0 ? '0' : price.toLocaleString('en-IN')}
+                      {display.amount === '0' ? '0' : Number(display.amount).toLocaleString('en-IN')}
                     </span>
-                    <span className="pc-period">/mo</span>
+                    <span className="pc-period">{display.period}</span>
                   </>
                 )}
               </div>
 
               <div className="pc-savings">
-                {yearly && savings ? (
-                  <span>
-                    ✓ {savings} on yearly billing
-                  </span>
-                ) : price === null ? (
-                  <span>Custom contract terms</span>
-                ) : price === 0 ? (
-                  <span>Free forever — no credit card</span>
-                ) : (
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    Switch to yearly to save 20%
-                  </span>
-                )}
+                <span style={{ color: display.amount === null ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+                  {display.sub}
+                </span>
               </div>
+
+              {/* Per-user pricing examples */}
+              {plan.isPerUser && (
+                <div className="pc-examples">
+                  {[1, 5, 10, 25].map(n => {
+                    const price = yearly ? (plan.pricePerUserYearly || plan.yearlyPrice) : plan.pricePerUser;
+                    return (
+                      <div key={n} className="pc-example-row">
+                        <span>{n} {n === 1 ? 'user' : 'users'}</span>
+                        <span>₹{(price * n).toLocaleString('en-IN')}/mo</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* CTA */}
               <button
-                className={`pc-btn ${plan.ctaStyle}`}
+                className={`pc-btn ${plan.popular ? 'solid-accent' : plan.ctaSecondary ? 'solid-dark' : 'outline'}`}
                 onClick={() => plan.id === 'enterprise' ? window.location.href = 'mailto:sales@qualia.app' : navigate('/signup')}
               >
                 {plan.cta}
@@ -332,14 +388,7 @@ export default function PricingPage() {
                     <div className="pc-feature-check">
                       <Check size={9} strokeWidth={3} />
                     </div>
-                    <span>
-                      {f.text}
-                      {f.note && (
-                        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '1px' }}>
-                          {f.note}
-                        </span>
-                      )}
-                    </span>
+                    <span>{f.label}</span>
                   </div>
                 ))}
               </div>
@@ -347,6 +396,39 @@ export default function PricingPage() {
           );
         })}
       </section>
+
+      {/* ── AI Credit Add-Ons ── */}
+      <section className="addons-section">
+        <div className="addons-header">
+          <div className="pricing-hero-label" style={{ marginBottom: 12 }}>
+            <Sparkles size={12} />
+            AI Credit Add-Ons
+          </div>
+          <h2 className="addons-heading">Need more AI power?</h2>
+          <p className="addons-sub">Purchase additional AI credits at any time. Unused credits roll over for 30 days.</p>
+        </div>
+        <div className="addons-grid">
+          {AI_CREDIT_PACKS.map(pack => (
+            <div key={pack.id} className="addon-card">
+              <div className="addon-icon">
+                <Package size={20} />
+              </div>
+              <div className="addon-credits">{pack.label}</div>
+              <div className="addon-price">{pack.priceDisplay}</div>
+              <div className="addon-rate">
+                ₹{(pack.price / pack.credits).toFixed(2)} per credit
+              </div>
+              <button className="addon-btn" onClick={() => navigate('/signup')}>
+                Add Credits
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="addons-note">Credits roll over for 30 days · No expiry on bulk packs · Works with Pro and Business plans</p>
+      </section>
+
+      {/* ── Team Cost Calculator ── */}
+      <CostCalculator />
 
       {/* ── Trust Bar ── */}
       <section className="trust-bar">
@@ -383,6 +465,38 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* ── ROI Comparison vs Jira ── */}
+      <section className="roi-section">
+        <h2 className="compare-heading">Qualia vs Jira — The Real Cost</h2>
+        <p className="compare-sub">
+          AI-powered QA at 85% less than Jira, with features Jira doesn't even offer.
+        </p>
+        <div className="compare-wrap">
+          <table className="compare-tbl roi-tbl">
+            <thead>
+              <tr>
+                <th>Feature / Cost</th>
+                <th style={{ color: '#5B6CFF' }}>Qualia Pro</th>
+                <th>Jira Standard</th>
+                <th className="col-featured">Advantage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ROI_ROWS.map((row, i) => (
+                <tr key={i}>
+                  <td style={{ fontWeight: 600 }}>{row.feature}</td>
+                  <td style={{ color: '#10b981', fontWeight: 600 }}>{row.qualia}</td>
+                  <td style={{ color: '#ef4444' }}>{row.jira}</td>
+                  <td className="tc-featured">
+                    <span className="roi-badge">{row.note}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {/* ── Feature Comparison Table ── */}
       <section className="compare-section">
         <h2 className="compare-heading">Compare All Plans</h2>
@@ -396,8 +510,8 @@ export default function PricingPage() {
               <tr>
                 <th>Feature</th>
                 <th>Free Sandbox</th>
-                <th className="col-featured">Starter</th>
-                <th>Growth</th>
+                <th>Pro</th>
+                <th className="col-featured">Business</th>
                 <th>Enterprise</th>
               </tr>
             </thead>
@@ -417,14 +531,33 @@ export default function PricingPage() {
                       {row.note && <span className="tbl-microcopy">{row.note}</span>}
                     </td>
                     <td className="tc"><CheckMark yes={row.vals[0]} /></td>
-                    <td className="tc-featured"><CheckMark yes={row.vals[1]} /></td>
-                    <td className="tc"><CheckMark yes={row.vals[2]} /></td>
+                    <td className="tc"><CheckMark yes={row.vals[1]} /></td>
+                    <td className="tc-featured"><CheckMark yes={row.vals[2]} /></td>
                     <td className="tc"><CheckMark yes={row.vals[3]} /></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* ── Billing Logic Callouts ── */}
+      <section className="billing-logic-section">
+        <h2 className="compare-heading">How Billing Works</h2>
+        <div className="billing-logic-grid">
+          {[
+            { icon: <Users size={22} />, title: 'Pay for Active Users Only', desc: 'Only users who\'ve accepted their invite count toward your bill. Pending invites are free.' },
+            { icon: <Zap size={22} />, title: 'Instant Prorations', desc: 'Add or remove users any time. Credits are automatically applied to your next invoice.' },
+            { icon: <Star size={22} />, title: '20% Annual Discount', desc: 'Switch to yearly billing and save 20%. Applies to Pro (₹79/user) and Business (₹159/user).' },
+            { icon: <Shield size={22} />, title: 'No Minimums Ever', desc: 'Start with 1 user or 100. There are no forced minimums, seat bundles, or surprise plan upgrades.' },
+          ].map(item => (
+            <div key={item.title} className="billing-logic-card">
+              <div className="billing-logic-icon">{item.icon}</div>
+              <h3 className="billing-logic-title">{item.title}</h3>
+              <p className="billing-logic-desc">{item.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -440,10 +573,10 @@ export default function PricingPage() {
       <section className="final-cta-section">
         <div className="final-cta-tag">Get started today</div>
         <h2 className="final-cta-h2">
-          Start Building Better<br />QA Workflows Today
+          Start Free. Pay Only<br />for Users You Add.
         </h2>
         <p className="final-cta-p">
-          Free forever on Sandbox. Upgrade when your team is ready.
+          Free Sandbox forever on up to 5 users. Upgrade to Pro at ₹99/user when you're ready.
         </p>
         <div className="final-cta-actions">
           <button className="fcta-btn-primary" onClick={() => navigate('/signup')}>
@@ -454,7 +587,7 @@ export default function PricingPage() {
             Sign In
           </button>
         </div>
-        <div className="fcta-note">No credit card required · Cancel anytime</div>
+        <div className="fcta-note">No credit card required · Cancel anytime · No user minimums</div>
       </section>
     </div>
   );

@@ -281,19 +281,23 @@ exports.createRazorpayOrder = onCall(async (request) => {
   if (!planId || !billingCycle) {
     throw new HttpsError("invalid-argument", "Plan ID and billing cycle are required.");
   }
-  if (planId !== "starter" && planId !== "growth") {
+  if (planId !== "pro" && planId !== "business") {
     throw new HttpsError("invalid-argument", "Invalid plan ID.");
   }
   if (billingCycle !== "monthly" && billingCycle !== "yearly") {
     throw new HttpsError("invalid-argument", "Invalid billing cycle.");
   }
 
+  const usersCount = request.data.usersCount || 1;
+
   // Calculate pricing on the server side
   const PLAN_PRICES = {
-    starter: { monthly: 699, yearly: 6708 },
-    growth: { monthly: 2499, yearly: 23988 }
+    pro: { monthly: 99, yearly: 79 },
+    business: { monthly: 199, yearly: 159 }
   };
-  const basePrice = PLAN_PRICES[planId][billingCycle];
+  const pricePerUser = PLAN_PRICES[planId][billingCycle];
+  const months = billingCycle === "yearly" ? 12 : 1;
+  const basePrice = pricePerUser * usersCount * months;
 
   // Validate and apply coupon
   let discount = 0;
@@ -452,12 +456,12 @@ exports.verifyRazorpayPayment = onCall(async (request) => {
   const userData = userDoc.data();
 
   const PLAN_CONFIG = {
-    free:       { aiQuota: 30, maxUsers: 3, maxProjects: 2 },
-    starter:    { aiQuota: 300, maxUsers: 5, maxProjects: 15 },
-    growth:     { aiQuota: 2000, maxUsers: 25, maxProjects: -1 },
+    free:       { aiQuota: 30, maxUsers: 5, maxProjects: 2 },
+    pro:        { aiQuota: -1, maxUsers: -1, maxProjects: 10 },
+    business:   { aiQuota: -1, maxUsers: -1, maxProjects: 20 },
     enterprise: { aiQuota: -1, maxUsers: -1, maxProjects: -1 },
   };
-  const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.starter;
+  const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.pro;
 
   // Use Firestore batch for atomic multi-document write
   const batch = db.batch();
@@ -592,7 +596,7 @@ exports.activateFreePlan = onCall(async (request) => {
     billingCycle: null,
     startDate: new Date().toISOString(),
     resetDate: resetDate.toISOString(),
-    maxUsers: 3,
+    maxUsers: 5,
     maxProjects: 2,
   };
 

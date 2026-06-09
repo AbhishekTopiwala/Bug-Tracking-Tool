@@ -109,30 +109,43 @@ export async function inviteAdmin({ name, email, designation, department, permis
   const effectiveOrgId = orgId || getCurrentOrgId();
 
   // Check for duplicate email in the org
-  const existing = await getDocs(
-    query(collection(db, 'users'), where('email', '==', email.toLowerCase()), where('organizationId', '==', effectiveOrgId))
-  );
+  let existing;
+  try {
+    existing = await getDocs(
+      query(collection(db, 'users'), where('email', '==', email.toLowerCase()), where('organizationId', '==', effectiveOrgId))
+    );
+  } catch (e) {
+    console.error('Permission denied on getDocs for users:', e);
+    throw new Error('Permission denied while checking existing users: ' + e.message);
+  }
+
   if (!existing.empty) {
     throw new Error('A user with this email already exists in your organization.');
   }
 
   // Create placeholder user doc
-  const docRef = await addDoc(collection(db, 'users'), {
-    email: email.toLowerCase(),
-    name,
-    displayName: name,
-    role: 'Admin',
-    designation: designation || '',
-    department: department || '',
-    permissionLevel: permissionLevel || 'full',
-    isActive: true,
-    invited: true,
-    invitedBy: invitedBy || 'Organization Owner',
-    invitedByEmail: invitedByEmail || '',
-    organizationId: effectiveOrgId,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  let docRef;
+  try {
+    docRef = await addDoc(collection(db, 'users'), {
+      email: email.toLowerCase(),
+      name,
+      displayName: name,
+      role: 'Admin',
+      designation: designation || '',
+      department: department || '',
+      permissionLevel: permissionLevel || 'full',
+      isActive: true,
+      invited: true,
+      invitedBy: invitedBy || 'Organization Owner',
+      invitedByEmail: invitedByEmail || '',
+      organizationId: effectiveOrgId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error('Permission denied on addDoc for users:', e);
+    throw new Error('Permission denied while creating user: ' + e.message);
+  }
 
   // Log the audit event
   await createOrgAuditLog(effectiveOrgId, {
@@ -146,9 +159,9 @@ export async function inviteAdmin({ name, email, designation, department, permis
   });
 
   // Send invitation email
-  await sendInviteEmail(email, name, 'Admin', invitedBy, invitedByEmail);
+  const emailResult = await sendInviteEmail(email, name, 'Admin', invitedBy, invitedByEmail);
 
-  return docRef.id;
+  return { id: docRef.id, emailSent: emailResult?.success || false };
 }
 
 /**

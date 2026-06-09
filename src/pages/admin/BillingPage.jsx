@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, functions } from '../../firebase/config';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -55,15 +56,7 @@ const BillingPage = () => {
     fetchHistory();
   }, [userProfile?.uid]);
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
+  const navigate = useNavigate();
 
   const handleUpgrade = async (plan) => {
     const currentPlanId = organization?.subscription?.plan || organization?.subscription?.planId;
@@ -72,70 +65,17 @@ const BillingPage = () => {
       return;
     }
 
+    if (plan.id === 'enterprise') {
+      window.open('mailto:sales@qualia.app?subject=Enterprise Plan Inquiry', '_blank');
+      return;
+    }
+
     if (plan.monthlyPrice === 0) {
       setShowCancelModal(true);
       return;
     }
 
-    setProcessingPlan(plan.id);
-    const res = await loadRazorpay();
-
-    if (!res) {
-      toast.error('Razorpay SDK failed to load. Are you online?');
-      setProcessingPlan(null);
-      return;
-    }
-
-    try {
-      toast.loading("Initiating upgrade payment...", { id: "upgrade-toast" });
-      const createOrderCF = httpsCallable(functions, 'createRazorpayOrder');
-      const orderRes = await createOrderCF({
-        planId: plan.id,
-        billingCycle: 'monthly',
-      });
-      const order = orderRes.data;
-
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "Qualia SaaS",
-        description: `Upgrade to ${plan.name} Plan`,
-        image: branding.logoUrl || "https://firebasestorage.googleapis.com/v0/b/demo2-659f2.firebasestorage.app/o/branding%2Fqualia_logo.png?alt=media",
-        order_id: order.id,
-        handler: async function (response) {
-          try {
-            toast.loading("Verifying payment...", { id: "upgrade-toast" });
-            const verifyCF = httpsCallable(functions, 'verifyRazorpayPayment');
-            await verifyCF({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            toast.success(`Welcome to ${plan.name}! Your plan has been upgraded.`, { id: "upgrade-toast" });
-          } catch (error) {
-            console.error("Upgrade verification error:", error);
-            toast.error("Payment successful but failed to update subscription. Contact support.", { id: "upgrade-toast" });
-          }
-        },
-        prefill: {
-          name: userProfile.displayName,
-          email: userProfile.email,
-        },
-        theme: {
-          color: branding.primaryColor || "#6366f1",
-        },
-      };
-
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
-      toast.dismiss("upgrade-toast");
-    } catch (error) {
-      console.error("Upgrade error:", error);
-      toast.error(error.message || "Failed to initiate upgrade payment.", { id: "upgrade-toast" });
-    } finally {
-      setProcessingPlan(null);
-    }
+    navigate('/payment', { state: { planId: plan.id, billingCycle: 'monthly' } });
   };
 
   const handleDowngradeToFree = async () => {
@@ -189,13 +129,7 @@ const BillingPage = () => {
 
   const getAvailableUpgradePlans = () => {
     const activePlans = Object.values(PLANS).filter(p => p.active);
-    if (currentPlan.id === 'growth') {
-      return [];
-    }
-    if (currentPlan.id === 'starter') {
-      return activePlans.filter(p => p.id === 'growth');
-    }
-    return activePlans.filter(p => p.id !== 'free'); 
+    return activePlans.filter(p => p.id !== 'free' && p.id !== currentPlan.id);
   };
 
   const upgradePlans = getAvailableUpgradePlans();
@@ -629,14 +563,14 @@ const BillingPage = () => {
                 <h3>Cancel Subscription</h3>
               </div>
               <div className="modal-body">
-                <p>Are you sure you want to downgrade to the Starter plan?</p>
+                <p>Are you sure you want to downgrade to the Free plan?</p>
                 <p className="warning-text">
                   You will lose access to premium features, and your limits will be reduced:
                 </p>
                 <ul className="downgrade-list">
-                  <li>Limit of 3 projects</li>
-                  <li>Limit of 100 AI generations per month</li>
-                  <li>Standard support only</li>
+                  <li>Limit of 2 projects</li>
+                  <li>Limit of 30 AI generations per month</li>
+                  <li>Community support only</li>
                 </ul>
               </div>
               <div className="modal-actions">

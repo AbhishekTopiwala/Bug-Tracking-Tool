@@ -3,6 +3,9 @@
  * Production-grade payment service for Qualia SaaS platform.
  * Handles plan definitions, payment state machine, Razorpay integration helpers,
  * subscription management, and all edge-case logic.
+ *
+ * PRICING MODEL: Pure per-user pricing — no minimum users, no forced user limits.
+ * Organizations pay only for active users they actually need.
  */
 
 import {
@@ -26,130 +29,182 @@ import { db } from '../firebase/config';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // ── PLAN DEFINITIONS ─────────────────────────────────────────────────────────
-// Source of truth for all plan metadata. In production, these would live in
-// Firestore `plans` collection and be managed via admin panel.
+// Source of truth for all plan metadata.
+// Per-user pricing: pricePerUser is the monthly cost per active user.
+// Organizations are billed ONLY for the users they actually have.
 
 export const PLANS = {
   free: {
     id: 'free',
     name: 'Free Sandbox',
     tagline: 'For indie developers and proofs of concept',
-    monthlyPrice: 0,
+    monthlyPrice: 0,       // flat price (not per-user for free tier)
     yearlyPrice: 0,
     monthlyPricePaise: 0,
     yearlyPricePaise: 0,
+    pricePerUser: 0,       // ₹0/user
     currency: 'INR',
-    maxUsers: 3,
+    maxUsers: 5,           // Free tier: up to 5 users
     maxProjects: 2,
-    storageGB: 0.1,  // 100MB
-    aiQuota: 30,
+    storageGB: 0.1,        // 100 MB
+    aiQuota: 30,           // per org per month
+    aiQuotaPerUser: 0,
     trialDays: 0,
     popular: false,
     active: true,
+    isPerUser: false,
     features: [
-      { label: '3 Users', included: true },
+      { label: 'Up to 5 Users', included: true },
       { label: '2 Projects', included: true },
       { label: '30 AI Bug Reports / month', included: true },
       { label: 'Basic Kanban Board', included: true },
-      { label: 'Public Bug Sharing', included: true },
-      { label: '100 MB Storage', included: true },
       { label: 'Community Support', included: true },
     ],
     cta: 'Start Free',
     ctaSecondary: false,
   },
-  starter: {
-    id: 'starter',
-    name: 'Starter',
-    tagline: 'For startups and small QA teams',
-    monthlyPrice: 699,       // ₹699/mo
-    yearlyPrice: 6708,       // ₹559/mo × 12 — save 20%
-    monthlyPricePaise: 69900,
-    yearlyPricePaise: 670800,
+  pro: {
+    id: 'pro',
+    name: 'Pro',
+    tagline: 'For startups and growing QA teams',
+    monthlyPrice: 99,      // ₹99 per user / month
+    yearlyPrice: 79,       // ₹79 per user / month (yearly — ~20% off)
+    monthlyPricePaise: 9900,
+    yearlyPricePaise: 7900,
+    pricePerUser: 99,      // ₹99/user/month (monthly billing)
+    pricePerUserYearly: 79, // ₹79/user/month (yearly billing)
     currency: 'INR',
-    maxUsers: 5,
-    maxProjects: 15,
-    storageGB: 5,
-    aiQuota: 300,
+    maxUsers: -1,          // Unlimited — no user cap
+    maxProjects: 10,
+    storageGB: 10,
+    aiQuota: -1,           // Per-user AI quota
+    aiQuotaPerUser: 100,   // 100 AI bug reports per user / month
     trialDays: 14,
     popular: true,
     active: true,
+    isPerUser: true,
     features: [
-      { label: '5 Users', included: true },
-      { label: '15 Projects', included: true },
-      { label: '300 AI Bug Reports / month', included: true },
+      { label: 'Up to 10 Projects', included: true },
       { label: 'Full Kanban Board', included: true },
-      { label: 'Playwright Integration', included: true },
-      { label: 'Email Support', included: true },
+      { label: 'Bug Tracking', included: true },
+      { label: 'Test Case Management', included: true },
+      { label: 'Team Collaboration', included: true },
+      { label: 'Email Notifications', included: true },
       { label: 'Basic Analytics', included: true },
-      { label: 'API Access', included: true },
-      { label: '5 GB Storage', included: true },
+      { label: '100 AI Bug Reports / user / month', included: true },
     ],
     cta: 'Start 14-Day Trial',
     ctaSecondary: false,
   },
-  growth: {
-    id: 'growth',
-    name: 'Growth',
-    tagline: 'For scaling companies and active QA teams',
-    monthlyPrice: 2499,      // ₹2,499/mo
-    yearlyPrice: 23988,      // ₹1,999/mo × 12 — save 20%
-    monthlyPricePaise: 249900,
-    yearlyPricePaise: 2398800,
+  business: {
+    id: 'business',
+    name: 'Business',
+    tagline: 'For scaling companies and serious QA teams',
+    monthlyPrice: 199,     // ₹199 per user / month
+    yearlyPrice: 159,      // ₹159 per user / month (yearly — ~20% off)
+    monthlyPricePaise: 19900,
+    yearlyPricePaise: 15900,
+    pricePerUser: 199,
+    pricePerUserYearly: 159,
     currency: 'INR',
-    maxUsers: 25,
-    maxProjects: -1,         // unlimited
+    maxUsers: -1,          // Unlimited — no user cap
+    maxProjects: 20,
     storageGB: 50,
-    aiQuota: 2000,
+    aiQuota: -1,           // Per-user AI quota
+    aiQuotaPerUser: 250,   // 250 AI bug reports per user / month
     trialDays: 14,
     popular: false,
     active: true,
+    isPerUser: true,
     features: [
-      { label: '25 Users', included: true },
-      { label: 'Unlimited Projects', included: true },
-      { label: '2,000 AI Bug Reports / month', included: true },
-      { label: 'Full Kanban Board', included: true },
-      { label: 'Test Case Management', included: true },
-      { label: 'Advanced Analytics', included: true },
-      { label: 'Email Support', included: true },
+      { label: 'Everything in Pro', included: true },
+      { label: 'Up to 20 Projects', included: true },
       { label: 'API Access', included: true },
-      { label: 'Custom Branding', included: true },
-      { label: '50 GB Storage', included: true },
+      { label: 'Webhooks', included: true },
+      { label: 'Advanced Analytics', included: true },
+      { label: 'Custom Workflows', included: true },
+      { label: 'Role-Based Access Control', included: true },
+      { label: 'Priority Support', included: true },
+      { label: '250 AI Bug Reports / user / month', included: true },
     ],
-    cta: 'Get Growth Plan',
+    cta: 'Get Business Plan',
     ctaSecondary: true,
   },
   enterprise: {
     id: 'enterprise',
     name: 'Enterprise',
     tagline: 'For large organizations and enterprise infrastructure',
-    monthlyPrice: null,      // contact sales
+    monthlyPrice: null,    // Custom pricing — contact sales
     yearlyPrice: null,
     monthlyPricePaise: null,
     yearlyPricePaise: null,
+    pricePerUser: null,
+    pricePerUserYearly: null,
     currency: 'INR',
-    maxUsers: -1,            // unlimited
-    maxProjects: -1,
-    storageGB: -1,           // unlimited
-    aiQuota: -1,
+    maxUsers: -1,          // Unlimited
+    maxProjects: -1,       // Unlimited
+    storageGB: -1,         // Unlimited
+    aiQuota: -1,           // Unlimited
+    aiQuotaPerUser: -1,
     trialDays: 30,
     popular: false,
-    active: false,  // Hidden from public pricing — contact team directly
+    active: true,
+    isPerUser: false,
     features: [
       { label: 'Unlimited Users', included: true },
+      { label: 'Unlimited Projects', included: true },
       { label: 'Unlimited AI Usage', included: true },
       { label: 'SSO / SAML', included: true },
       { label: 'Dedicated Account Manager', included: true },
-      { label: 'SLA Support', included: true },
-      { label: 'Self Hosting / Private Cloud', included: true },
-      { label: 'Advanced Security & Compliance', included: true },
+      { label: 'Audit Logs', included: true },
+      { label: 'Private Cloud / On-Premise', included: true },
       { label: 'Custom Integrations', included: true },
-      { label: 'AI Model Training', included: true },
+      { label: 'SLA Support', included: true },
+      { label: 'Advanced Security Controls', included: true },
     ],
     cta: 'Contact Sales',
     ctaSecondary: false,
   },
 };
+
+// ── AI CREDIT ADD-ONS ─────────────────────────────────────────────────────────
+export const AI_CREDIT_PACKS = [
+  { id: 'pack_500',   credits: 500,   price: 199,   label: '500 AI Credits',   priceDisplay: '₹199'   },
+  { id: 'pack_2000',  credits: 2000,  price: 699,   label: '2,000 AI Credits', priceDisplay: '₹699'   },
+  { id: 'pack_10000', credits: 10000, price: 2499,  label: '10,000 AI Credits',priceDisplay: '₹2,499' },
+];
+
+// ── BILLING HELPERS ───────────────────────────────────────────────────────────
+/**
+ * Calculate total monthly cost for a per-user plan.
+ * @param {object} plan  - Plan from PLANS
+ * @param {number} users - Number of active users
+ * @param {boolean} yearly - Annual billing
+ */
+export function calculatePlanCost(plan, users, yearly = false) {
+  if (!plan.isPerUser) return yearly ? plan.yearlyPrice : plan.monthlyPrice;
+  const pricePerUser = yearly ? (plan.pricePerUserYearly || plan.yearlyPrice) : plan.pricePerUser;
+  return pricePerUser * users;
+}
+
+/**
+ * Calculate annual cost with 20% discount applied.
+ */
+export function calculateAnnualCost(plan, users) {
+  if (!plan.isPerUser) return plan.yearlyPrice ? plan.yearlyPrice * 12 : null;
+  const monthly = plan.pricePerUser * users * 12;
+  return Math.round(monthly * 0.8); // 20% annual discount
+}
+
+/**
+ * Get monthly savings when choosing annual billing.
+ */
+export function getAnnualSavings(plan, users) {
+  if (!plan.isPerUser || !plan.pricePerUser) return 0;
+  const monthlyAnnual = plan.pricePerUser * users * 12;
+  const annual = calculateAnnualCost(plan, users);
+  return monthlyAnnual - annual;
+}
 
 // ── PAYMENT STATUS ENUM ───────────────────────────────────────────────────────
 export const PAYMENT_STATUS = {
@@ -300,7 +355,6 @@ export function clearSelectedPlan() {
  * Idempotent — safe to call multiple times.
  */
 export async function createOrUpdatePendingPayment(userId, paymentData) {
-  // Check for existing pending payment
   const existingQuery = query(
     collection(db, 'payments'),
     where('userId', '==', userId),
@@ -364,8 +418,7 @@ export async function getUserPaymentHistory(userId) {
   );
   const snap = await getDocs(q);
   const payments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  
-  // Sort descending by createdAt client-side to avoid composite index requirements
+
   return payments.sort((a, b) => {
     const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (new Date(a.createdAt).getTime() || 0);
     const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (new Date(b.createdAt).getTime() || 0);
@@ -419,9 +472,8 @@ export function hasActiveSubscription(userProfile) {
   const payStatus = userProfile.paymentStatus;
   const subStatus = userProfile.subscriptionStatus;
 
-  // Free plan users are considered active without payment
   if (userProfile.planId === 'free' && payStatus === PAYMENT_STATUS.NOT_REQUIRED) return true;
-  
+
   return payStatus === PAYMENT_STATUS.PAID &&
     (subStatus === SUBSCRIPTION_STATUS.ACTIVE ||
      subStatus === SUBSCRIPTION_STATUS.TRIAL);
@@ -476,7 +528,7 @@ export async function logAuditEvent(userId, action, details = {}) {
       action,
       details,
       timestamp: serverTimestamp(),
-      ip: 'client', // In production, get from server
+      ip: 'client',
     });
   } catch (e) {
     console.warn('[AuditLog] Failed to write audit log:', e);

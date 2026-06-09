@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Settings, Building2, Shield, Save, Globe, Lock } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Settings, Building2, Shield, Save, Globe, Lock, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getOrgSettings, updateOrgSettings } from '../../services/orgService';
 import toast from 'react-hot-toast';
@@ -9,53 +9,74 @@ export default function OrgSettingsPage() {
   const [org, setOrg] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [form, setForm] = useState({
     name: '', domain: '', industry: '', employeeCount: '',
     ssoEnabled: false, mfaRequired: false, sessionTimeout: 30,
   });
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await getOrgSettings(userProfile?.organizationId);
-        setOrg(data);
-        setForm({
-          name: data.name || '',
-          domain: data.domain || '',
-          industry: data.industry || '',
-          employeeCount: data.employeeCount || '',
-          ssoEnabled: data.settings?.ssoEnabled || false,
-          mfaRequired: data.settings?.mfaRequired || false,
-          sessionTimeout: data.settings?.sessionTimeout || 30,
-        });
-      } catch (e) { console.error(e); }
-      finally { setLoading(false); }
+  const load = useCallback(async () => {
+    if (!userProfile?.organizationId) return;
+    try {
+      const data = await getOrgSettings(userProfile.organizationId);
+      setOrg(data);
+      const loaded = {
+        name: data.name || '',
+        domain: data.domain || '',
+        industry: data.industry || '',
+        employeeCount: data.employeeCount || '',
+        // Support both flat and nested settings structures
+        ssoEnabled: data.settings?.ssoEnabled ?? data.ssoEnabled ?? false,
+        mfaRequired: data.settings?.mfaRequired ?? data.mfaRequired ?? false,
+        sessionTimeout: data.settings?.sessionTimeout ?? data.sessionTimeout ?? 30,
+      };
+      setForm(loaded);
+      setIsDirty(false);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to load organization settings');
+    } finally {
+      setLoading(false);
     }
-    if (userProfile?.organizationId) load();
   }, [userProfile?.organizationId]);
 
+  useEffect(() => {
+    if (userProfile?.organizationId) load();
+  }, [userProfile?.organizationId, load]);
+
+  const updateForm = (key, value) => {
+    setForm(f => ({ ...f, [key]: value }));
+    setIsDirty(true);
+  };
+
   const handleSave = async () => {
+    if (!form.name.trim()) { toast.error('Organization name is required'); return; }
     setSaving(true);
     try {
       await updateOrgSettings(userProfile?.organizationId, {
-        name: form.name,
-        domain: form.domain,
+        name: form.name.trim(),
+        domain: form.domain.trim(),
         industry: form.industry,
         employeeCount: form.employeeCount,
         settings: {
           ssoEnabled: form.ssoEnabled,
           mfaRequired: form.mfaRequired,
-          sessionTimeout: form.sessionTimeout,
+          sessionTimeout: Number(form.sessionTimeout) || 30,
         },
       }, { displayName: currentUser?.displayName, email: currentUser?.email });
-      toast.success('Settings saved');
-    } catch (e) { toast.error('Failed to save settings'); }
-    finally { setSaving(false); }
+      toast.success('Settings saved successfully');
+      setIsDirty(false);
+    } catch (e) {
+      toast.error('Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputStyle = {
     width: '100%', padding: '10px 14px', border: '1px solid rgba(226,232,240,0.8)',
     borderRadius: 10, fontSize: '0.88rem', background: '#FAFBFC', outline: 'none',
+    transition: 'border-color 0.2s',
   };
 
   const labelStyle = {
@@ -70,10 +91,27 @@ export default function OrgSettingsPage() {
           <h1 className="org-page-title"><Settings size={24} style={{ color: 'var(--org-purple)' }} /> Organization Settings</h1>
           <p className="org-page-subtitle">Manage your organization name, domain, and security settings.</p>
         </div>
-        <button className="org-btn-primary" onClick={handleSave} disabled={saving}>
-          <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {isDirty && (
+            <span style={{ fontSize: '0.75rem', color: '#F59E0B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <AlertCircle size={12} /> Unsaved changes
+            </span>
+          )}
+          <button className="org-btn-secondary" onClick={load} style={{ padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RefreshCw size={13} /> Reload
+          </button>
+          <button className="org-btn-primary" onClick={handleSave} disabled={saving || !isDirty}>
+            <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
       </div>
+
+      {/* Org ID Info Banner */}
+      {!loading && org && (
+        <div style={{ padding: '10px 16px', background: 'rgba(124,58,237,0.04)', borderRadius: 10, border: '1px solid rgba(124,58,237,0.1)', fontSize: '0.78rem', color: '#7C3AED', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Building2 size={13} /> Organization ID: <code style={{ fontFamily: 'monospace', fontSize: '0.75rem', background: 'rgba(124,58,237,0.08)', padding: '2px 6px', borderRadius: 4, color: '#5B21B6' }}>{userProfile?.organizationId}</code>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -88,19 +126,19 @@ export default function OrgSettingsPage() {
             </div>
             <div className="org-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div>
-                <label style={labelStyle}>Organization Name</label>
-                <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle} placeholder="Acme Corp" />
+                <label style={labelStyle}>Organization Name <span style={{ color: '#EF4444' }}>*</span></label>
+                <input type="text" value={form.name} onChange={e => updateForm('name', e.target.value)} style={inputStyle} placeholder="Acme Corp" />
               </div>
               <div>
                 <label style={labelStyle}>Domain</label>
                 <div style={{ position: 'relative' }}>
                   <Globe size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-                  <input type="text" value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })} style={{ ...inputStyle, paddingLeft: 36 }} placeholder="acme.com" />
+                  <input type="text" value={form.domain} onChange={e => updateForm('domain', e.target.value)} style={{ ...inputStyle, paddingLeft: 36 }} placeholder="acme.com" />
                 </div>
               </div>
               <div>
                 <label style={labelStyle}>Industry</label>
-                <select value={form.industry} onChange={e => setForm({ ...form, industry: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <select value={form.industry} onChange={e => updateForm('industry', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
                   <option value="">Select Industry</option>
                   <option value="Technology">Technology</option>
                   <option value="Finance">Finance</option>
@@ -113,15 +151,30 @@ export default function OrgSettingsPage() {
               </div>
               <div>
                 <label style={labelStyle}>Employee Count</label>
-                <select value={form.employeeCount} onChange={e => setForm({ ...form, employeeCount: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <select value={form.employeeCount} onChange={e => updateForm('employeeCount', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
                   <option value="">Select Range</option>
-                  <option value="1-50">1-50</option>
-                  <option value="51-200">51-200</option>
-                  <option value="201-1000">201-1000</option>
-                  <option value="1001-5000">1001-5000</option>
-                  <option value="5000+">5000+</option>
+                  <option value="1-50">1–50</option>
+                  <option value="51-200">51–200</option>
+                  <option value="201-1000">201–1,000</option>
+                  <option value="1001-5000">1,001–5,000</option>
+                  <option value="5000+">5,000+</option>
                 </select>
               </div>
+
+              {/* Metadata */}
+              {org?.createdAt && (
+                <div style={{ padding: '12px 0', borderTop: '1px solid rgba(226,232,240,0.5)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[
+                    { label: 'Created', value: org.createdAt?.toDate ? org.createdAt.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—' },
+                    { label: 'Owner', value: currentUser?.displayName || currentUser?.email || '—' },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                      <span style={{ color: '#94A3B8', fontWeight: 600 }}>{label}</span>
+                      <span style={{ color: '#334155', fontWeight: 700 }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -132,8 +185,8 @@ export default function OrgSettingsPage() {
             </div>
             <div className="org-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {[
-                { label: 'Single Sign-On (SSO)', desc: 'Enable SAML/OIDC authentication', key: 'ssoEnabled' },
-                { label: 'MFA Required', desc: 'Require multi-factor for all users', key: 'mfaRequired' },
+                { label: 'Single Sign-On (SSO)', desc: 'Enable SAML/OIDC authentication for your organization', key: 'ssoEnabled' },
+                { label: 'MFA Required', desc: 'Require multi-factor authentication for all users', key: 'mfaRequired' },
               ].map(({ label, desc, key }) => (
                 <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(226,232,240,0.4)' }}>
                   <div>
@@ -141,10 +194,11 @@ export default function OrgSettingsPage() {
                     <p style={{ fontSize: '0.78rem', color: '#94A3B8', margin: '2px 0 0' }}>{desc}</p>
                   </div>
                   <button
-                    onClick={() => setForm({ ...form, [key]: !form[key] })}
+                    onClick={() => updateForm(key, !form[key])}
                     style={{
                       width: 48, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
                       background: form[key] ? '#7C3AED' : '#E2E8F0', position: 'relative', transition: 'all 0.2s',
+                      flexShrink: 0, marginLeft: 16,
                     }}
                   >
                     <div style={{
@@ -157,12 +211,15 @@ export default function OrgSettingsPage() {
               ))}
               <div>
                 <label style={labelStyle}>Session Timeout (minutes)</label>
-                <input type="number" value={form.sessionTimeout} onChange={e => setForm({ ...form, sessionTimeout: parseInt(e.target.value) || 30 })}
+                <input type="number" value={form.sessionTimeout} onChange={e => updateForm('sessionTimeout', e.target.value)}
                   style={inputStyle} min={5} max={480} />
+                <p style={{ fontSize: '0.72rem', color: '#94A3B8', margin: '6px 0 0' }}>
+                  Users will be logged out after {form.sessionTimeout} minutes of inactivity. Min: 5, Max: 480.
+                </p>
               </div>
               <div style={{ padding: 16, background: 'rgba(124,58,237,0.04)', borderRadius: 12, border: '1px solid rgba(124,58,237,0.08)' }}>
-                <p style={{ fontSize: '0.78rem', color: '#7C3AED', fontWeight: 700, margin: '0 0 4px' }}>
-                  <Shield size={12} style={{ marginRight: 4 }} /> Enterprise Features
+                <p style={{ fontSize: '0.78rem', color: '#7C3AED', fontWeight: 700, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Shield size={12} /> Enterprise Features
                 </p>
                 <p style={{ fontSize: '0.75rem', color: '#64748B', margin: 0, lineHeight: 1.5 }}>
                   SSO and advanced MFA are available on Enterprise plans. Contact support to upgrade.
