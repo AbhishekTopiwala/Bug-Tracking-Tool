@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
 import './styles/components.css';
@@ -81,8 +82,8 @@ import { SkeletonDashboard } from './components/Skeleton';
 
 function PageLoader() {
   return (
-    <div style={{ 
-      height: '100vh', 
+    <div style={{
+      height: '100vh',
       background: 'var(--bg-primary)',
       padding: '40px'
     }}>
@@ -108,7 +109,7 @@ function RootRedirect() {
   }
 
   // ── Payment gate ──────────────────────────────────────────────────────────
-  const needsPayment = ['PENDING','FAILED','CANCELLED','EXPIRED'].includes(userProfile.paymentStatus);
+  const needsPayment = ['PENDING', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(userProfile.paymentStatus);
   if (needsPayment) return <Navigate to="/payment-incomplete" replace />;
 
   if (isSuperAdmin) return <Navigate to="/super-admin" replace />;
@@ -400,6 +401,7 @@ export default function App() {
           error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
         }}
       />
+      <SpeedInsights />
     </AuthProvider>
   );
 }
