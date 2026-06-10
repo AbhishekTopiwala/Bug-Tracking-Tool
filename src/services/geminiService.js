@@ -8,11 +8,11 @@ async function fetchFromApi(endpoint, payload) {
   }
 
   const token = await user.getIdToken();
-  const url = import.meta.env.MODE === 'development' 
-    ? `http://localhost:3000${endpoint}` // Or whatever the local Vercel dev port is
-    : endpoint;
+  // We use the full production URL here so that local development works
+  // without needing to restart the Vite proxy. CORS is fully supported.
+  const url = `https://qualia-hq.vercel.app${endpoint}`;
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
