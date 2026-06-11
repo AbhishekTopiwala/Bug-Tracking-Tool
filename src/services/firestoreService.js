@@ -17,8 +17,7 @@ import {
   limit,
   setDoc,
 } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
-import { db, storage } from '../firebase/config';
+import { db } from '../firebase/config';
 import { uploadToCloudinary } from './cloudinaryService';
 
 let currentOrgId = 'default_org_id';

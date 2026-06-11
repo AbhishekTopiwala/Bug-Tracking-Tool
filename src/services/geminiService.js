@@ -9,8 +9,8 @@ async function fetchFromApi(endpoint, payload) {
   }
 
   const token = await user.getIdToken();
-  // Hit the production Vercel API
-  const url = `https://qualia-hq.vercel.app${endpoint}`;
+  // Hit the Vercel API (relative path works for same domain)
+  const url = endpoint;
 
   const response = await fetch(url, {
     method: 'POST',
