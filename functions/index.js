@@ -281,7 +281,7 @@ exports.createRazorpayOrder = onCall(async (request) => {
   if (!planId || !billingCycle) {
     throw new HttpsError("invalid-argument", "Plan ID and billing cycle are required.");
   }
-  if (planId !== "pro" && planId !== "business") {
+  if (planId !== "pro" && planId !== "business" && planId !== "free") {
     throw new HttpsError("invalid-argument", "Invalid plan ID.");
   }
   if (billingCycle !== "monthly" && billingCycle !== "yearly") {
@@ -292,6 +292,7 @@ exports.createRazorpayOrder = onCall(async (request) => {
 
   // Calculate pricing on the server side
   const PLAN_PRICES = {
+    free: { monthly: 1, yearly: 1 },
     pro: { monthly: 99, yearly: 79 },
     business: { monthly: 199, yearly: 159 }
   };

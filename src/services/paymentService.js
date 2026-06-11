@@ -27,6 +27,46 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { auth } from '../firebase/config';
+
+// ── VERCEL API HELPER ────────────────────────────────────────────────────────
+async function fetchFromApi(endpoint, payload) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('User not authenticated');
+
+  const token = await user.getIdToken();
+  const url = endpoint;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || `Request failed with status ${response.status}`);
+  }
+
+  return data.result || data;
+}
+
+export async function createRazorpayOrderApi(payload) {
+  if (import.meta.env.MODE === 'development') {
+    // We can fallback to httpsCallable if they are running the local Firebase emulator, 
+    // but typically they'll just use the Vercel API locally too via Vite proxy.
+    // For consistency with geminiService, we'll just use fetchFromApi.
+  }
+  return fetchFromApi('/api/create-razorpay-order', payload);
+}
+
+export async function verifyRazorpayPaymentApi(payload) {
+  return fetchFromApi('/api/verify-razorpay-payment', payload);
+}
+
 
 // ── PLAN DEFINITIONS ─────────────────────────────────────────────────────────
 // Source of truth for all plan metadata.
@@ -36,13 +76,13 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 export const PLANS = {
   free: {
     id: 'free',
-    name: 'Free Sandbox',
-    tagline: 'For indie developers and proofs of concept',
-    monthlyPrice: 0,       // flat price (not per-user for free tier)
-    yearlyPrice: 0,
-    monthlyPricePaise: 0,
-    yearlyPricePaise: 0,
-    pricePerUser: 0,       // ₹0/user
+    name: '1 Rs Test Plan',
+    tagline: 'For testing payment on Vercel',
+    monthlyPrice: 1,       // flat price (not per-user for free tier)
+    yearlyPrice: 1,
+    monthlyPricePaise: 100,
+    yearlyPricePaise: 100,
+    pricePerUser: 1,       // ₹1/user
     currency: 'INR',
     maxUsers: 5,           // Free tier: up to 5 users
     maxProjects: 2,

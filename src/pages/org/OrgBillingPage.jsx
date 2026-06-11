@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 const PLAN_FEATURES = {
   free: {
-    name: 'Free Sandbox', color: '#64748B', price: { monthly: 0, yearly: 0 },
+    name: '1 Rs Test Plan', color: '#64748B', price: { monthly: 1, yearly: 1 },
     pricePerUser: null, isPerUser: false,
     userLimit: 5, storageLimit: '100 MB', projectLimit: 2,
     features: ['Up to 5 users', '2 projects', '100 MB storage', '30 AI Bug Reports / month', 'Community support'],

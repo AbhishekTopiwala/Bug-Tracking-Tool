@@ -7,11 +7,10 @@ import {
   getSelectedPlan, clearSelectedPlan, savePendingPaymentSession,
   getPendingPaymentSession, clearPendingPaymentSession,
   createOrUpdatePendingPayment, validateCoupon, logAuditEvent,
-  generateInvoiceNumber,
+  generateInvoiceNumber, createRazorpayOrderApi, verifyRazorpayPaymentApi
 } from '../services/paymentService';
-import { doc, updateDoc, setDoc, addDoc, collection, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, addDoc, collection, serverTimestamp, getDoc, writeBatch, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import toast from 'react-hot-toast';
 import {
   Shield, Check, AlertTriangle, Loader2, RefreshCw,
@@ -39,7 +38,6 @@ export default function PaymentPage() {
   const { currentUser, userProfile, fetchUserProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const functions = getFunctions();
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -102,7 +100,7 @@ export default function PaymentPage() {
   const basePrice = (billingCycle === 'yearly' ? basePricePerMonth * 12 : basePricePerMonth) * usersCount;
   const { discount, finalAmount: afterCoupon } = applyCoupon(basePrice, appliedCoupon);
   const taxData = calculateTaxBreakdown(afterCoupon, userProfile?.gstNumber);
-  const isFree = selectedPlan?.id === 'free' || taxData.totalAmount === 0;
+  const isFree = taxData.totalAmount === 0;
 
   // ── Coupon validation ──────────────────────────────────────────────────────
   const handleApplyCoupon = async () => {
@@ -129,15 +127,60 @@ export default function PaymentPage() {
   const activateFreePlan = async () => {
     setPaymentLoading(true);
     try {
-      const activateFreePlanCF = httpsCallable(functions, 'activateFreePlan');
-      await activateFreePlanCF();
+      const batch = writeBatch(db);
+      
+      let orgId = userProfile?.organizationId;
+      const isUpgrade = !!orgId;
+      const orgRef = isUpgrade ? doc(db, "organizations", orgId) : doc(collection(db, "organizations"));
+      if (!orgId) orgId = orgRef.id;
+
+      const now = new Date();
+      const resetDate = new Date(now.setMonth(now.getMonth() + 1));
+
+      const subscriptionDetails = {
+        plan: 'free',
+        status: 'ACTIVE',
+        aiQuota: 30,
+        aiUsed: 0,
+        billingCycle: null,
+        startDate: new Date().toISOString(),
+        resetDate: resetDate.toISOString(),
+        maxUsers: 5,
+        maxProjects: 2,
+      };
+
+      if (isUpgrade) {
+        batch.update(orgRef, {
+          subscription: subscriptionDetails,
+        });
+      } else {
+        batch.set(orgRef, {
+          name: userProfile?.workspaceName || (userProfile?.displayName + "'s Workspace"),
+          ownerId: currentUser.uid,
+          status: "ACTIVE",
+          createdAt: new Date().toISOString(),
+          subscription: subscriptionDetails,
+        });
+      }
+
+      const userRef = doc(db, "users", currentUser.uid);
+      batch.update(userRef, {
+        organizationId: orgId,
+        planId: 'free',
+        paymentStatus: 'NOT_REQUIRED',
+        subscriptionStatus: 'ACTIVE',
+        updatedAt: serverTimestamp(),
+      });
+
+      await batch.commit();
 
       clearSelectedPlan();
       clearPendingPaymentSession();
+      if (fetchUserProfile) await fetchUserProfile(currentUser.uid);
       toast.success('Free plan activated! Welcome to Qualia 🎉');
       navigate('/admin');
     } catch (err) {
-      toast.error('Failed to activate plan. Please try again.');
+      toast.error(`Failed to activate: ${err.message || 'Unknown error'}`);
       console.error(err);
     } finally {
       setPaymentLoading(false);
@@ -164,21 +207,13 @@ export default function PaymentPage() {
       const sdkLoaded = await loadRazorpayScript();
       if (!sdkLoaded) throw new Error('Failed to load payment SDK. Check your connection.');
 
-      // 2. Create Razorpay order via Cloud Function
-      const createOrder = httpsCallable(functions, 'createRazorpayOrder');
-      const amountPaise = billingCycle === 'yearly'
-        ? selectedPlan.yearlyPricePaise
-        : selectedPlan.monthlyPricePaise;
-
-      const finalAmountPaise = Math.round((taxData.totalAmount / basePrice) * amountPaise);
-
-      const orderResult = await createOrder({
+      // 2. Create Razorpay order via Vercel API
+      const orderResult = await createRazorpayOrderApi({
         amount: taxData.totalAmount, // INR
         currency: 'INR',
         planId: selectedPlan.id,
         billingCycle,
         usersCount,
-        userId: currentUser.uid,
         couponCode: appliedCoupon?.code || null,
         notes: {
           userId: currentUser.uid,
@@ -188,7 +223,24 @@ export default function PaymentPage() {
         },
       });
 
-      const order = orderResult.data;
+      const order = orderResult.data || orderResult;
+
+      // Create a pending payment document in Firestore BEFORE opening Razorpay
+      const payRef = await addDoc(collection(db, "payments"), {
+        userId: currentUser.uid,
+        planId: selectedPlan.id,
+        billingCycle,
+        razorpayOrderId: order.id,
+        amount: taxData.totalAmount, 
+        currency: 'INR',
+        status: "PENDING",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        webhookProcessed: false,
+        attempts: 1,
+        couponCode: appliedCoupon?.code || null,
+      });
+      const payDocId = payRef.id;
 
       // 3. Save pending session (for browser-close recovery)
       savePendingPaymentSession({
@@ -243,31 +295,128 @@ export default function PaymentPage() {
           },
         },
         handler: async (response) => {
-          // 6. Verify payment on backend
+          // 6. Verify payment on backend via Vercel API
           setPaymentLoading(true);
           try {
-            const verify = httpsCallable(functions, 'verifyRazorpayPayment');
-            const verifyResult = await verify({
+            const verifyResult = await verifyRazorpayPaymentApi({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              userId: currentUser.uid,
-              planId: selectedPlan.id,
-              billingCycle,
-              workspaceName: userProfile.workspaceName,
-              gstNumber: userProfile.gstNumber || null,
-              couponCode: appliedCoupon?.code || null,
-              amount: taxData.totalAmount,
             });
 
-            if (verifyResult.data.success) {
+            if (verifyResult.data?.success || verifyResult.success) {
+              // Now that signature is verified, update Firestore securely
+              const batch = writeBatch(db);
+
+              let orgId = userProfile.organizationId;
+              const isUpgrade = !!orgId;
+              const orgRef = isUpgrade ? doc(db, "organizations", orgId) : doc(collection(db, "organizations"));
+              if (!orgId) orgId = orgRef.id;
+
+              const now = new Date();
+              const periodEnd = billingCycle === "yearly"
+                ? new Date(now.setFullYear(now.getFullYear() + 1))
+                : new Date(now.setMonth(now.getMonth() + 1));
+
+              const subscriptionDetails = {
+                plan: selectedPlan.id,
+                status: "ACTIVE",
+                billingCycle,
+                startDate: new Date().toISOString(),
+                currentPeriodEnd: periodEnd.toISOString(),
+                autoRenew: true,
+                aiQuota: selectedPlan.aiQuota,
+                aiUsed: 0,
+                maxUsers: selectedPlan.maxUsers,
+                maxProjects: selectedPlan.maxProjects,
+                lastPaymentId: response.razorpay_payment_id,
+                lastPaymentAt: new Date().toISOString(),
+                resetDate: periodEnd.toISOString(),
+              };
+
+              if (isUpgrade) {
+                batch.update(orgRef, {
+                  subscription: subscriptionDetails,
+                  gstNumber: userProfile.gstNumber || null,
+                });
+              } else {
+                batch.set(orgRef, {
+                  name: userProfile.workspaceName || (userProfile.displayName + "'s Workspace"),
+                  ownerId: currentUser.uid,
+                  status: "ACTIVE",
+                  createdAt: new Date().toISOString(),
+                  subscription: subscriptionDetails,
+                  gstNumber: userProfile.gstNumber || null,
+                  country: userProfile.country || "India",
+                });
+              }
+
+              // Update user document
+              batch.update(doc(db, "users", currentUser.uid), {
+                organizationId: orgId,
+                paymentStatus: "PAID",
+                subscriptionStatus: "ACTIVE",
+                planId: selectedPlan.id,
+                billingCycle,
+                updatedAt: serverTimestamp(),
+                pendingOrderId: null,
+                pendingPlanId: null,
+                pendingBillingCycle: null,
+              });
+
+              // Update the pending payment document
+              if (payDocId) {
+                batch.update(doc(db, "payments", payDocId), {
+                  organizationId: orgId,
+                  status: "PAID",
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  updatedAt: serverTimestamp(),
+                });
+              }
+
+              // Create invoice record
+              const invoiceNumber = generateInvoiceNumber();
+              const invoiceRef = doc(collection(db, "invoices"));
+              batch.set(invoiceRef, {
+                userId: currentUser.uid,
+                organizationId: orgId,
+                invoiceNumber,
+                paymentId: payDocId || null,
+                planId: selectedPlan.id,
+                billingCycle,
+                amount: taxData.totalAmount,
+                currency: "INR",
+                gstNumber: userProfile.gstNumber || null,
+                status: "ISSUED",
+                issuedAt: new Date().toISOString(),
+                periodStart: new Date().toISOString(),
+                periodEnd: periodEnd.toISOString(),
+                email: currentUser.email,
+              });
+
+              // Audit log
+              const auditRef = doc(collection(db, "audit_logs"));
+              batch.set(auditRef, {
+                userId: currentUser.uid,
+                action: isUpgrade ? "PLAN_UPGRADED" : "PAYMENT_VERIFIED_AND_ORG_CREATED",
+                details: {
+                  planId: selectedPlan.id, billingCycle, orgId,
+                  paymentId: response.razorpay_payment_id,
+                  orderId: response.razorpay_order_id,
+                  amount: taxData.totalAmount,
+                },
+                timestamp: serverTimestamp(),
+              });
+
+              await batch.commit();
+
               clearSelectedPlan();
               clearPendingPaymentSession();
               await fetchUserProfile(currentUser.uid);
               toast.success('Payment successful! Your workspace is ready 🎉');
               navigate('/admin', { state: { justPaid: true } });
             } else {
-              throw new Error(verifyResult.data.error || 'Payment verification failed');
+              throw new Error('Payment verification failed');
             }
           } catch (verifyErr) {
             console.error('[Payment] Verification error:', verifyErr);
@@ -310,7 +459,7 @@ export default function PaymentPage() {
       setError(err.message || 'Something went wrong. Please try again.');
       toast.error(err.message || 'Payment failed. Please try again.');
     }
-  }, [selectedPlan, billingCycle, appliedCoupon, currentUser, userProfile, taxData, isFree, functions, fetchUserProfile, navigate, basePrice]);
+  }, [selectedPlan, billingCycle, appliedCoupon, currentUser, userProfile, taxData, isFree, fetchUserProfile, navigate, basePrice]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (pageLoading) {

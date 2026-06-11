@@ -917,9 +917,9 @@ export default function LandingPage() {
                       <span className="pricing-amount">
                         ₹{billingCycle === 'yearly'
                           ? (plan.pricePerUserYearly || plan.yearlyPrice)
-                          : plan.pricePerUser}
+                          : (plan.pricePerUser || plan.monthlyPrice)}
                       </span>
-                      <span className="pricing-period">/user/mo</span>
+                      <span className="pricing-period">{plan.isPerUser ? '/user/mo' : '/mo'}</span>
                     </>
                   )}
                 </div>

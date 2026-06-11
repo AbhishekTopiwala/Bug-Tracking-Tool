@@ -219,7 +219,7 @@ export default function PricingPage() {
   const [yearly, setYearly] = useState(false);
 
   const getPriceDisplay = (plan) => {
-    if (plan.id === 'free') return { amount: '0', period: '/mo', sub: 'Free forever' };
+    if (plan.id === 'free') return { amount: '1', period: '/mo', sub: 'Test payment' };
     if (plan.id === 'enterprise') return { amount: null, period: '', sub: 'Custom contract terms' };
     const price = yearly ? (plan.pricePerUserYearly || plan.yearlyPrice) : plan.pricePerUser;
     return {

@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
 import './styles/components.css';
@@ -402,6 +403,7 @@ export default function App() {
         }}
       />
       <SpeedInsights />
+      <Analytics />
     </AuthProvider>
   );
 }
