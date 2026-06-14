@@ -1,5 +1,7 @@
 {
-  "projects": {},
-  "targets": {},
-  "etags": {}
+  "projects": {
+    "default": "demo2-659f2",
+    "dev": "demo2-659f2",
+    "production": "qualia-prod-77b52"
+  }
 }

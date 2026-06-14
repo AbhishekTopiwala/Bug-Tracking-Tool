@@ -6,10 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      // Proxy /api/* to local Vercel dev server (run: npx vercel dev --listen 3000)
+      // ⚠️  NEVER point this to production (qualia-hq.vercel.app)
       '/api': {
-        target: 'https://qualia-hq.vercel.app',
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        secure: true,
       }
     }
   }

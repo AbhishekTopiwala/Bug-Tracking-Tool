@@ -1,7 +1,8 @@
 import { Cloudinary } from '@cloudinary/url-gen';
 
-const CLOUD_NAME = 'dhtotljvn';
-const UPLOAD_PRESET = 'qa_tool_preset'; // Updated to match your new preset name
+// Cloudinary configuration — sourced from environment variables
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dhtotljvn';
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'qa_tool_preset';
 
 export const cld = new Cloudinary({
   cloud: {

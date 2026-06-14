@@ -265,9 +265,7 @@ export default function PaymentPage() {
       });
 
       // 5. Open Razorpay checkout
-      const rzpKey = import.meta.env.DEV 
-        ? (import.meta.env.VITE_RAZORPAY_TEST_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID)
-        : (import.meta.env.VITE_RAZORPAY_LIVE_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID);
+      const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
 
       const options = {
         key: rzpKey,

@@ -1,9 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
-// Replace with your Firebase project configuration
+// Firebase configuration — values come from environment variables.
+// Local dev uses demo2-659f2 (.env), Vercel prod uses qualia-prod-77b52.
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -18,10 +20,25 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
+export const storage = getStorage(app);
 
-if (import.meta.env.DEV) {
-  console.log('Running in DEV mode, connecting to local Functions emulator');
+// ── Emulator Connections ─────────────────────────────────────────────────
+// Only connect to local emulators when explicitly enabled via env var.
+// This prevents accidental connections to emulators that aren't running.
+const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
+
+if (useEmulator) {
+  console.log('🔧 Connecting to Firebase Local Emulators...');
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
   connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+  connectStorageEmulator(storage, '127.0.0.1', 9199);
+  console.log('✅ Connected to all Firebase Emulators');
+} else if (import.meta.env.DEV) {
+  console.log(
+    `🔥 DEV mode — connected to Firebase project: ${import.meta.env.VITE_FIREBASE_PROJECT_ID}`,
+    '\n   Set VITE_USE_FIREBASE_EMULATOR=true in .env to use local emulators'
+  );
 }
 
 export default app;

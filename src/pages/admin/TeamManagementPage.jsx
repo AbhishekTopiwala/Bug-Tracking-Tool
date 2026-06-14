@@ -23,7 +23,7 @@ import { SkeletonTable } from '../../components/Skeleton';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const ROLES = ['QA', 'Developer'];
+const ROLES = ['QA', 'Developer', 'Admin'];
 
 const ROLE_META = {
   super_admin: { label: 'Superadmin', icon: Crown, cls: 'role-badge--superadmin' },
@@ -31,11 +31,12 @@ const ROLE_META = {
   org_admin: { label: 'Admin', icon: Crown, cls: 'role-badge--admin' },
   Admin: { label: 'Admin', icon: Crown, cls: 'role-badge--admin' },
   Manager: { label: 'Admin', icon: Crown, cls: 'role-badge--admin' },
+  OrgOwner: { label: 'Admin', icon: Crown, cls: 'role-badge--admin' },
   Developer: { label: 'Developer', icon: Code2, cls: 'role-badge--developer' },
   QA: { label: 'QA', icon: TestTube2, cls: 'role-badge--qa' },
 };
 
-const DB_ROLES = ['QA', 'Developer', 'org_admin', 'super_admin'];
+const DB_ROLES = ['QA', 'Developer', 'org_admin'];
 
 function getInitials(name = '', email = '') {
   const source = name || email || '?';
@@ -451,8 +452,12 @@ export default function TeamManagementPage() {
         fetchAllUsers(),
         getProjects(null, 'Admin'),
       ]);
-      // Filter out soft-deleted users so Company Admin doesn't see them in active lists
-      let activeUsersList = userData.filter(u => u.isDeleted !== true && u.is_deleted !== true);
+      // Filter out soft-deleted users and the root Organization owner so Company Admin doesn't see them in active lists
+      let activeUsersList = userData.filter(u => 
+        u.isDeleted !== true && 
+        u.is_deleted !== true &&
+        u.role !== 'OrgOwner'
+      );
       
       // Deduplicate: if an active signed-up user exists for an email, exclude the pending invite placeholder
       const registeredEmails = new Set(
