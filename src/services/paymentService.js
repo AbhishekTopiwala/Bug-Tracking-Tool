@@ -68,6 +68,53 @@ export async function verifyRazorpayPaymentApi(payload) {
 }
 
 
+// ── ENVIRONMENT-AWARE PRICING ────────────────────────────────────────────────
+// Controls Starter plan pricing per environment:
+//   stage      → FREE (₹0)  — safe development testing
+//   pre-prod   → ₹10        — real money testing against prod backend
+//   production → FREE (₹0)  — actual production pricing
+const APP_ENV = import.meta.env.VITE_APP_ENV || 'production';
+
+function getStarterPricing() {
+  switch (APP_ENV) {
+    case 'stage':
+      return {
+        name: 'Starter',
+        tagline: 'For individuals and small teams',
+        monthlyPrice: 0,
+        yearlyPrice: 0,
+        monthlyPricePaise: 0,
+        yearlyPricePaise: 0,
+        pricePerUser: 0,
+        cta: 'Start Free',
+      };
+    case 'pre-prod':
+      return {
+        name: 'Starter (₹10 Test)',
+        tagline: 'Pre-production payment testing',
+        monthlyPrice: 10,
+        yearlyPrice: 10,
+        monthlyPricePaise: 1000,
+        yearlyPricePaise: 1000,
+        pricePerUser: 10,
+        cta: 'Start for ₹10',
+      };
+    default: // 'production'
+      return {
+        name: 'Starter',
+        tagline: 'For individuals and small teams',
+        monthlyPrice: 0,
+        yearlyPrice: 0,
+        monthlyPricePaise: 0,
+        yearlyPricePaise: 0,
+        pricePerUser: 0,
+        cta: 'Start Free',
+      };
+  }
+}
+
+const _starterPricing = getStarterPricing();
+
 // ── PLAN DEFINITIONS ─────────────────────────────────────────────────────────
 // Source of truth for all plan metadata.
 // Per-user pricing: pricePerUser is the monthly cost per active user.
@@ -76,13 +123,13 @@ export async function verifyRazorpayPaymentApi(payload) {
 export const PLANS = {
   free: {
     id: 'free',
-    name: '1 Rs Test Plan',
-    tagline: 'For testing payment on Vercel',
-    monthlyPrice: 1,       // flat price (not per-user for free tier)
-    yearlyPrice: 1,
-    monthlyPricePaise: 100,
-    yearlyPricePaise: 100,
-    pricePerUser: 1,       // ₹1/user
+    name: _starterPricing.name,
+    tagline: _starterPricing.tagline,
+    monthlyPrice: _starterPricing.monthlyPrice,
+    yearlyPrice: _starterPricing.yearlyPrice,
+    monthlyPricePaise: _starterPricing.monthlyPricePaise,
+    yearlyPricePaise: _starterPricing.yearlyPricePaise,
+    pricePerUser: _starterPricing.pricePerUser,
     currency: 'INR',
     maxUsers: 5,           // Free tier: up to 5 users
     maxProjects: 2,
@@ -100,7 +147,7 @@ export const PLANS = {
       { label: 'Basic Kanban Board', included: true },
       { label: 'Community Support', included: true },
     ],
-    cta: 'Start Free',
+    cta: _starterPricing.cta,
     ctaSecondary: false,
   },
   pro: {
