@@ -26,6 +26,7 @@ const PLAN_FEATURES = {
     pricePerUser: 199, pricePerUserYearly: 159, isPerUser: true,
     userLimit: Infinity, storageLimit: '50 GB', projectLimit: 20,
     features: ['Unlimited users', '20 projects', '50 GB storage', '250 AI Bug Reports / user / month', 'API access', 'Webhooks', 'Advanced analytics', 'Custom workflows', 'Role-based access control', 'Priority support'],
+  }
 };
 
 // ── Upgrade Plan Modal ────────────────────────────────────────────────────────
