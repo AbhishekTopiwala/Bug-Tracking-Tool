@@ -25,9 +25,8 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { auth } from '../firebase/config';
+import { db, auth, functions } from '../firebase/config';
+import { httpsCallable } from 'firebase/functions';
 
 // ── VERCEL API HELPER ────────────────────────────────────────────────────────
 async function fetchFromApi(endpoint, payload) {
@@ -56,14 +55,21 @@ async function fetchFromApi(endpoint, payload) {
 
 export async function createRazorpayOrderApi(payload) {
   if (import.meta.env.MODE === 'development') {
-    // We can fallback to httpsCallable if they are running the local Firebase emulator, 
-    // but typically they'll just use the Vercel API locally too via Vite proxy.
-    // For consistency with geminiService, we'll just use fetchFromApi.
+    const fn = httpsCallable(functions, 'createRazorpayOrder');
+    const result = await fn(payload);
+    // Wrap in { data: ... } to match the Vercel API response structure expected by the frontend
+    return { data: result.data };
   }
   return fetchFromApi('/api/create-razorpay-order', payload);
 }
 
 export async function verifyRazorpayPaymentApi(payload) {
+  if (import.meta.env.MODE === 'development') {
+    const fn = httpsCallable(functions, 'verifyRazorpayPayment');
+    const result = await fn(payload);
+    // Wrap in { data: ... } to match the Vercel API response structure expected by the frontend
+    return { data: result.data };
+  }
   return fetchFromApi('/api/verify-razorpay-payment', payload);
 }
 

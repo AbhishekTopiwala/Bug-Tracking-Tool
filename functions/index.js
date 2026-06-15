@@ -368,22 +368,6 @@ exports.createRazorpayOrder = onCall(async (request) => {
       },
     });
 
-    // Record payment attempt in Firestore
-    await db.collection("payments").add({
-      userId,
-      planId,
-      billingCycle,
-      razorpayOrderId: order.id,
-      amount: totalAmount, // Securely calculated amount
-      currency,
-      status: "PENDING",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      webhookProcessed: false,
-      attempts: 1,
-      couponCode: couponCode || null,
-    });
-
     return order;
   } catch (error) {
     console.error("Razorpay Order Error:", error);
@@ -395,38 +379,18 @@ exports.createRazorpayOrder = onCall(async (request) => {
 exports.verifyRazorpayPayment = onCall(async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Must be logged in.");
 
-  const userId = request.auth.uid;
   const {
     razorpay_order_id,
     razorpay_payment_id,
     razorpay_signature,
-    workspaceName,
-    gstNumber,
   } = request.data;
 
   const { secret } = getRazorpayConfig();
   if (!secret) throw new HttpsError("internal", "Razorpay not configured.");
 
-  // Fetch the order from payments collection to verify ownership and amount
-  const payQuery = await db.collection("payments")
-    .where("razorpayOrderId", "==", razorpay_order_id)
-    .limit(1)
-    .get();
-
-  if (payQuery.empty) {
-    throw new HttpsError("not-found", "Payment order not found.");
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    throw new HttpsError("invalid-argument", "Missing Razorpay parameters.");
   }
-
-  const payDoc = payQuery.docs[0];
-  const payData = payDoc.data();
-  if (payData.userId !== userId) {
-    throw new HttpsError("permission-denied", "Payment order does not belong to you.");
-  }
-
-  const planId = payData.planId;
-  const billingCycle = payData.billingCycle;
-  const amount = payData.amount;
-  const couponCode = payData.couponCode || null;
 
   // Verify Razorpay signature
   const expectedSig = crypto
@@ -439,136 +403,10 @@ exports.verifyRazorpayPayment = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Payment signature verification failed.");
   }
 
-  // Check for duplicate payment processing
-  const paymentRef = await db.collection("payments")
-    .where("razorpayOrderId", "==", razorpay_order_id)
-    .where("status", "==", "PAID")
-    .limit(1)
-    .get();
-
-  if (!paymentRef.empty) {
-    console.log(`[verifyPayment] Duplicate: payment ${razorpay_payment_id} already processed.`);
-    return { success: true, duplicate: true };
-  }
-
-  // Fetch user document
-  const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists) throw new HttpsError("not-found", "User not found.");
-  const userData = userDoc.data();
-
-  const PLAN_CONFIG = {
-    free:       { aiQuota: 30, maxUsers: 5, maxProjects: 2 },
-    pro:        { aiQuota: -1, maxUsers: -1, maxProjects: 10 },
-    business:   { aiQuota: -1, maxUsers: -1, maxProjects: 20 },
-    enterprise: { aiQuota: -1, maxUsers: -1, maxProjects: -1 },
-  };
-  const planConfig = PLAN_CONFIG[planId] || PLAN_CONFIG.pro;
-
-  // Use Firestore batch for atomic multi-document write
-  const batch = db.batch();
-
-  let orgId = userData.organizationId;
-  const isUpgrade = !!orgId;
-  const orgRef = isUpgrade ? db.collection("organizations").doc(orgId) : db.collection("organizations").doc();
-  if (!orgId) orgId = orgRef.id;
-
-  const now = new Date();
-  const periodEnd = billingCycle === "yearly"
-    ? new Date(now.setFullYear(now.getFullYear() + 1))
-    : new Date(now.setMonth(now.getMonth() + 1));
-
-  const subscriptionDetails = {
-    plan: planId,
-    status: "ACTIVE",
-    billingCycle,
-    startDate: new Date().toISOString(),
-    currentPeriodEnd: periodEnd.toISOString(),
-    autoRenew: true,
-    aiQuota: planConfig.aiQuota,
-    aiUsed: 0,
-    maxUsers: planConfig.maxUsers,
-    maxProjects: planConfig.maxProjects,
-    lastPaymentId: razorpay_payment_id,
-    lastPaymentAt: new Date().toISOString(),
-    resetDate: periodEnd.toISOString(),
-  };
-
-  if (isUpgrade) {
-    batch.update(orgRef, {
-      subscription: subscriptionDetails,
-      gstNumber: gstNumber || null,
-    });
-  } else {
-    batch.set(orgRef, {
-      name: workspaceName || (userData.displayName + "'s Workspace"),
-      ownerId: userId,
-      status: "ACTIVE",
-      createdAt: new Date().toISOString(),
-      subscription: subscriptionDetails,
-      gstNumber: gstNumber || null,
-      country: userData.country || "India",
-    });
-  }
-
-  // Update user document
-  batch.update(db.collection("users").doc(userId), {
-    organizationId: orgId,
-    paymentStatus: "PAID",
-    subscriptionStatus: "ACTIVE",
-    planId,
-    billingCycle,
-    updatedAt: new Date().toISOString(),
-    pendingOrderId: null,
-    pendingPlanId: null,
-    pendingBillingCycle: null,
-  });
-
-  // Update the pending payment document
-  batch.update(payDoc.ref, {
-    organizationId: orgId,
-    status: "PAID",
-    razorpayPaymentId: razorpay_payment_id,
-    updatedAt: new Date().toISOString(),
-  });
-
-  // Create invoice record
-  const invoiceNumber = `QUA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  const invoiceRef = db.collection("invoices").doc();
-  batch.set(invoiceRef, {
-    userId,
-    organizationId: orgId,
-    invoiceNumber,
-    paymentId: payDoc.id,
-    planId,
-    billingCycle,
-    amount,
-    currency: "INR",
-    gstNumber: gstNumber || null,
-    status: "ISSUED",
-    issuedAt: new Date().toISOString(),
-    periodStart: new Date().toISOString(),
-    periodEnd: periodEnd.toISOString(),
-    email: userData.email,
-  });
-
-  // Audit log
-  const auditRef = db.collection("audit_logs").doc();
-  batch.set(auditRef, {
-    userId,
-    action: isUpgrade ? "PLAN_UPGRADED" : "PAYMENT_VERIFIED_AND_ORG_CREATED",
-    details: {
-      planId, billingCycle, orgId,
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-      amount,
-    },
-    timestamp: new Date().toISOString(),
-  });
-
-  await batch.commit();
-
-  console.log(`[verifyPayment] SUCCESS: org=${orgId}, user=${userId}, plan=${planId}`);
-  return { success: true, organizationId: orgId, invoiceNumber };
+  // Return success without writing to Firestore, exactly like the Vercel API
+  // The frontend handles the Firestore updates
+  console.log(`[verifyPayment] Signature verified for order ${razorpay_order_id}`);
+  return { success: true };
 });
 
 // ── Activate Free Plan Cloud Function (secure) ────────────────────────────────
