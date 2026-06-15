@@ -26,13 +26,6 @@ const PLAN_FEATURES = {
     pricePerUser: 199, pricePerUserYearly: 159, isPerUser: true,
     userLimit: Infinity, storageLimit: '50 GB', projectLimit: 20,
     features: ['Unlimited users', '20 projects', '50 GB storage', '250 AI Bug Reports / user / month', 'API access', 'Webhooks', 'Advanced analytics', 'Custom workflows', 'Role-based access control', 'Priority support'],
-  },
-  enterprise: {
-    name: 'Enterprise', color: '#F59E0B', price: { monthly: null, yearly: null },
-    pricePerUser: null, isPerUser: false,
-    userLimit: Infinity, storageLimit: 'Unlimited', projectLimit: Infinity,
-    features: ['Unlimited users', 'Unlimited projects', 'Unlimited storage', 'Unlimited AI usage', 'SSO / SAML', 'Dedicated account manager', 'SLA support', 'Private cloud / On-premise', 'Advanced security controls'],
-  },
 };
 
 // ── Upgrade Plan Modal ────────────────────────────────────────────────────────
@@ -173,7 +166,7 @@ export default function OrgBillingPage() {
     org?.subscription?.plan || org?.plan || userProfile?.subscriptionPlan || 'free'
   ).toLowerCase().replace(/[^a-z]/g, '');
 
-  const planKey = ['free', 'pro', 'business', 'enterprise'].includes(rawPlan) ? rawPlan : 'free';
+  const planKey = ['free', 'pro', 'business'].includes(rawPlan) ? rawPlan : 'free';
   const plan = PLAN_FEATURES[planKey];
 
   const subscriptionStatus = org?.subscription?.status || org?.subscriptionStatus || 'active';
@@ -264,12 +257,12 @@ export default function OrgBillingPage() {
                 </p>
               )}
             </div>
-            {planKey !== 'enterprise' && (
+            {
               <button className="org-btn-primary" onClick={() => setShowUpgrade(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ArrowUpRight size={16} /> Upgrade Plan
               </button>
-            )}
+            }
           </div>
 
           {/* Usage Stats */}

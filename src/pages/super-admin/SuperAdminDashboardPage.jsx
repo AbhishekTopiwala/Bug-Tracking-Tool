@@ -44,7 +44,6 @@ export default function SuperAdminDashboardPage() {
       const totalAI = orgs.reduce((acc, o) => acc + (o.aiUsage?.currentUsage || 0), 0);
 
       const planCounts = {
-        enterprise: 0,
         pro: 0,
         free: 0
       };
@@ -54,8 +53,7 @@ export default function SuperAdminDashboardPage() {
         const plan = (o.subscription?.plan || o.subscription?.planId || 'free').toLowerCase();
 
         // Count plans for distribution chart
-        if (plan === 'enterprise') planCounts.enterprise++;
-        else if (plan === 'pro' || plan === 'business') planCounts.pro++;
+        if (plan === 'pro' || plan === 'business') planCounts.pro++;
         else planCounts.free++;
 
         const status = o.subscription?.status?.toLowerCase() || 'inactive';
@@ -63,7 +61,6 @@ export default function SuperAdminDashboardPage() {
           const users = o.memberCount || 1;
           if (plan === 'pro') return acc + (99 * users);
           if (plan === 'business') return acc + (199 * users);
-          if (plan === 'enterprise') return acc + 9999;
         }
         return acc;
       }, 0);
@@ -258,17 +255,14 @@ export default function SuperAdminDashboardPage() {
 
   // Calculate dynamic plan distribution percentages
   const totalPlans = stats.totalOrgs || 1; // prevent div by zero
-  const enterprisePct = stats.totalOrgs > 0 ? Math.round(((stats.planCounts?.enterprise || 0) / totalPlans) * 100) : 20;
   const proPct = stats.totalOrgs > 0 ? Math.round(((stats.planCounts?.pro || 0) / totalPlans) * 100) : 45;
-  const freePct = stats.totalOrgs > 0 ? (100 - enterprisePct - proPct) : 35;
+  const freePct = stats.totalOrgs > 0 ? (100 - proPct) : 55;
 
-  const enterpriseDash = `${enterprisePct} ${100 - enterprisePct}`;
   const proDash = `${proPct} ${100 - proPct}`;
   const freeDash = `${freePct} ${100 - freePct}`;
 
-  const enterpriseOffset = 25;
-  const proOffset = 100 - enterprisePct + 25;
-  const freeOffset = 100 - enterprisePct - proPct + 25;
+  const proOffset = 25;
+  const freeOffset = 100 - proPct + 25;
 
   return (
     <div className="sa-container">
@@ -521,9 +515,6 @@ export default function SuperAdminDashboardPage() {
           <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
             <svg width="150" height="150" viewBox="0 0 42 42">
               <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#E2E8F0" strokeWidth="4" />
-              {/* Enterprise segment */}
-              <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-rose)" strokeWidth="4"
-                strokeDasharray={enterpriseDash} strokeDashoffset={enterpriseOffset} className="sa-donut-segment" />
               {/* Pro segment */}
               <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="var(--sa-indigo)" strokeWidth="4"
                 strokeDasharray={proDash} strokeDashoffset={proOffset} className="sa-donut-segment" />
@@ -548,17 +539,10 @@ export default function SuperAdminDashboardPage() {
               </div>
               <span style={{ fontWeight: 700 }}>{proPct}%</span>
             </div>
-            <div className="sa-donut-label">
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span className="sa-donut-indicator" style={{ background: 'var(--sa-rose)' }} />
-                <span>Enterprise</span>
-              </div>
-              <span style={{ fontWeight: 700 }}>{enterprisePct}%</span>
-            </div>
             <div className="sa-donut-label" style={{ borderBottom: 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <span className="sa-donut-indicator" style={{ background: 'var(--sa-amber)' }} />
-                <span>Free Trial</span>
+                <span>Free Starter</span>
               </div>
               <span style={{ fontWeight: 700 }}>{freePct}%</span>
             </div>
@@ -602,9 +586,7 @@ export default function SuperAdminDashboardPage() {
                       <td>
                         <div className="sa-org-cell">
                           <div className="sa-avatar-logo" style={{
-                            background: planId === 'enterprise'
-                              ? 'linear-gradient(135deg, var(--sa-rose) 0%, #FDA4AF 100%)'
-                              : planId === 'business' || planId === 'pro'
+                            background: planId === 'business' || planId === 'pro'
                                 ? 'linear-gradient(135deg, var(--sa-indigo) 0%, #C7D2FE 100%)'
                                 : 'linear-gradient(135deg, var(--sa-amber) 0%, #FDE047 100%)'
                           }}>

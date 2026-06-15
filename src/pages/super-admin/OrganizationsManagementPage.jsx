@@ -289,7 +289,7 @@ export default function OrganizationsManagementPage() {
                   <option value="all">All Plans</option>
                   <option value="free">Free Trial</option>
                   <option value="pro">Premium Pro</option>
-                  <option value="enterprise">Enterprise</option>
+                  <option value="business">Business</option>
                 </select>
               </div>
 
@@ -397,9 +397,7 @@ export default function OrganizationsManagementPage() {
                         <td>
                           <div className="sa-org-cell">
                             <div className="sa-avatar-logo" style={{ 
-                              background: planId === 'enterprise' 
-                                ? 'linear-gradient(135deg, var(--sa-rose) 0%, #FDA4AF 100%)' 
-                                : planId === 'business' || planId === 'pro'
+                              background: planId === 'business' || planId === 'pro'
                                   ? 'linear-gradient(135deg, var(--sa-indigo) 0%, #C7D2FE 100%)'
                                   : 'linear-gradient(135deg, var(--sa-amber) 0%, #FDE047 100%)'
                             }}>

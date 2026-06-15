@@ -42,7 +42,6 @@ export default function SubscriptionsManagementPage() {
           const users = o.memberCount || 1;
           if (plan === 'pro') return acc + (99 * users);
           if (plan === 'business') return acc + (199 * users);
-          if (plan === 'enterprise') return acc + 9999;
         }
         return acc;
       }, 0);
@@ -62,8 +61,7 @@ export default function SubscriptionsManagementPage() {
           month: d.toLocaleString('default', { month: 'short' }),
           year: d.getFullYear(),
           monthIndex: d.getMonth(),
-          pro: 0,
-          ent: 0
+          pro: 0
         };
       });
 
@@ -73,7 +71,7 @@ export default function SubscriptionsManagementPage() {
 
         const plan = org.subscription?.plan || org.subscription?.planId || 'free';
         const users = org.memberCount || 1;
-        const price = plan === 'pro' ? 99 * users : plan === 'business' ? 199 * users : plan === 'enterprise' ? 9999 : 0;
+        const price = plan === 'pro' ? 99 * users : plan === 'business' ? 199 * users : 0;
         
         let createdDate = new Date();
         if (org.createdAt?.toDate) {
@@ -89,20 +87,19 @@ export default function SubscriptionsManagementPage() {
           const cDate = new Date(createdDate.getFullYear(), createdDate.getMonth(), 1);
           if (cDate <= mDate) {
             if (plan === 'business' || plan === 'pro') m.pro += price;
-            else if (plan === 'enterprise') m.ent += price;
           }
         });
       });
       
       setRevenueHistory(last6Months);
-      const computedMaxVal = Math.max(20000, ...last6Months.map(d => d.pro + d.ent)) * 1.2;
+      const computedMaxVal = Math.max(20000, ...last6Months.map(d => d.pro)) * 1.2;
       setMaxVal(computedMaxVal);
 
       // Map organizations to high-fidelity subscription rows
       const list = orgs.map(org => {
         const plan = org.subscription?.plan || org.subscription?.planId || 'free';
         const users = org.memberCount || 1;
-        const price = plan === 'pro' ? 99 * users : plan === 'business' ? 199 * users : plan === 'enterprise' ? 9999 : 0;
+        const price = plan === 'pro' ? 99 * users : plan === 'business' ? 199 * users : 0;
         const normalizedStatus = (org.subscription?.status || 'active').toLowerCase();
         return {
           id: org.id,
@@ -110,7 +107,7 @@ export default function SubscriptionsManagementPage() {
           planId: plan,
           price,
           status: normalizedStatus,
-          interval: plan === 'enterprise' ? 'Yearly' : 'Monthly',
+          interval: 'Monthly',
           gateway: 'Razorpay',
           paymentId: `pay_RZP_${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
           renewalDate: org.createdAt?.seconds 
@@ -232,17 +229,13 @@ export default function SubscriptionsManagementPage() {
         <div className="sa-card-header">
           <div>
             <h3 className="sa-card-title" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A' }}>Monthly Growth & Plan Segment Split</h3>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Analysis of Pro vs Enterprise plan segments (₹)</p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Analysis of Pro & Business plan revenue segments (₹)</p>
           </div>
           
           <div style={{ display: 'flex', gap: 16, fontSize: '0.78rem' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--sa-indigo)' }} />
-              Pro Segment
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--sa-rose)' }} />
-              Enterprise
+              Pro & Business
             </span>
           </div>
         </div>
@@ -258,33 +251,20 @@ export default function SubscriptionsManagementPage() {
               const x = paddingX + (idx / (monthlyRevenueGrowth.length)) * chartWidth + 30;
               const barWidth = 32;
 
-              // Stacked Heights
+              // Bar Height
               const proH = (data.pro / maxVal) * chartHeight;
-              const entH = (data.ent / maxVal) * chartHeight;
 
               const proY = svgHeight - paddingY - proH;
-              const entY = proY - entH;
 
               return (
                 <g key={idx}>
-                  {/* Pro Segment Bar */}
+                  {/* Pro/Business Segment Bar */}
                   <rect 
                     x={x} 
                     y={proY} 
                     width={barWidth} 
                     height={proH} 
                     fill="var(--sa-indigo)" 
-                    rx="3"
-                    className="sa-chart-bar-rect"
-                    style={{ transition: 'all 0.2s ease' }}
-                  />
-                  {/* Enterprise Segment Bar */}
-                  <rect 
-                    x={x} 
-                    y={entY} 
-                    width={barWidth} 
-                    height={entH} 
-                    fill="var(--sa-rose)" 
                     rx="3"
                     className="sa-chart-bar-rect"
                     style={{ transition: 'all 0.2s ease' }}

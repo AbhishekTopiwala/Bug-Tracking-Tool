@@ -24,7 +24,7 @@ const sections = [
   },
   {
     id: 6, title: 'Subscription Plans',
-    content: `Free Plan: Provides limited access to Platform features with restrictions on projects, bugs, test cases, team members, and storage. Qualia may modify or discontinue the Free Plan at any time.\n\nStarter & Growth Plans: Paid plans billed monthly or annually, unlocking additional features and higher usage limits as described on our pricing page.\n\nEnterprise Plan: Custom pricing, tailored features, dedicated support, and contract-based subscriptions governed by a separate Enterprise Agreement.\n\nEach plan includes specific usage limits. Exceeding limits may result in service restrictions or a requirement to upgrade your plan.`
+    content: `Free Plan: Provides limited access to Platform features with restrictions on projects, bugs, test cases, team members, and storage. Qualia may modify or discontinue the Free Plan at any time.\n\nStarter & Growth Plans: Paid plans billed monthly or annually, unlocking additional features and higher usage limits as described on our pricing page.\n\nEach plan includes specific usage limits. Exceeding limits may result in service restrictions or a requirement to upgrade your plan.`
   },
   {
     id: 7, title: 'Billing and Payments',
@@ -56,7 +56,7 @@ const sections = [
   },
   {
     id: 14, title: 'Service Availability',
-    content: `Qualia targets 99.9% uptime but does not guarantee uninterrupted availability. This is a goal, not an SLA, unless separately agreed upon in writing under an Enterprise Agreement.\n\nQualia will provide advance notice of scheduled maintenance where possible. Unexpected outages will be resolved with commercially reasonable efforts.\n\nQualia is not liable for service interruptions caused by maintenance, force majeure events, third-party providers, your network issues, or your violation of these Terms.`
+    content: `Qualia targets 99.9% uptime but does not guarantee uninterrupted availability. This is a goal, not an SLA, unless separately agreed upon in writing under a Custom Agreement.\n\nQualia will provide advance notice of scheduled maintenance where possible. Unexpected outages will be resolved with commercially reasonable efforts.\n\nQualia is not liable for service interruptions caused by maintenance, force majeure events, third-party providers, your network issues, or your violation of these Terms.`
   },
   {
     id: 15, title: 'Beta Features',
@@ -104,7 +104,7 @@ const sections = [
   },
   {
     id: 26, title: 'General Provisions',
-    content: `Entire Agreement: These Terms, together with the Privacy Policy and any applicable Enterprise Agreement, constitute the entire agreement between you and Qualia regarding the Platform.\n\nSeverability: If any provision is held invalid or unenforceable, it shall be modified minimally or severed, with remaining provisions continuing in full force.\n\nWaiver: Failure to enforce any provision does not constitute a waiver. Rights and remedies are cumulative.\n\nNotices: Qualia will send notices to the email address associated with your Account. Direct legal notices to legal@qualia.app.`
+    content: `Entire Agreement: These Terms, together with the Privacy Policy and any applicable Order Form, constitute the entire agreement between you and Qualia regarding the Platform.\n\nSeverability: If any provision is held invalid or unenforceable, it shall be modified minimally or severed, with remaining provisions continuing in full force.\n\nWaiver: Failure to enforce any provision does not constitute a waiver. Rights and remedies are cumulative.\n\nNotices: Qualia will send notices to the email address associated with your Account. Direct legal notices to legal@qualia.app.`
   },
   {
     id: 27, title: 'Contact Information',

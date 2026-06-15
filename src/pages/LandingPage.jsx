@@ -491,7 +491,7 @@ export default function LandingPage() {
         </div>
         <div className="landing-nav-actions">
           <Link to="/login" className="btn btn-ghost" style={{ fontSize: '0.95rem', fontWeight: 600 }}>Log In</Link>
-          <Link to="/signup" className="btn btn-primary" style={{ padding: '10px 22px', borderRadius: '8px' }}>Start Free Trial</Link>
+          <Link to="/signup" className="btn btn-primary" style={{ padding: '10px 22px', borderRadius: '8px' }}>Get Started</Link>
         </div>
       </nav>
 
@@ -945,7 +945,7 @@ export default function LandingPage() {
                   id={`plan-cta-${plan.id}`}
                   className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
                   style={{ textAlign: 'center', display: 'block', fontWeight: 600, width: '100%' }}
-                  onClick={() => plan.id === 'enterprise' ? window.location.href = 'mailto:sales@qualia.app' : handleSelectPlan(plan.id, billingCycle)}
+                  onClick={() => handleSelectPlan(plan.id, billingCycle)}
                 >
                   {plan.cta}
                 </button>
@@ -954,7 +954,7 @@ export default function LandingPage() {
           </div>
 
           <div style={{ textAlign: 'center', marginTop: 24, fontSize: '0.875rem', color: '#64748b' }}>
-            All paid plans include a 14-day free trial · No credit card required · Cancel anytime
+            Free Sandbox forever · No credit card required · Cancel anytime
           </div>
         </div>
       </section>

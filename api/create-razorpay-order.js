@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import { execSync } from 'child_process';
 import { verifyFirebaseToken, sendError, setCorsHeaders } from './_geminiHelper.js';
 
 // Configuration
@@ -10,11 +11,47 @@ function getRazorpayConfig() {
   };
 }
 
-const PLAN_PRICES = {
-  free: { monthly: 1, yearly: 1 },
-  pro: { monthly: 99, yearly: 79 },
-  business: { monthly: 199, yearly: 159 }
-};
+// Environment-aware pricing — mirrors frontend paymentService.js logic
+// Priority: APP_ENV env var → VITE_APP_ENV env var → auto-detect from git branch
+
+function detectAppEnv() {
+  // 1. Explicit env var (set in Vercel dashboard or .env)
+  if (process.env.APP_ENV) return process.env.APP_ENV;
+  if (process.env.VITE_APP_ENV) return process.env.VITE_APP_ENV;
+
+  // 2. Auto-detect from git branch (local dev only)
+  try {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
+    const map = { 'stage': 'stage', 'pre-prod': 'pre-prod', 'main': 'production' };
+    return map[branch] || 'production';
+  } catch {
+    return 'production';
+  }
+}
+
+const APP_ENV = detectAppEnv();
+
+function getPlanPrices() {
+  // Starter plan price varies by environment
+  let starterPrice;
+  switch (APP_ENV) {
+    case 'pre-prod':
+      starterPrice = 10;  // ₹10 — real money testing
+      break;
+    case 'stage':
+    default: // 'production'
+      starterPrice = 0;   // Free
+      break;
+  }
+
+  return {
+    free: { monthly: starterPrice, yearly: starterPrice },
+    pro: { monthly: 99, yearly: 79 },
+    business: { monthly: 199, yearly: 159 },
+  };
+}
+
+const PLAN_PRICES = getPlanPrices();
 
 export default async function handler(req, res) {
   setCorsHeaders(res);
@@ -52,6 +89,12 @@ export default async function handler(req, res) {
     // Apply 18% tax
     const tax = Math.round(finalAmount * 0.18);
     const totalAmount = finalAmount + tax;
+
+    // Guard: Razorpay requires amount > 0. If the plan is free (₹0),
+    // the frontend should activate directly without creating an order.
+    if (totalAmount <= 0) {
+      return sendError(res, 400, 'This plan does not require payment. Activate directly.');
+    }
 
     // 4. Initialize Razorpay
     const { keyId, secret } = getRazorpayConfig();

@@ -29,8 +29,7 @@ export default function GlobalSettingsPage() {
 
   const [limits, setLimits] = useState({
     freeLimit: 10000,
-    proLimit: 50000,
-    enterpriseLimit: 250000
+    proLimit: 50000
   });
 
   // Reveal triggers
@@ -165,21 +164,6 @@ export default function GlobalSettingsPage() {
                 />
               </div>
 
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
-                  <span>Enterprise limit</span>
-                  <span>{limits.enterpriseLimit.toLocaleString()} tokens</span>
-                </div>
-                <input
-                  type="range"
-                  min="100000"
-                  max="500000"
-                  step="10000"
-                  value={limits.enterpriseLimit}
-                  onChange={(e) => setLimits({ ...limits, enterpriseLimit: parseInt(e.target.value) })}
-                  style={{ width: '100%', accentColor: 'var(--sa-rose)' }}
-                />
-              </div>
 
               <button
                 onClick={() => handleSave('Token Quota')}

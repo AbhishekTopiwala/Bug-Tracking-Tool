@@ -219,10 +219,10 @@ export default function OrgSettingsPage() {
               </div>
               <div style={{ padding: 16, background: 'rgba(124,58,237,0.04)', borderRadius: 12, border: '1px solid rgba(124,58,237,0.08)' }}>
                 <p style={{ fontSize: '0.78rem', color: '#7C3AED', fontWeight: 700, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Shield size={12} /> Enterprise Features
+                  <Shield size={12} /> Pro Features
                 </p>
                 <p style={{ fontSize: '0.75rem', color: '#64748B', margin: 0, lineHeight: 1.5 }}>
-                  SSO and advanced MFA are available on Enterprise plans. Contact support to upgrade.
+                  SSO and advanced MFA are available on paid plans. Upgrade to Pro or Business to enable these features.
                 </p>
               </div>
             </div>

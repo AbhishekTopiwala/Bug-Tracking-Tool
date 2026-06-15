@@ -42,7 +42,7 @@ export default function AIAnalyticsPage() {
       // Seed high-fidelity transaction records representing real platform events
       const mockLogs = orgs.flatMap(org => {
         const plan = org.subscription?.planId || 'free';
-        const numEvents = plan === 'enterprise' ? 4 : plan === 'pro' ? 2 : 1;
+        const numEvents = plan === 'pro' || plan === 'business' ? 3 : 1;
 
         return Array.from({ length: numEvents }).map((_, idx) => {
           const models = ['Gemini-1.5-Pro', 'Claude-3.5-Sonnet', 'GPT-4o'];

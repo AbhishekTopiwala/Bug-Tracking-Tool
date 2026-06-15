@@ -193,10 +193,7 @@ export default function PaymentPage() {
     if (!selectedPlan || !currentUser) return;
 
     if (isFree) { activateFreePlan(); return; }
-    if (selectedPlan.id === 'enterprise') {
-      window.open('mailto:sales@qualia.app?subject=Enterprise Plan Inquiry', '_blank');
-      return;
-    }
+
 
     paymentInProgress.current = true;
     setPaymentLoading(true);
@@ -530,7 +527,7 @@ export default function PaymentPage() {
           </div>
 
           {/* Billing Cycle Toggle */}
-          {selectedPlan.id !== 'free' && selectedPlan.id !== 'enterprise' && (
+          {selectedPlan.id !== 'free' && (
             <div className="billing-cycle-toggle">
               <button
                 className={`cycle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
@@ -549,7 +546,7 @@ export default function PaymentPage() {
           )}
 
           {/* Price Breakdown */}
-          {!isFree && selectedPlan.id !== 'enterprise' && (
+          {!isFree && (
             <div className="payment-breakdown">
               <div className="breakdown-row">
                 <span>Plan ({billingCycle}) × {usersCount} User{usersCount !== 1 ? 's' : ''}</span>
@@ -588,7 +585,7 @@ export default function PaymentPage() {
           )}
 
           {/* Coupon */}
-          {!isFree && selectedPlan.id !== 'enterprise' && !appliedCoupon && (
+          {!isFree && !appliedCoupon && (
             <div className="coupon-section">
               <div className="coupon-input-row">
                 <Tag size={15} style={{ color: '#64748b' }} />
@@ -653,8 +650,6 @@ export default function PaymentPage() {
           <div className="payment-amount-display">
             {isFree ? (
               <div className="amount-free">Free Forever</div>
-            ) : selectedPlan.id === 'enterprise' ? (
-              <div className="amount-custom">Custom Pricing</div>
             ) : (
               <>
                 <div className="amount-value">{formatPrice(taxData.totalAmount)}</div>
@@ -681,11 +676,6 @@ export default function PaymentPage() {
               <>
                 <Check size={18} />
                 Activate Free Plan
-              </>
-            ) : selectedPlan.id === 'enterprise' ? (
-              <>
-                <ChevronRight size={18} />
-                Contact Sales Team
               </>
             ) : (
               <>

@@ -65,11 +65,6 @@ const BillingPage = () => {
       return;
     }
 
-    if (plan.id === 'enterprise') {
-      window.open('mailto:sales@qualia.app?subject=Enterprise Plan Inquiry', '_blank');
-      return;
-    }
-
     if (plan.monthlyPrice === 0) {
       setShowCancelModal(true);
       return;

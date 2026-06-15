@@ -269,7 +269,7 @@ export default function SignupPage() {
             <form onSubmit={handleSubmit} noValidate>
 
               {/* Billing Cycle Toggle */}
-              <div style={{ opacity: (selectedPlanId === 'free' || selectedPlanId === 'enterprise') ? 0.5 : 1, pointerEvents: (selectedPlanId === 'free' || selectedPlanId === 'enterprise') ? 'none' : 'auto', transition: 'all 0.3s ease' }}>
+              <div style={{ opacity: selectedPlanId === 'free' ? 0.5 : 1, pointerEvents: selectedPlanId === 'free' ? 'none' : 'auto', transition: 'all 0.3s ease' }}>
                 <div className="billing-toggle-wrapper">
                   <div className={`billing-slider ${billingCycle === 'yearly' ? 'yearly' : ''}`}></div>
                   <div

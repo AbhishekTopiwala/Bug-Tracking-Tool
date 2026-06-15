@@ -166,7 +166,7 @@ export const PLANS = {
     storageGB: 10,
     aiQuota: -1,           // Per-user AI quota
     aiQuotaPerUser: 100,   // 100 AI bug reports per user / month
-    trialDays: 14,
+    trialDays: 0,
     popular: true,
     active: true,
     isPerUser: true,
@@ -180,7 +180,7 @@ export const PLANS = {
       { label: 'Basic Analytics', included: true },
       { label: '100 AI Bug Reports / user / month', included: true },
     ],
-    cta: 'Start 14-Day Trial',
+    cta: 'Get Pro Plan',
     ctaSecondary: false,
   },
   business: {
@@ -216,41 +216,6 @@ export const PLANS = {
     ],
     cta: 'Get Business Plan',
     ctaSecondary: true,
-  },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    tagline: 'For large organizations and enterprise infrastructure',
-    monthlyPrice: null,    // Custom pricing — contact sales
-    yearlyPrice: null,
-    monthlyPricePaise: null,
-    yearlyPricePaise: null,
-    pricePerUser: null,
-    pricePerUserYearly: null,
-    currency: 'INR',
-    maxUsers: -1,          // Unlimited
-    maxProjects: -1,       // Unlimited
-    storageGB: -1,         // Unlimited
-    aiQuota: -1,           // Unlimited
-    aiQuotaPerUser: -1,
-    trialDays: 30,
-    popular: false,
-    active: true,
-    isPerUser: false,
-    features: [
-      { label: 'Unlimited Users', included: true },
-      { label: 'Unlimited Projects', included: true },
-      { label: 'Unlimited AI Usage', included: true },
-      { label: 'SSO / SAML', included: true },
-      { label: 'Dedicated Account Manager', included: true },
-      { label: 'Audit Logs', included: true },
-      { label: 'Private Cloud / On-Premise', included: true },
-      { label: 'Custom Integrations', included: true },
-      { label: 'SLA Support', included: true },
-      { label: 'Advanced Security Controls', included: true },
-    ],
-    cta: 'Contact Sales',
-    ctaSecondary: false,
   },
 };
 

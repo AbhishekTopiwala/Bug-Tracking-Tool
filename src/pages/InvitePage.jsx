@@ -163,7 +163,7 @@ export default function InvitePage() {
             </div>
             <div className="auth-brand-text">
               <div className="auth-brand-name">Qualia</div>
-              <div className="auth-brand-tagline">Enterprise Bug Tracking Platform</div>
+              <div className="auth-brand-tagline">Premium Bug Tracking Platform</div>
             </div>
           </div>
 

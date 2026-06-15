@@ -166,10 +166,6 @@ Qualia offers a Free Plan that provides limited access to the Platform's feature
 
 Qualia offers paid subscription plans, including the **Starter Plan** and the **Growth Plan**, each available on a monthly or annual billing cycle. Paid plans unlock additional features, increased usage limits, and enhanced functionalities as described on the Platform's pricing page. The specific features, limits, and pricing for each plan are available at **[Pricing Page URL]** and may be updated from time to time.
 
-### 7.3 Enterprise Plans
-
-Qualia offers an **Enterprise Plan** with custom pricing, tailored features, dedicated support, and contract-based subscriptions. Enterprise plans are governed by a separate Enterprise Agreement or Order Form executed between the Customer and Qualia, which shall take precedence over these Terms in the event of any conflict.
-
 ### 7.4 Feature Limitations
 
 Each subscription plan includes specific feature sets and usage limits. Features that exceed your plan's allocation may be restricted, disabled, or require an upgrade to a higher-tier plan. Qualia reserves the right to modify the features included in any plan upon reasonable notice.
@@ -356,7 +352,7 @@ You are responsible for ensuring that your use of the Platform complies with all
 
 ### 15.1 Uptime Goals
 
-Qualia strives to maintain a high level of availability and targets **99.9% uptime** for the Platform (excluding scheduled maintenance). However, this uptime target is a goal and not a guarantee, and does not constitute a service level agreement (SLA) unless separately agreed upon in writing (e.g., under an Enterprise Agreement).
+Qualia strives to maintain a high level of availability and targets **99.9% uptime** for the Platform (excluding scheduled maintenance). However, this uptime target is a goal and not a guarantee, and does not constitute a service level agreement (SLA) unless separately agreed upon in writing (e.g., under a custom agreement).
 
 ### 15.2 Maintenance Windows
 
@@ -611,7 +607,7 @@ Email: **[Legal Email]**
 
 ## 29. ENTIRE AGREEMENT
 
-**29.1** These Terms, together with the Privacy Policy, any applicable Enterprise Agreement, Order Form, or other agreements expressly referenced herein, constitute the entire agreement between you and Qualia regarding your use of the Platform and supersede all prior and contemporaneous agreements, proposals, representations, warranties, and understandings, whether oral or written, between you and Qualia relating to the subject matter hereof.
+**29.1** These Terms, together with the Privacy Policy, any applicable Order Form, or other agreements expressly referenced herein, constitute the entire agreement between you and Qualia regarding your use of the Platform and supersede all prior and contemporaneous agreements, proposals, representations, warranties, and understandings, whether oral or written, between you and Qualia relating to the subject matter hereof.
 
 **29.2** No terms or conditions contained in any purchase order, invoice, or other business document submitted by you shall be binding on Qualia, even if Qualia fails to object to such terms.
 

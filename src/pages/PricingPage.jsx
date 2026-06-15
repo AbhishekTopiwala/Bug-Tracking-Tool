@@ -32,7 +32,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Is there a free trial?',
-    a: 'Yes! Free Sandbox is permanently free (up to 5 users). Pro and Business plans come with a 14-day free trial — no credit card required.',
+    a: 'Yes! Free Sandbox is permanently free (up to 5 users). The Business plan comes with a 14-day free trial. Pro plan starts immediately upon purchase — no trial period.',
   },
   {
     q: 'How does Qualia compare to Jira in cost?',
@@ -43,29 +43,26 @@ const FAQ_ITEMS = [
 /* ── Feature comparison data ───────────────────────────────────────────────── */
 const COMPARE_ROWS = [
   { group: 'Users & Projects' },
-  { label: 'Users', vals: ['Up to 5', 'Unlimited', 'Unlimited', 'Unlimited'] },
-  { label: 'Projects', vals: ['2', '10', '20', 'Unlimited'] },
+  { label: 'Users', vals: ['Up to 5', 'Unlimited', 'Unlimited'] },
+  { label: 'Projects', vals: ['2', '10', '20'] },
   { group: 'AI & Reporting' },
-  { label: 'AI Bug Reports', note: 'Limits reset monthly', vals: ['30/mo org', '100/user/mo', '250/user/mo', 'Unlimited'] },
-  { label: 'AI Credit Add-Ons', vals: [false, true, true, true] },
-  { label: 'Test Case Management', vals: [false, true, true, true] },
+  { label: 'AI Bug Reports', note: 'Limits reset monthly', vals: ['30/mo org', '100/user/mo', '250/user/mo'] },
+  { label: 'AI Credit Add-Ons', vals: [false, true, true] },
+  { label: 'Test Case Management', vals: [false, true, true] },
   { group: 'Collaboration' },
-  { label: 'Kanban Board', vals: ['Basic', 'Full', 'Full', 'Custom'] },
-  { label: 'Bug Tracking', vals: [false, true, true, true] },
-  { label: 'Email Notifications', vals: [false, true, true, true] },
-  { label: 'Role-Based Access Control', vals: [false, false, true, true] },
+  { label: 'Kanban Board', vals: ['Basic', 'Full', 'Full'] },
+  { label: 'Bug Tracking', vals: [false, true, true] },
+  { label: 'Email Notifications', vals: [false, true, true] },
+  { label: 'Role-Based Access Control', vals: [false, false, true] },
   { group: 'Integrations & API' },
-  { label: 'API Access', vals: [false, false, true, true] },
-  { label: 'Webhooks', vals: [false, false, true, true] },
-  { label: 'Custom Workflows', vals: [false, false, true, true] },
+  { label: 'API Access', vals: [false, false, true] },
+  { label: 'Webhooks', vals: [false, false, true] },
+  { label: 'Custom Workflows', vals: [false, false, true] },
   { group: 'Analytics' },
-  { label: 'Analytics', vals: ['—', 'Basic', 'Advanced', 'Custom'] },
-  { label: 'Audit Logs', vals: [false, false, false, true] },
+  { label: 'Analytics', vals: ['—', 'Basic', 'Advanced'] },
+  { label: 'Audit Logs', vals: [false, false, true] },
   { group: 'Security & Support' },
-  { label: 'Support', vals: ['Community', 'Email', 'Priority', 'SLA + Dedicated'] },
-  { label: 'SSO / SAML', vals: [false, false, false, true] },
-  { label: 'Private Cloud / On-Premise', vals: [false, false, false, true] },
-  { label: 'Advanced Security Controls', vals: [false, false, false, true] },
+  { label: 'Support', vals: ['Community', 'Email', 'Priority'] },
 ];
 
 /* ── ROI comparison data ───────────────────────────────────────────────────── */
@@ -220,7 +217,6 @@ export default function PricingPage() {
 
   const getPriceDisplay = (plan) => {
     if (plan.id === 'free') return { amount: '1', period: '/mo', sub: 'Test payment' };
-    if (plan.id === 'enterprise') return { amount: null, period: '', sub: 'Custom contract terms' };
     const price = yearly ? (plan.pricePerUserYearly || plan.yearlyPrice) : plan.pricePerUser;
     return {
       amount: price.toString(),
@@ -374,7 +370,7 @@ export default function PricingPage() {
               {/* CTA */}
               <button
                 className={`pc-btn ${plan.popular ? 'solid-accent' : plan.ctaSecondary ? 'solid-dark' : 'outline'}`}
-                onClick={() => plan.id === 'enterprise' ? window.location.href = 'mailto:sales@qualia.app' : navigate('/signup')}
+                onClick={() => navigate('/signup')}
               >
                 {plan.cta}
               </button>
@@ -512,7 +508,6 @@ export default function PricingPage() {
                 <th>Free Sandbox</th>
                 <th>Pro</th>
                 <th className="col-featured">Business</th>
-                <th>Enterprise</th>
               </tr>
             </thead>
             <tbody>
@@ -520,7 +515,7 @@ export default function PricingPage() {
                 if (row.group) {
                   return (
                     <tr key={i} className="row-group">
-                      <td colSpan={5}>{row.group}</td>
+                      <td colSpan={4}>{row.group}</td>
                     </tr>
                   );
                 }
@@ -533,7 +528,6 @@ export default function PricingPage() {
                     <td className="tc"><CheckMark yes={row.vals[0]} /></td>
                     <td className="tc"><CheckMark yes={row.vals[1]} /></td>
                     <td className="tc-featured"><CheckMark yes={row.vals[2]} /></td>
-                    <td className="tc"><CheckMark yes={row.vals[3]} /></td>
                   </tr>
                 );
               })}
