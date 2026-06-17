@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Users, Shield, ShieldCheck, Mail, Building2, UserMinus, UserCheck, 
   Trash2, RotateCcw, AlertTriangle, Search, Filter, RefreshCw, 
@@ -32,7 +33,8 @@ export default function UserManagementPage() {
 
   // Search & Filters
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'deleted' | 'logs'
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
 
@@ -740,11 +742,30 @@ export default function UserManagementPage() {
         }}>
           <div className="sa-card" style={{ width: '100%', maxWidth: 500, margin: 20, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
-              <div>
+              <div style={{ flex: 1 }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertTriangle size={18} style={{ color: actionType === 'PERMANENT_DELETE' ? 'var(--sa-rose)' : 'var(--sa-amber)' }} />
                   Security Authorization Required
                 </h3>
+                
+                {import.meta.env.VITE_APP_ENV === 'production' && (
+                  <div style={{ 
+                    marginTop: 12, marginBottom: 8, padding: 12, 
+                    background: 'rgba(239, 68, 68, 0.1)', 
+                    border: '1px solid rgba(239, 68, 68, 0.4)', 
+                    borderRadius: 8, 
+                    color: '#B91C1C', 
+                    fontSize: '0.8rem', 
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <ShieldAlert size={16} />
+                    <span>🚨 PRODUCTION DB MUTATION. This action affects real users. Proceed with extreme caution.</span>
+                  </div>
+                )}
+
                 <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   State the administrative reason/justification for this action.
                 </p>

@@ -5,7 +5,8 @@ import { execSync } from 'child_process'
 // ── Auto-detect APP_ENV from git branch ──────────────────────────────────
 // Branch mapping:  stage → stage,  pre-prod → pre-prod,  * → production
 // The .env VITE_APP_ENV value overrides this if explicitly set.
-function detectAppEnv() {
+function detectAppEnv(mode) {
+  if (mode === 'development') return 'development';
   try {
     const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
     const branchEnvMap = {
@@ -21,7 +22,7 @@ function detectAppEnv() {
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const detectedEnv = detectAppEnv();
+  const detectedEnv = detectAppEnv(mode);
 
   // Log which environment is active (visible in terminal on npm run dev)
   console.log(`\n  🔧 Branch-detected APP_ENV: ${detectedEnv}\n`);

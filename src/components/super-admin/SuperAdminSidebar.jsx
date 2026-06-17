@@ -146,7 +146,16 @@ export default function SuperAdminSidebar() {
               )}
             </div>
             {!isCollapsed && (
-              <span className="sa-switcher-badge" style={{ fontSize: '0.6rem' }}>SYS</span>
+              <span className="sa-switcher-badge" style={{ 
+                fontSize: '0.6rem', 
+                padding: '2px 6px', 
+                borderRadius: '4px',
+                fontWeight: 800,
+                backgroundColor: import.meta.env.VITE_APP_ENV === 'production' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                color: import.meta.env.VITE_APP_ENV === 'production' ? '#EF4444' : '#F59E0B'
+              }}>
+                {import.meta.env.VITE_APP_ENV === 'production' ? 'PROD' : 'DEV'}
+              </span>
             )}
           </div>
 
@@ -304,6 +313,16 @@ export default function SuperAdminSidebar() {
                     {currentUser?.displayName || 'Super Admin'}
                   </p>
                   <p className="user-role" style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 500, margin: 0 }}>Platform Owner</p>
+                  <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span style={{ fontSize: '0.6rem', color: '#64748B' }}>
+                      <span style={{ color: import.meta.env.VITE_APP_ENV === 'production' ? '#EF4444' : '#F59E0B', fontWeight: 'bold' }}>Env: </span> 
+                      {import.meta.env.VITE_APP_ENV === 'production' ? 'Production' : 'Development'}
+                    </span>
+                    <span style={{ fontSize: '0.6rem', color: '#64748B' }}>
+                      <span style={{ color: '#10B981', fontWeight: 'bold' }}>DB: </span> 
+                      {import.meta.env.VITE_FIREBASE_PROJECT_ID}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

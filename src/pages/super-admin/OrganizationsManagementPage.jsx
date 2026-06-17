@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Building2, Search, MoreVertical, Edit2, Trash2, 
   ShieldOff, CheckCircle, ChevronDown, ChevronUp, Filter,
-  TrendingUp, Users, BrainCircuit, Layers, Clock, Mail, Info, ArrowUpDown, ShieldCheck
+  TrendingUp, Users, BrainCircuit, Layers, Clock, Mail, Info, ArrowUpDown, ShieldCheck, X
 } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import toast from 'react-hot-toast';
 import { SkeletonTable } from '../../components/Skeleton';
 
 export default function OrganizationsManagementPage() {
+  const navigate = useNavigate();
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -24,6 +26,36 @@ export default function OrganizationsManagementPage() {
   const [expandedOrgId, setExpandedOrgId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Details Modal
+  const [detailsModal, setDetailsModal] = useState({ isOpen: false, type: '', orgId: '', orgName: '', data: [], loading: false });
+
+  const openDetailsModal = async (type, orgId, orgName) => {
+    setDetailsModal({ isOpen: true, type, orgId, orgName, data: [], loading: true });
+    try {
+      if (type === 'members') {
+        const q = query(collection(db, 'users'), where('organizationId', '==', orgId));
+        const usersSnap = await getDocs(q);
+        const activeUsers = usersSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(u => u.isActive !== false);
+        setDetailsModal({ isOpen: true, type, orgId, orgName, data: activeUsers, loading: false });
+      } else if (type === 'projects') {
+        const q = query(collection(db, 'projects'), where('organizationId', '==', orgId));
+        const projectsSnap = await getDocs(q);
+        const orgProjects = projectsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setDetailsModal({ isOpen: true, type, orgId, orgName, data: orgProjects, loading: false });
+      }
+    } catch (err) {
+      console.error(`Failed to load ${type}:`, err);
+      toast.error(`Failed to load ${type}`);
+      setDetailsModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const closeDetailsModal = () => {
+    setDetailsModal({ isOpen: false, type: '', orgId: '', orgName: '', data: [], loading: false });
+  };
 
   const fetchOrgs = async () => {
     setLoading(true);
@@ -70,7 +102,13 @@ export default function OrganizationsManagementPage() {
     e.stopPropagation(); // Prevent drawer toggle
     const isCurrentlySuspended = (currentStatus || '').toLowerCase() === 'suspended';
     const newStatus = isCurrentlySuspended ? 'ACTIVE' : 'SUSPENDED';
-    if (!window.confirm(`Are you sure you want to ${isCurrentlySuspended ? 'activate' : 'suspend'} this organization?`)) return;
+    
+    let msg = `Are you sure you want to ${isCurrentlySuspended ? 'activate' : 'suspend'} this organization?`;
+    if (import.meta.env.VITE_APP_ENV === 'production') {
+      msg = `🚨 [PRODUCTION ENVIRONMENT] 🚨\n\nYou are mutating real data. Are you absolutely sure you want to ${isCurrentlySuspended ? 'activate' : 'suspend'} this organization?`;
+    }
+    
+    if (!window.confirm(msg)) return;
     
     try {
       await updateDoc(doc(db, 'organizations', orgId), { 'subscription.status': newStatus });
@@ -84,7 +122,7 @@ export default function OrganizationsManagementPage() {
   const handleDelete = async (orgId, e) => {
     e.stopPropagation(); // Prevent drawer toggle
     
-    const confirmMessage = 
+    let confirmMessage = 
       "⚠️ WARNING: You are executing a secure cascading purge on this workspace!\n\n" +
       "This action will permanently:\n" +
       "1. Delete the organization record.\n" +
@@ -93,6 +131,10 @@ export default function OrganizationsManagementPage() {
       "4. Revoke and delete pending team invitations.\n" +
       "5. Deactivate all members and lock them out of the platform safely.\n\n" +
       "Are you absolutely sure you want to proceed?";
+
+    if (import.meta.env.VITE_APP_ENV === 'production') {
+      confirmMessage = `🚨 [CRITICAL PRODUCTION PURGE] 🚨\n\nYou are connected to the LIVE database (${import.meta.env.VITE_FIREBASE_PROJECT_ID}).\n\n` + confirmMessage;
+    }
 
     if (!window.confirm(confirmMessage)) return;
     
@@ -508,12 +550,22 @@ export default function OrganizationsManagementPage() {
                                 <div className="sa-drawer-card">
                                   <h5 className="sa-drawer-section-title">Active Resources</h5>
                                   <div style={{ display: 'flex', gap: 16 }}>
-                                    <div style={{ flex: 1, background: '#F8FAFC', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                                    <div 
+                                      onClick={() => openDetailsModal('projects', org.id, org.name)}
+                                      style={{ flex: 1, background: '#F8FAFC', padding: 12, borderRadius: 8, textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
+                                      onMouseOver={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
+                                      onMouseOut={(e) => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'transparent'; }}
+                                    >
                                       <Layers size={16} style={{ color: 'var(--sa-indigo)', margin: '0 auto 4px' }} />
                                       <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A' }}>{projectsCount}</div>
                                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>Projects</div>
                                     </div>
-                                    <div style={{ flex: 1, background: '#F8FAFC', padding: 12, borderRadius: 8, textAlign: 'center' }}>
+                                    <div 
+                                      onClick={() => openDetailsModal('members', org.id, org.name)}
+                                      style={{ flex: 1, background: '#F8FAFC', padding: 12, borderRadius: 8, textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
+                                      onMouseOver={(e) => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
+                                      onMouseOut={(e) => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'transparent'; }}
+                                    >
                                       <Users size={16} style={{ color: 'var(--sa-rose)', margin: '0 auto 4px' }} />
                                       <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A' }}>{membersCount}</div>
                                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>Active Members</div>
@@ -568,6 +620,157 @@ export default function OrganizationsManagementPage() {
           </div>
         )}
       </div>
+      {/* Details Modal */}
+      {detailsModal.isOpen && (
+        <div 
+          onClick={closeDetailsModal} 
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              background: '#FFFFFF',
+              width: '100%',
+              maxWidth: 600,
+              maxHeight: '85vh',
+              borderRadius: 16,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              animation: 'slideUp 0.3s ease-out'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ 
+              padding: '20px 24px', 
+              borderBottom: '1px solid #E2E8F0', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              background: '#F8FAFC'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 10 }}>
+                {detailsModal.type === 'members' ? <Users size={20} style={{color: 'var(--sa-rose)'}} /> : <Layers size={20} style={{color: 'var(--sa-indigo)'}} />}
+                {detailsModal.type === 'members' ? 'Active Members' : 'Projects'} 
+                <span style={{ color: '#64748B', fontWeight: 500 }}>— {detailsModal.orgName}</span>
+              </h3>
+              <button 
+                onClick={closeDetailsModal} 
+                style={{ 
+                  background: 'none', border: 'none', cursor: 'pointer', 
+                  color: '#64748B', padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#E2E8F0'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+              {detailsModal.loading ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748B' }}>
+                  <div style={{ width: 24, height: 24, border: '3px solid #E2E8F0', borderTopColor: 'var(--sa-indigo)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+                  Loading data...
+                </div>
+              ) : detailsModal.data.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748B', background: '#F8FAFC', borderRadius: 12, border: '1px dashed #CBD5E1' }}>
+                  <Info size={24} style={{ margin: '0 auto 12px', color: '#94A3B8' }} />
+                  No {detailsModal.type} found for this organization.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {detailsModal.data.map(item => (
+                    <div 
+                      key={item.id} 
+                      onClick={() => {
+                        if (detailsModal.type === 'members') {
+                          navigate(`/super-admin/users?search=${encodeURIComponent(item.email)}`);
+                        }
+                      }}
+                      style={{ 
+                      padding: 16, 
+                      border: '1px solid #E2E8F0', 
+                      borderRadius: 12, 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: '#FFFFFF',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                      transition: 'border-color 0.2s',
+                      cursor: detailsModal.type === 'members' ? 'pointer' : 'default'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.borderColor = '#CBD5E1';
+                      if (detailsModal.type === 'members') e.currentTarget.style.background = '#F8FAFC';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.borderColor = '#E2E8F0';
+                      if (detailsModal.type === 'members') e.currentTarget.style.background = '#FFFFFF';
+                    }}
+                    >
+                      {detailsModal.type === 'members' ? (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontWeight: 600, fontSize: '0.9rem' }}>
+                              {(item.displayName || item.email || '?')[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.95rem' }}>{item.displayName || 'Unknown User'}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#64748B', marginTop: 2 }}>{item.email}</div>
+                            </div>
+                          </div>
+                          <span style={{ 
+                            fontSize: '0.75rem', 
+                            background: item.role === 'admin' || item.role === 'OrgOwner' ? '#FEF2F2' : '#F1F5F9', 
+                            color: item.role === 'admin' || item.role === 'OrgOwner' ? '#EF4444' : '#475569', 
+                            padding: '4px 10px', 
+                            borderRadius: 20, 
+                            fontWeight: 600, 
+                            textTransform: 'capitalize' 
+                          }}>
+                            {item.role || 'Member'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.95rem' }}>{item.name || 'Unnamed Project'}</div>
+                            <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: 4 }}>{item.description || 'No description provided'}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 500, display: 'block', marginBottom: 2 }}>CREATED</span>
+                            <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+                              {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -177,37 +177,30 @@ export default function SuperAdminDashboardPage() {
     return <SkeletonDashboard />;
   }
 
-  // Generate dynamic dates and values based on real current stats
+  // Generate true values based on real current stats
   const generateDynamicChartData = () => {
     const revenueData = [];
     const aiData = [];
 
     const today = new Date();
-    // Provide a small base value so the chart isn't completely flat if stats are 0
-    const currentRevenue = stats.totalRevenue || 5000;
-    const currentAI = stats.totalAIUsage || 1000;
-
-    // Seed variance so it looks consistent on re-renders, but grows towards the current value
-    const varianceFactors = [0.45, 0.52, 0.48, 0.65, 0.80, 0.75, 1.0];
+    const currentRevenue = stats.totalRevenue || 0;
+    const currentAI = stats.totalAIUsage || 0;
 
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-      const revVal = Math.round(currentRevenue * varianceFactors[6 - i]);
-      const aiVal = Math.round(currentAI * varianceFactors[6 - i]);
-
       revenueData.push({
         label,
-        val: revVal,
-        display: `₹${revVal.toLocaleString()}`
+        val: currentRevenue,
+        display: `₹${currentRevenue.toLocaleString()}`
       });
 
       aiData.push({
         label,
-        val: aiVal,
-        display: `${aiVal.toLocaleString()} tokens`
+        val: currentAI,
+        display: `${currentAI.toLocaleString()} tokens`
       });
     }
 
@@ -266,6 +259,27 @@ export default function SuperAdminDashboardPage() {
 
   return (
     <div className="sa-container">
+      {/* ── Environment Warning Banner ── */}
+      {import.meta.env.VITE_APP_ENV === 'production' && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: 12,
+          padding: '12px 20px',
+          marginBottom: 24,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          color: '#B91C1C'
+        }}>
+          <AlertCircle size={20} style={{ flexShrink: 0 }} />
+          <div>
+            <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}>PRODUCTION ENVIRONMENT ACTIVE</h4>
+            <p style={{ margin: 0, fontSize: '0.8rem', marginTop: 2 }}>You are currently connected to the live database ({import.meta.env.VITE_FIREBASE_PROJECT_ID}). Actions taken here affect real production tenants.</p>
+          </div>
+        </div>
+      )}
+
       {/* ── Premium Header ── */}
       <header className="sa-header">
         <div className="sa-title-area">
