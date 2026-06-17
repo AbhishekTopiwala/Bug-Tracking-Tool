@@ -29,7 +29,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
 const InvitePage = lazy(() => import('./pages/InvitePage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
-const PricingPage = lazy(() => import('./pages/PricingPage'));
+
 const PaymentPage = lazy(() => import('./pages/PaymentPage'));
 const PaymentIncompletePage = lazy(() => import('./pages/PaymentIncompletePage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
@@ -282,7 +282,7 @@ function SuperAdminPortal() {
 // ── Main App ─────────────────────────────────────────────────────────────────
 function AppLayout() {
   const location = useLocation();
-  const isAuthPage = ['/login', '/signup', '/invite', '/payment', '/payment-incomplete', '/pricing', '/terms', '/privacy'].includes(location.pathname);
+  const isAuthPage = ['/login', '/signup', '/invite', '/payment', '/payment-incomplete', '/terms', '/privacy'].includes(location.pathname);
 
   if (isAuthPage) {
     return (
@@ -292,7 +292,7 @@ function AppLayout() {
         <Route path="/invite" element={<InvitePage />} />
         <Route path="/payment" element={<PaymentPage />} />
         <Route path="/payment-incomplete" element={<PaymentIncompletePage />} />
-        <Route path="/pricing" element={<PricingPage />} />
+
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
       </Routes>
