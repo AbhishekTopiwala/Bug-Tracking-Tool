@@ -38,7 +38,7 @@ service cloud.firestore {
     match /organizations/{orgId} {
       allow read: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId);
       allow create: if isSignedIn();
-      allow update: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId && isOrgAdmin());
+      allow update: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId && (isOrgAdmin() || resource.data.ownerId == request.auth.uid));
       allow delete: if isSuperAdmin();
     }
 
