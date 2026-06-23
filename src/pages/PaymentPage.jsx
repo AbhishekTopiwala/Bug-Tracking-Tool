@@ -123,7 +123,7 @@ export default function PaymentPage() {
     }
   };
 
-  // ── Free plan activation ───────────────────────────────────────────────────
+  // ── Free plan activation ───────────────────────────────────────────────
   const activateFreePlan = async () => {
     setPaymentLoading(true);
     try {
@@ -187,12 +187,109 @@ export default function PaymentPage() {
     }
   };
 
+  // ── Coupon-based free activation (paid plan features at ₹0) ────────────
+  // Activates a paid plan (Pro/Business) with its full features when a
+  // coupon like STAGE100 brings the total to ₹0. Unlike activateFreePlan,
+  // this preserves the selected plan's quotas, limits, and metadata.
+  const activateWithCoupon = async () => {
+    setPaymentLoading(true);
+    try {
+      const batch = writeBatch(db);
+
+      let orgId = userProfile?.organizationId;
+      const isUpgrade = !!orgId;
+      const orgRef = isUpgrade ? doc(db, "organizations", orgId) : doc(collection(db, "organizations"));
+      if (!orgId) orgId = orgRef.id;
+
+      const now = new Date();
+      const periodEnd = billingCycle === "yearly"
+        ? new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+        : new Date(new Date().setMonth(new Date().getMonth() + 1));
+
+      const subscriptionDetails = {
+        plan: selectedPlan.id,
+        status: 'ACTIVE',
+        billingCycle,
+        startDate: new Date().toISOString(),
+        currentPeriodEnd: periodEnd.toISOString(),
+        resetDate: periodEnd.toISOString(),
+        autoRenew: false, // coupon-activated — no auto-renewal
+        aiQuota: selectedPlan.aiQuota,
+        aiUsed: 0,
+        maxUsers: selectedPlan.maxUsers,
+        maxProjects: selectedPlan.maxProjects,
+        couponCode: appliedCoupon?.code || null,
+      };
+
+      if (isUpgrade) {
+        batch.update(orgRef, { subscription: subscriptionDetails });
+      } else {
+        batch.set(orgRef, {
+          name: userProfile?.workspaceName || (userProfile?.displayName + "'s Workspace"),
+          ownerId: currentUser.uid,
+          status: "ACTIVE",
+          createdAt: new Date().toISOString(),
+          subscription: subscriptionDetails,
+        });
+      }
+
+      batch.update(doc(db, "users", currentUser.uid), {
+        organizationId: orgId,
+        planId: selectedPlan.id,
+        paymentStatus: 'COUPON',
+        subscriptionStatus: 'ACTIVE',
+        billingCycle,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Audit log
+      const auditRef = doc(collection(db, "audit_logs"));
+      batch.set(auditRef, {
+        userId: currentUser.uid,
+        action: 'COUPON_PLAN_ACTIVATED',
+        details: {
+          planId: selectedPlan.id,
+          billingCycle,
+          orgId,
+          couponCode: appliedCoupon?.code,
+          originalAmount: basePrice,
+          discount: basePrice,
+          finalAmount: 0,
+        },
+        timestamp: serverTimestamp(),
+      });
+
+      await batch.commit();
+
+      clearSelectedPlan();
+      clearPendingPaymentSession();
+      if (fetchUserProfile) await fetchUserProfile(currentUser.uid);
+      toast.success(`${selectedPlan.name} plan activated with coupon! 🎉`);
+      navigate('/admin', { state: { justPaid: true } });
+    } catch (err) {
+      toast.error(`Failed to activate: ${err.message || 'Unknown error'}`);
+      console.error(err);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
   // ── Razorpay payment ───────────────────────────────────────────────────────
   const handlePayment = useCallback(async () => {
     if (paymentInProgress.current) return; // Duplicate click guard
     if (!selectedPlan || !currentUser) return;
 
-    if (isFree) { activateFreePlan(); return; }
+    // If total is ₹0: activate free plan directly (no coupon) OR
+    // activate paid plan with coupon features (STAGE100 etc.)
+    if (isFree) {
+      if (appliedCoupon && selectedPlan.id !== 'free') {
+        activateWithCoupon();
+      } else {
+        activateFreePlan();
+      }
+      return;
+    }
+
 
 
     paymentInProgress.current = true;

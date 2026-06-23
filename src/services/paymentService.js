@@ -497,13 +497,39 @@ export function subscribeToUserPaymentStatus(userId, callback) {
 }
 
 /**
- * Validate coupon code against Firestore
+ * Validate coupon code against Firestore.
+ * STAGE100 is a hardcoded staging-only coupon (100% off) that never touches Firestore.
+ * It is rejected outright when APP_ENV === 'production'.
  */
 export async function validateCoupon(couponCode) {
   if (!couponCode) return null;
+
+  const upperCode = couponCode.toUpperCase();
+
+  // ── Staging-only hardcoded coupon: STAGE100 ────────────────────────────
+  // Gives 100% discount — only valid outside production
+  if (upperCode === 'STAGE100') {
+    if (APP_ENV === 'production') {
+      return { valid: false, error: 'Invalid coupon code' };
+    }
+    return {
+      valid: true,
+      coupon: {
+        id: '__stage_100',
+        code: 'STAGE100',
+        type: 'percent',
+        value: 100,
+        maxDiscount: null,
+        active: true,
+        _isStaging: true, // internal flag
+      },
+    };
+  }
+
+  // ── Standard Firestore-based coupon validation ─────────────────────────
   const q = query(
     collection(db, 'coupons'),
-    where('code', '==', couponCode.toUpperCase()),
+    where('code', '==', upperCode),
     where('active', '==', true)
   );
   const snap = await getDocs(q);
@@ -531,6 +557,9 @@ export function hasActiveSubscription(userProfile) {
   const subStatus = userProfile.subscriptionStatus;
 
   if (userProfile.planId === 'free' && payStatus === PAYMENT_STATUS.NOT_REQUIRED) return true;
+
+  // COUPON status = activated via staging coupon (e.g. STAGE100)
+  if (payStatus === 'COUPON' && subStatus === SUBSCRIPTION_STATUS.ACTIVE) return true;
 
   return payStatus === PAYMENT_STATUS.PAID &&
     (subStatus === SUBSCRIPTION_STATUS.ACTIVE ||

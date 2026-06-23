@@ -82,18 +82,42 @@ export default async function handler(req, res) {
     const months = billingCycle === 'yearly' ? 12 : 1;
     const basePrice = pricePerUser * usersCount * months;
 
-    // TODO: We skip coupon validation here for simplicity since this is a test environment,
-    // and just use the basePrice. In production, we would query the `coupons` collection.
+    // ── Coupon validation ────────────────────────────────────────────────
+    let discount = 0;
     let finalAmount = basePrice;
+    const upperCoupon = couponCode ? couponCode.toUpperCase() : null;
+
+    if (upperCoupon === 'STAGE100') {
+      // Staging-only hardcoded 100% off coupon — rejected in production
+      if (APP_ENV === 'production') {
+        return sendError(res, 400, 'Invalid coupon code.');
+      }
+      discount = basePrice;
+      finalAmount = 0;
+    }
+    // For any other coupon codes, we skip server-side validation for now.
+    // The frontend handles Firestore coupon lookups and applies them client-side.
     
     // Apply 18% tax
     const tax = Math.round(finalAmount * 0.18);
     const totalAmount = finalAmount + tax;
 
-    // Guard: Razorpay requires amount > 0. If the plan is free (₹0),
-    // the frontend should activate directly without creating an order.
+    // ── Free order (₹0 after coupon) — return mock order, skip Razorpay ──
+    // Razorpay requires amount > 0, so we generate a synthetic order ID
+    // and let the frontend activate the subscription directly.
     if (totalAmount <= 0) {
-      return sendError(res, 400, 'This plan does not require payment. Activate directly.');
+      const mockOrderId = `stage_free_${userId.slice(0, 8)}_${Date.now()}`;
+      return res.status(200).json({
+        result: {
+          data: {
+            id: mockOrderId,
+            amount: 0,
+            currency,
+            status: 'paid',
+            _stageCouponApplied: true,
+          },
+        },
+      });
     }
 
     // 4. Initialize Razorpay
