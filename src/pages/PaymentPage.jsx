@@ -191,11 +191,10 @@ export default function PaymentPage() {
   // Activates a paid plan (Pro/Business) with its full features when a
   // coupon like STAGE100 brings the total to ₹0. Unlike activateFreePlan,
   // this preserves the selected plan's quotas, limits, and metadata.
+  // Uses sequential writes to avoid Firestore rules batch-evaluation conflicts.
   const activateWithCoupon = async () => {
     setPaymentLoading(true);
     try {
-      const batch = writeBatch(db);
-
       let orgId = userProfile?.organizationId;
       const isUpgrade = !!orgId;
       const orgRef = isUpgrade ? doc(db, "organizations", orgId) : doc(collection(db, "organizations"));
@@ -221,10 +220,11 @@ export default function PaymentPage() {
         couponCode: appliedCoupon?.code || null,
       };
 
+      // Step 1: Create or update the organization
       if (isUpgrade) {
-        batch.update(orgRef, { subscription: subscriptionDetails });
+        await updateDoc(orgRef, { subscription: subscriptionDetails });
       } else {
-        batch.set(orgRef, {
+        await setDoc(orgRef, {
           name: userProfile?.workspaceName || (userProfile?.displayName + "'s Workspace"),
           ownerId: currentUser.uid,
           status: "ACTIVE",
@@ -233,7 +233,8 @@ export default function PaymentPage() {
         });
       }
 
-      batch.update(doc(db, "users", currentUser.uid), {
+      // Step 2: Update user document with plan + org details
+      await updateDoc(doc(db, "users", currentUser.uid), {
         organizationId: orgId,
         planId: selectedPlan.id,
         paymentStatus: 'COUPON',
@@ -242,9 +243,8 @@ export default function PaymentPage() {
         updatedAt: serverTimestamp(),
       });
 
-      // Audit log
-      const auditRef = doc(collection(db, "audit_logs"));
-      batch.set(auditRef, {
+      // Step 3: Write audit log
+      await addDoc(collection(db, "audit_logs"), {
         userId: currentUser.uid,
         action: 'COUPON_PLAN_ACTIVATED',
         details: {
@@ -258,8 +258,6 @@ export default function PaymentPage() {
         },
         timestamp: serverTimestamp(),
       });
-
-      await batch.commit();
 
       clearSelectedPlan();
       clearPendingPaymentSession();
