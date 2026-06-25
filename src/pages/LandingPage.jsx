@@ -42,24 +42,24 @@ const mockBugs = [
 
 const faqData = [
   {
+    question: "Can I upgrade anytime?",
+    answer: "Yes! You can upgrade your plan at any point. The change will be pro-rated and applied immediately to your account, unlocking new features and higher limits instantly."
+  },
+  {
+    question: "Can I cancel anytime?",
+    answer: "Absolutely. There are no long-term contracts unless you explicitly choose an annual commitment. You can cancel your subscription from your billing dashboard anytime."
+  },
+  {
+    question: "Is there a free trial?",
+    answer: "Yes! The Free plan gives you access to the platform forever. For advanced features, the Growth plan comes with a 14-day free trial so you can test everything before committing."
+  },
+  {
+    question: "What payment methods are supported?",
+    answer: "We support all major credit and debit cards, UPI, net banking, and popular wallets through our secure payment partner, Razorpay."
+  },
+  {
     question: "How does the AI Bug Generator operate?",
     answer: "When QA upload screenshots, our AI engine analyzes visual metadata, OCR bounds, and system details. It cross-references typical user paths to reconstruct clean, standardized title lists and reproduction guidelines with high accuracy."
-  },
-  {
-    question: "Can we create multi-tenant workspaces?",
-    answer: "Absolutely. Qualia is built from the ground up to support organizations, team groups, and independent projects. You can easily manage distinct teams, developers, and QA structures under a unified billing layout."
-  },
-  {
-    question: "Is my repository or workspace data secure?",
-    answer: "Security is our core value. All screenshots and uploads are safely isolated in access-secured Firestore and Cloud Storage folders. Technical details are never shared or fed into open public LLM datasets."
-  },
-  {
-    question: "What integrations are supported by Qualia?",
-    answer: "Currently we provide direct integrations with Slack for notifications and GitHub/GitLab for automated issue linking and PR tracking. We also have webhook support for custom workflows."
-  },
-  {
-    question: "Can I export my bug reports?",
-    answer: "Yes, you can export your entire test suite or specific project boards in CSV, PDF, and JSON formats for easy sharing with external stakeholders or legacy tools."
   },
   {
     question: "What happens if I exceed my AI generation limit?",
@@ -874,11 +874,10 @@ export default function LandingPage() {
       <section id="pricing" className="landing-pricing">
         <div className="pricing-container">
           <div className="section-header">
-            <span className="section-tag">Per-User Pricing</span>
-            <h2 className="section-title">Pay Only for Users You Actually Need</h2>
+            <span className="section-tag">Trusted by Startups & QA Teams</span>
+            <h2 className="section-title">Simple, transparent pricing</h2>
             <p className="section-subtitle">
-              No minimums. No forced upgrades. Add or remove users anytime — billing adjusts automatically.
-              85% cheaper than Jira, with built-in AI bug generation included.
+              Start for free, then upgrade as your team grows. Positioned for professional SaaS platforms.
             </p>
           </div>
 
@@ -893,7 +892,7 @@ export default function LandingPage() {
               onClick={() => setBillingCycle('yearly')}
             >
               Yearly
-              <span className="pricing-cycle-save">Save 20%</span>
+              <span className="pricing-cycle-save">Save 20% • Billed Annually</span>
             </button>
           </div>
 
@@ -919,18 +918,15 @@ export default function LandingPage() {
                           ? (plan.pricePerUserYearly || plan.yearlyPrice)
                           : (plan.pricePerUser || plan.monthlyPrice)}
                       </span>
-                      <span className="pricing-period">{plan.isPerUser ? '/user/mo' : '/mo'}</span>
+                      <span className="pricing-period">/mo</span>
                     </>
                   )}
                 </div>
-                {plan.isPerUser && (
-                  <div className="pricing-yearly-note" style={{ color: billingCycle === 'yearly' ? '#15803d' : '#94a3b8' }}>
-                    {billingCycle === 'yearly' ? 'Save 20% · billed annually' : 'No minimum users · cancel anytime'}
-                  </div>
-                )}
-                {plan.id === 'free' && (
-                  <div className="pricing-yearly-note" style={{ color: '#94a3b8' }}>Up to 5 users · no credit card needed</div>
-                )}
+                <div className="pricing-yearly-note" style={{ color: billingCycle === 'yearly' && plan.id !== 'free' ? '#15803d' : '#94a3b8' }}>
+                  {plan.id === 'free' 
+                    ? 'Best for trying the platform'
+                    : (billingCycle === 'yearly' ? 'Save 20% • Billed Annually' : 'Cancel anytime')}
+                </div>
                 <div className="pricing-features">
                   {plan.features.map((feature, fIdx) => (
                     <div key={fIdx} className={`pricing-feature ${!feature.included ? 'muted' : ''}`}>
@@ -955,6 +951,73 @@ export default function LandingPage() {
 
           <div style={{ textAlign: 'center', marginTop: 24, fontSize: '0.875rem', color: '#64748b' }}>
             Free Sandbox forever · No credit card required · Cancel anytime
+          </div>
+        </div>
+
+        {/* Feature Comparison Table */}
+        <div className="feature-comparison-container">
+          <h3 className="comparison-title">Compare Plans</h3>
+          <div className="comparison-table-wrapper">
+            <table className="feature-comparison-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th>Free</th>
+                  <th className="highlight-col">Team</th>
+                  <th>Growth</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Users</td>
+                  <td>3</td>
+                  <td className="highlight-col">10</td>
+                  <td>30</td>
+                </tr>
+                <tr>
+                  <td>Projects</td>
+                  <td>1</td>
+                  <td className="highlight-col">10</td>
+                  <td>Unlimited</td>
+                </tr>
+                <tr>
+                  <td>Bug Tracking</td>
+                  <td><Check size={18} className="icon-check" /></td>
+                  <td className="highlight-col"><Check size={18} className="icon-check" /></td>
+                  <td><Check size={18} className="icon-check" /></td>
+                </tr>
+                <tr>
+                  <td>Test Cases</td>
+                  <td><X size={18} className="icon-x" /></td>
+                  <td className="highlight-col"><Check size={18} className="icon-check" /></td>
+                  <td><Check size={18} className="icon-check" /></td>
+                </tr>
+                <tr>
+                  <td>Analytics</td>
+                  <td><X size={18} className="icon-x" /></td>
+                  <td className="highlight-col">Basic</td>
+                  <td>Advanced</td>
+                </tr>
+                <tr>
+                  <td>API Access</td>
+                  <td><X size={18} className="icon-x" /></td>
+                  <td className="highlight-col"><X size={18} className="icon-x" /></td>
+                  <td><Check size={18} className="icon-check" /></td>
+                </tr>
+                <tr>
+                  <td>Webhooks</td>
+                  <td><X size={18} className="icon-x" /></td>
+                  <td className="highlight-col"><X size={18} className="icon-x" /></td>
+                  <td><Check size={18} className="icon-check" /></td>
+                </tr>
+                <tr>
+                  <td>Priority Support</td>
+                  <td><X size={18} className="icon-x" /></td>
+                  <td className="highlight-col"><X size={18} className="icon-x" /></td>
+                  <td><Check size={18} className="icon-check" /></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>

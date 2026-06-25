@@ -1451,15 +1451,16 @@
 
 .pricing-card.popular {
   border: 2px solid var(--accent);
-  box-shadow: 0 12px 40px rgba(91, 108, 255, 0.12);
-  transform: scale(1.05);
+  box-shadow: 0 16px 48px rgba(91, 108, 255, 0.15);
+  transform: scale(1.08);
   z-index: 2;
   padding: 48px 32px;
+  background: linear-gradient(to bottom, var(--bg-card) 0%, rgba(91, 108, 255, 0.02) 100%);
 }
 
 .pricing-card.popular:hover {
-  transform: scale(1.05) translateY(-8px);
-  box-shadow: 0 24px 56px rgba(91, 108, 255, 0.18);
+  transform: scale(1.08) translateY(-8px);
+  box-shadow: 0 24px 56px rgba(91, 108, 255, 0.22);
 }
 
 /* Most Popular badge — via JSX element not CSS ::before */
@@ -1614,6 +1615,119 @@
 
 .matrix-table tr:last-child td {
   border-bottom: none;
+}
+
+/* ── Feature Comparison Table (Below Pricing) ── */
+.feature-comparison-container {
+  max-width: 900px;
+  margin: 80px auto 0;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+
+.comparison-title {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 32px;
+  color: var(--text-primary);
+}
+
+.comparison-table-wrapper {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.feature-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+
+.feature-comparison-table th {
+  padding: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+  font-size: 1.1rem;
+}
+
+.feature-comparison-table th:first-child {
+  text-align: left;
+  width: 40%;
+}
+
+.feature-comparison-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.feature-comparison-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.feature-comparison-table tr:last-child td {
+  border-bottom: none;
+}
+
+.feature-comparison-table .highlight-col {
+  background: rgba(91, 108, 255, 0.03);
+  position: relative;
+}
+
+.feature-comparison-table th.highlight-col {
+  color: var(--accent);
+}
+
+.feature-comparison-table .highlight-col::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0.3;
+}
+
+.feature-comparison-table .highlight-col::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0.3;
+}
+
+.feature-comparison-table .icon-check {
+  color: #22c55e;
+  vertical-align: middle;
+}
+
+.feature-comparison-table .icon-x {
+  color: #94a3b8;
+  vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+  .comparison-table-wrapper {
+    overflow-x: auto;
+  }
+  
+  .feature-comparison-table {
+    min-width: 600px; /* Forces scrolling instead of squishing columns */
+  }
 }
 
 /* ── "How it Works" Timeline ── */

@@ -130,53 +130,54 @@ export const PLANS = {
   free: {
     id: 'free',
     name: _starterPricing.name,
-    tagline: _starterPricing.tagline,
+    tagline: 'Best for trying the platform',
     monthlyPrice: _starterPricing.monthlyPrice,
     yearlyPrice: _starterPricing.yearlyPrice,
     monthlyPricePaise: _starterPricing.monthlyPricePaise,
     yearlyPricePaise: _starterPricing.yearlyPricePaise,
     pricePerUser: _starterPricing.pricePerUser,
     currency: 'INR',
-    maxUsers: 5,           // Free tier: up to 5 users
-    maxProjects: 2,
+    maxUsers: 3,           // Free tier: up to 3 users
+    maxProjects: 1,        // 1 Project
     storageGB: 0.1,        // 100 MB
-    aiQuota: 30,           // per org per month
+    aiQuota: 10,           // 10 AI Bug Reports / Month
     aiQuotaPerUser: 0,
     trialDays: 0,
     popular: false,
     active: true,
     isPerUser: false,
     features: [
-      { label: 'Up to 5 Users', included: true },
-      { label: '2 Projects', included: true },
-      { label: '30 AI Bug Reports / month', included: true },
+      { label: 'Up to 3 Users', included: true },
+      { label: '1 Project', included: true },
+      { label: '10 AI Bug Reports / Month', included: true },
       { label: 'Basic Kanban Board', included: true },
       { label: 'Community Support', included: true },
     ],
-    cta: _starterPricing.cta,
+    cta: 'Start Free',
     ctaSecondary: false,
   },
-  pro: {
-    id: 'pro',
-    name: 'Pro',
-    tagline: 'For startups and growing QA teams',
-    monthlyPrice: 99,      // ₹99 per user / month
-    yearlyPrice: 79,       // ₹79 per user / month (yearly — ~20% off)
-    monthlyPricePaise: 9900,
-    yearlyPricePaise: 7900,
-    pricePerUser: 99,      // ₹99/user/month (monthly billing)
-    pricePerUserYearly: 79, // ₹79/user/month (yearly billing)
+  team: {
+    id: 'team',
+    name: 'Team',
+    tagline: 'Best for startups and small QA teams',
+    monthlyPrice: 499,
+    yearlyPrice: 399,
+    monthlyPricePaise: 49900,
+    yearlyPricePaise: 39900,
+    pricePerUser: 499,
+    pricePerUserYearly: 399,
     currency: 'INR',
-    maxUsers: -1,          // Unlimited — no user cap
-    maxProjects: 10,
+    maxUsers: 10,          // Up to 10 Users
+    maxProjects: 10,       // Up to 10 Projects
     storageGB: 10,
-    aiQuota: -1,           // Per-user AI quota
-    aiQuotaPerUser: 100,   // 100 AI bug reports per user / month
+    aiQuota: 100,          // 100 AI Bug Reports / Month
+    aiQuotaPerUser: 0,
     trialDays: 0,
     popular: true,
     active: true,
-    isPerUser: true,
+    isPerUser: false,      // Changed to flat pricing based on requirements
     features: [
+      { label: 'Up to 10 Users', included: true },
       { label: 'Up to 10 Projects', included: true },
       { label: 'Full Kanban Board', included: true },
       { label: 'Bug Tracking', included: true },
@@ -184,43 +185,44 @@ export const PLANS = {
       { label: 'Team Collaboration', included: true },
       { label: 'Email Notifications', included: true },
       { label: 'Basic Analytics', included: true },
-      { label: '100 AI Bug Reports / user / month', included: true },
+      { label: '100 AI Bug Reports / Month', included: true },
     ],
-    cta: 'Get Pro Plan',
+    cta: 'Get Team Plan',
     ctaSecondary: false,
   },
-  business: {
-    id: 'business',
-    name: 'Business',
-    tagline: 'For scaling companies and serious QA teams',
-    monthlyPrice: 199,     // ₹199 per user / month
-    yearlyPrice: 159,      // ₹159 per user / month (yearly — ~20% off)
-    monthlyPricePaise: 19900,
-    yearlyPricePaise: 15900,
-    pricePerUser: 199,
-    pricePerUserYearly: 159,
+  growth: {
+    id: 'growth',
+    name: 'Growth',
+    tagline: 'Best for growing companies',
+    monthlyPrice: 1499,
+    yearlyPrice: 1199,
+    monthlyPricePaise: 149900,
+    yearlyPricePaise: 119900,
+    pricePerUser: 1499,
+    pricePerUserYearly: 1199,
     currency: 'INR',
-    maxUsers: -1,          // Unlimited — no user cap
-    maxProjects: 20,
+    maxUsers: 30,          // Up to 30 Users
+    maxProjects: -1,       // Unlimited Projects
     storageGB: 50,
-    aiQuota: -1,           // Per-user AI quota
-    aiQuotaPerUser: 250,   // 250 AI bug reports per user / month
+    aiQuota: 500,          // 500 AI Bug Reports / Month
+    aiQuotaPerUser: 0,
     trialDays: 14,
     popular: false,
     active: true,
-    isPerUser: true,
+    isPerUser: false,      // Changed to flat pricing based on requirements
     features: [
-      { label: 'Everything in Pro', included: true },
-      { label: 'Up to 20 Projects', included: true },
+      { label: 'Everything in Team, plus:', included: true },
+      { label: 'Up to 30 Users', included: true },
+      { label: 'Unlimited Projects', included: true },
       { label: 'API Access', included: true },
       { label: 'Webhooks', included: true },
       { label: 'Advanced Analytics', included: true },
       { label: 'Custom Workflows', included: true },
       { label: 'Role-Based Access Control', included: true },
       { label: 'Priority Support', included: true },
-      { label: '250 AI Bug Reports / user / month', included: true },
+      { label: '500 AI Bug Reports / Month', included: true },
     ],
-    cta: 'Get Business Plan',
+    cta: 'Get Growth Plan',
     ctaSecondary: true,
   },
 };

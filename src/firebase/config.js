@@ -29,11 +29,12 @@ const useEmulator = import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true';
 
 if (useEmulator) {
   console.log('🔧 Connecting to Firebase Local Emulators...');
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  // Only connect to Functions emulator for local testing to preserve live Auth/Firestore data
+  // connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  // connectFirestoreEmulator(db, '127.0.0.1', 8080);
   connectFunctionsEmulator(functions, '127.0.0.1', 5001);
-  connectStorageEmulator(storage, '127.0.0.1', 9199);
-  console.log('✅ Connected to all Firebase Emulators');
+  // connectStorageEmulator(storage, '127.0.0.1', 9199);
+  console.log('✅ Connected to Functions Emulator');
 } else if (import.meta.env.DEV) {
   console.log(
     `🔥 DEV mode — connected to Firebase project: ${import.meta.env.VITE_FIREBASE_PROJECT_ID}`,
