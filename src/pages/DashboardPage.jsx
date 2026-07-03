@@ -590,9 +590,9 @@ export default function DashboardPage() {
     critical: myBugs.filter(b => b.priority === 'Critical' && !['Done','Resolved'].includes(b.status)).length,
   }), [myBugs]);
 
-  // Needs verification: bugs reporter by me that are Done/Resolved
+  // Needs verification: bugs reported by me that are Done
   const needsVerification = useMemo(() =>
-    myBugs.filter(b => b.reportedBy === currentUser?.uid && ['Done', 'Resolved'].includes(b.status)).slice(0, 4),
+    myBugs.filter(b => b.reportedBy === currentUser?.uid && b.status === 'Done').slice(0, 4),
     [myBugs, currentUser]
   );
 
@@ -687,7 +687,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h2 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Needs Your Verification</h2>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>Bugs you reported that developers marked as resolved</p>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>Bugs you reported that developers marked as done</p>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

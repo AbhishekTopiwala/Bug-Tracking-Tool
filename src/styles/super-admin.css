@@ -104,7 +104,6 @@
   border-color: rgba(244, 63, 94, 0.15) !important;
   font-weight: 600;
   position: relative;
-  box-shadow: inset 3px 0 0 var(--sa-rose);
 }
 
 .admin-nav-link.active.super-admin svg {
