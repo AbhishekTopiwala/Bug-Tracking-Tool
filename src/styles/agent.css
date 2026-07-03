@@ -1,0 +1,565 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AI QA Agent — Module Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Agent Hero Input Section ──────────────────────────────────────────────── */
+.agent-hero {
+  background: linear-gradient(135deg, rgba(91, 108, 255, 0.06) 0%, rgba(59, 130, 246, 0.04) 50%, rgba(16, 185, 129, 0.03) 100%);
+  border: 1px solid rgba(91, 108, 255, 0.15);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.agent-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(91, 108, 255, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.agent-hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.agent-hero-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.agent-hero-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  max-width: 560px;
+  line-height: 1.6;
+}
+
+/* ── URL Input Bar ─────────────────────────────────────────────────────────── */
+.agent-url-bar {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.agent-url-input-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.agent-url-input-wrap .url-icon {
+  position: absolute;
+  left: 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.agent-url-input {
+  width: 100%;
+  padding: 14px 16px 14px 48px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all var(--transition);
+  outline: none;
+}
+
+.agent-url-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(91, 108, 255, 0.1);
+}
+
+.agent-url-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.agent-start-btn {
+  padding: 14px 28px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  border-radius: var(--radius) !important;
+  white-space: nowrap;
+  gap: 10px !important;
+}
+
+/* ── Config Options ────────────────────────────────────────────────────────── */
+.agent-config {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.agent-config-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.agent-config-item select {
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+/* ── Run Cards ─────────────────────────────────────────────────────────────── */
+.agent-runs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.agent-run-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.agent-run-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.agent-run-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  transition: opacity var(--transition);
+}
+
+.agent-run-card[data-status="completed"]::before {
+  background: var(--success);
+  opacity: 1;
+}
+
+.agent-run-card[data-status="failed"]::before {
+  background: var(--danger);
+  opacity: 1;
+}
+
+.agent-run-card[data-status="crawling"]::before,
+.agent-run-card[data-status="executing"]::before,
+.agent-run-card[data-status="analyzing"]::before,
+.agent-run-card[data-status="generating"]::before {
+  background: var(--accent);
+  opacity: 1;
+  animation: shimmer-bar 2s infinite;
+}
+
+@keyframes shimmer-bar {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.agent-run-url {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-run-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.agent-run-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.agent-run-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.agent-run-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.agent-run-stat-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Status Badges (Agent-specific) ────────────────────────────────────────── */
+.agent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.agent-badge-crawling,
+.agent-badge-analyzing,
+.agent-badge-generating {
+  background: rgba(91, 108, 255, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(91, 108, 255, 0.2);
+}
+
+.agent-badge-executing {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.agent-badge-completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.agent-badge-failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.agent-badge-queued {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text-muted);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.agent-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.agent-badge-dot.pulsing {
+  animation: pulse 2s infinite;
+}
+
+/* ── Progress Bar ──────────────────────────────────────────────────────────── */
+.agent-progress {
+  margin-top: 12px;
+}
+
+.agent-progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.agent-progress-fill {
+  height: 100%;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--accent), #7B9EF8);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.agent-progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── Pipeline Steps ────────────────────────────────────────────────────────── */
+.agent-pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 24px 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.agent-pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all var(--transition);
+}
+
+.agent-pipeline-step.completed {
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--success);
+}
+
+.agent-pipeline-step.active {
+  background: rgba(91, 108, 255, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(91, 108, 255, 0.2);
+}
+
+.agent-pipeline-step.pending {
+  color: var(--text-muted);
+}
+
+.agent-pipeline-connector {
+  width: 32px;
+  height: 2px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.agent-pipeline-connector.completed {
+  background: var(--success);
+}
+
+/* ── Test Result Card ──────────────────────────────────────────────────────── */
+.agent-test-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.agent-test-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.agent-test-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.agent-test-icon.passed {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+.agent-test-icon.failed {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+.agent-test-icon.running {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+
+.agent-test-icon.pending {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-muted);
+}
+
+.agent-test-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-test-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.agent-test-category {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.agent-test-duration {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── Section Headers ───────────────────────────────────────────────────────── */
+.agent-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.agent-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Empty State ───────────────────────────────────────────────────────────── */
+.agent-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 40px;
+  text-align: center;
+  color: var(--text-muted);
+  gap: 16px;
+}
+
+.agent-empty svg {
+  opacity: 0.25;
+}
+
+.agent-empty h3 {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.agent-empty p {
+  font-size: 0.875rem;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+/* ── Feature Cards (how it works) ──────────────────────────────────────────── */
+.agent-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.agent-feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  transition: all var(--transition);
+}
+
+.agent-feature-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.agent-feature-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
+
+.agent-feature-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.agent-feature-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .agent-hero {
+    padding: 20px;
+  }
+
+  .agent-url-bar {
+    flex-direction: column;
+  }
+
+  .agent-start-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .agent-runs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-pipeline {
+    gap: 0;
+    justify-content: flex-start;
+  }
+
+  .agent-features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .agent-config {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .agent-features {
+    grid-template-columns: 1fr;
+  }
+}

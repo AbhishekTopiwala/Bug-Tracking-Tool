@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Bug, LayoutDashboard, Plus, Zap, TestTube2,
-  Bell, Settings, LogOut, Folder, Users,
+  Bell, Settings, LogOut, Folder, Users, Bot,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/qa/bugs/new', icon: Plus, label: 'Report Bug' },
   { to: '/qa/ai-generator', icon: Zap, label: 'AI Bug Generator' },
   { to: '/qa/test-cases', icon: TestTube2, label: 'Test Cases' },
+  { to: '/qa/agent', icon: Bot, label: 'AI QA Agent' },
 ];
 
 export default function Sidebar({ unreadCount = 0 }) {

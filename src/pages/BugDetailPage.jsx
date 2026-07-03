@@ -675,6 +675,71 @@ export default function BugDetailPage() {
               </div>
             )}
 
+            {/* AI Insights */}
+            {bug.aiInsights && (
+              <div className="detail-section" style={{ background: 'linear-gradient(145deg, var(--bg-secondary), var(--bg-card))', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                  <div style={{ background: 'rgba(99, 102, 241, 0.1)', padding: 8, borderRadius: 10 }}>
+                    <Activity size={20} style={{ color: 'var(--primary)' }} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>AI Bug Analysis</h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Automated triage & diagnostics</p>
+                  </div>
+                  {bug.aiInsights.confidenceScore && (
+                    <span className="badge badge-open" style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <CheckCircle2 size={12} /> {bug.aiInsights.confidenceScore}% Confidence
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid-2" style={{ gap: 16 }}>
+                  {bug.aiInsights.rootCause && (
+                    <div style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 12, border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                      <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Activity size={12} /> Root Cause
+                      </p>
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{bug.aiInsights.rootCause}</p>
+                    </div>
+                  )}
+                  {bug.aiInsights.possibleFix && (
+                    <div style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 12, border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                      <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <CheckCircle2 size={12} /> Suggested Fix
+                      </p>
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{bug.aiInsights.possibleFix}</p>
+                    </div>
+                  )}
+                </div>
+                
+                {bug.aiInsights.evidence && (
+                  <div style={{ marginTop: 16, background: 'var(--bg-card)', padding: 18, borderRadius: 12, border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Telemetry Evidence</p>
+                    {bug.aiInsights.evidence.playwrightError && (
+                      <div style={{ marginBottom: 12 }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Playwright Error:</span>
+                        <pre style={{ fontSize: '0.75rem', background: '#1e1e1e', color: '#ff8a8a', padding: '10px 12px', borderRadius: 8, overflowX: 'auto', marginTop: 6, border: '1px solid #333' }}>{bug.aiInsights.evidence.playwrightError}</pre>
+                      </div>
+                    )}
+                    {bug.aiInsights.evidence.failingNetworkRequest && (
+                      <div style={{ marginBottom: 12 }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Failed Network Request:</span>
+                        <pre style={{ fontSize: '0.75rem', background: '#1e1e1e', color: '#82aaff', padding: '10px 12px', borderRadius: 8, overflowX: 'auto', marginTop: 6, border: '1px solid #333' }}>{bug.aiInsights.evidence.failingNetworkRequest}</pre>
+                      </div>
+                    )}
+                    {bug.aiInsights.evidence.consoleErrors && bug.aiInsights.evidence.consoleErrors.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Console Errors:</span>
+                        <pre style={{ fontSize: '0.75rem', background: '#1e1e1e', color: '#ffcb6b', padding: '10px 12px', borderRadius: 8, overflowX: 'auto', marginTop: 6, border: '1px solid #333' }}>
+                          {bug.aiInsights.evidence.consoleErrors.join('\n')}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Attachments */}
             {bug.attachments?.length > 0 && (
               <div className="detail-section">

@@ -177,5 +177,78 @@ service cloud.firestore {
       allow update: if isSuperAdmin();
       allow delete: if false;
     }
+
+    // ── AI QA Agent Collections ──────────────────────────────────────────────
+
+    match /agent_runs/{runId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow update: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow delete: if isSuperAdmin() || (
+        isSameOrg(resource.data.organizationId) && isOrgAdmin()
+      );
+
+      // Test results — written only by backend service, readable by org members
+      match /tests/{testId} {
+        allow read: if isSuperAdmin() || isSameOrg(
+          get(/databases/$(database)/documents/agent_runs/$(runId)).data.organizationId
+        );
+        allow write: if false;  // Only written by backend/Cloud Run worker
+      }
+    }
+
+    match /applications/{appId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow update, delete: if isSuperAdmin() || (isSameOrg(resource.data.organizationId) && isOrgAdmin());
+    }
+    
+    match /website_scans/{scanId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create, update: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow delete: if isSuperAdmin();
+    }
+    
+    match /generated_test_cases/{testId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create, update: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow delete: if isSuperAdmin() || (isSameOrg(resource.data.organizationId) && isOrgAdmin());
+    }
+
+    match /executions/{executionId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow update: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow delete: if isSuperAdmin() || (isSameOrg(resource.data.organizationId) && isOrgAdmin());
+
+      match /execution_logs/{logId} {
+        allow read: if isSuperAdmin() || isSameOrg(get(/databases/$(database)/documents/executions/$(executionId)).data.organizationId);
+        allow write: if false; // System writes only
+      }
+    }
+
+    match /screenshots/{mediaId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow delete: if isSuperAdmin();
+      allow update: if false;
+    }
+
+    match /videos/{mediaId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow delete: if isSuperAdmin();
+      allow update: if false;
+    }
+
+    match /ai_conversations/{conversationId} {
+      allow read, update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      
+      match /messages/{messageId} {
+        allow read, create: if isSignedIn() && get(/databases/$(database)/documents/ai_conversations/$(conversationId)).data.uid == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
   }
 }
