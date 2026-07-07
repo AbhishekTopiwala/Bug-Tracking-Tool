@@ -1,0 +1,148 @@
+Retrieving project…
+Deploying portfolios-projects-47e34b58/qa-tool
+Uploading [--------------------] (0.0B/69B)
+Uploading [====================] (69.0B/69B)
+Inspect: https://vercel.com/portfolios-projects-47e34b58/qa-tool/9K1AVvwhCMfvejtVG5kB1vLPT6aU [3s]
+Preview: https://qa-tool-4uh8scln1-portfolios-projects-47e34b58.vercel.app [3s]
+https://qa-tool-4uh8scln1-portfolios-projects-47e34b58.vercel.appBuilding...
+Building...
+Building: Running build in Washington, D.C., USA (East) – iad1
+Building: Build machine configuration: 2 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Downloading 254 deployment files...
+Building: Restored build cache from previous deployment (34apQCoRED9gPAwYX81TsVfoNzfi)
+Building: Running "vercel build"
+Building: Vercel CLI 54.19.0
+Building: Installing dependencies...
+Building: up to date in 2s
+Building: 132 packages are looking for funding
+Building: run `npm fund` for details
+Building: Running "npm run build"
+Building: > qa-tool@0.0.0 build
+Building: > vite build
+Building: fatal: not a git repository (or any parent up to mount point /vercel)
+Building: Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+Building: 🔧 Branch-detected APP_ENV: production
+Building: vite v8.0.10 building client environment for production...
+Building: transforming...✓ 2530 modules transformed.
+Building: rendering chunks...
+Building: computing gzip size...
+Building: dist/index.html                                        0.81 kB │ gzip:   0.45 kB
+Building: dist/assets/BillingPage-NDpWotoH.css                   8.97 kB │ gzip:   2.31 kB
+Building: dist/assets/index-Dqhjr8mZ.css                       151.04 kB │ gzip:  25.49 kB
+Building: dist/assets/check-DkHNJxM0.js                          0.12 kB │ gzip:   0.14 kB
+Building: dist/assets/chevron-down-BRjl7uPL.js                   0.12 kB │ gzip:   0.13 kB
+Building: dist/assets/chevron-up-CiSqWfii.js                     0.12 kB │ gzip:   0.14 kB
+Building: dist/assets/loader-circle-Bemmgfha.js                  0.14 kB │ gzip:   0.15 kB
+Building: dist/assets/x-pwWSQke4.js                              0.15 kB │ gzip:   0.15 kB
+Building: dist/assets/arrow-left-aYnaEeYi.js                     0.16 kB │ gzip:   0.16 kB
+Building: dist/assets/arrow-right-VIpRuveD.js                    0.16 kB │ gzip:   0.16 kB
+Building: dist/assets/arrow-up-right-jXBU_B15.js                 0.16 kB │ gzip:   0.15 kB
+Building: dist/assets/arrow-down-right-CLnAvxeb.js               0.16 kB │ gzip:   0.16 kB
+Building: dist/assets/clock-DLogmfXe.js                          0.16 kB │ gzip:   0.16 kB
+Building: dist/assets/search-D3t-CogN.js                         0.17 kB │ gzip:   0.16 kB
+Building: dist/assets/trending-up-Y9V1iWrG.js                    0.17 kB │ gzip:   0.16 kB
+Building: dist/assets/circle-check-BE95GirV.js                   0.17 kB │ gzip:   0.16 kB
+Building: dist/assets/check-check-6ifmqx8z.js                    0.17 kB │ gzip:   0.17 kB
+Building: dist/assets/play-9x9r1NR0.js                           0.19 kB │ gzip:   0.17 kB
+Building: dist/assets/user-D5599IdO.js                           0.19 kB │ gzip:   0.18 kB
+Building: dist/assets/rotate-ccw-LRY_Tzck.js                     0.20 kB │ gzip:   0.18 kB
+Building: dist/assets/lock-CCQ0dAcu.js                           0.20 kB │ gzip:   0.19 kB
+Building: dist/assets/circle-x-CKRITHyC.js                       0.20 kB │ gzip:   0.17 kB
+Building: dist/assets/code-xml-CEqtssmj.js                       0.20 kB │ gzip:   0.17 kB
+Building: dist/assets/mail-CsYtRSLO.js                           0.21 kB │ gzip:   0.20 kB
+Building: dist/assets/download-DFpG3juu.js                       0.23 kB │ gzip:   0.19 kB
+Building: dist/assets/message-square-TG2AQZdK.js                 0.23 kB │ gzip:   0.20 kB
+Building: dist/assets/copy-C_q66zt6.js                           0.23 kB │ gzip:   0.20 kB
+Building: dist/assets/user-check-_vYqSYr2.js                     0.24 kB │ gzip:   0.20 kB
+Building: dist/assets/arrow-up-down-UjnsUOEI.js                  0.24 kB │ gzip:   0.19 kB
+Building: dist/assets/circle-alert-igrvn6_7.js                   0.25 kB │ gzip:   0.18 kB
+Building: dist/assets/external-link-BqrUEWQv.js                  0.25 kB │ gzip:   0.19 kB
+Building: dist/assets/funnel-CXG_jkF-.js                         0.25 kB │ gzip:   0.21 kB
+Building: dist/assets/calendar-qEs7uRGV.js                       0.25 kB │ gzip:   0.20 kB
+Building: dist/assets/monitor-BHzfcPX5.js                        0.25 kB │ gzip:   0.20 kB
+Building: dist/assets/triangle-alert-C-BoEVHo.js                 0.26 kB │ gzip:   0.21 kB
+Building: dist/assets/pen-line-mXfLp8e0.js                       0.27 kB │ gzip:   0.22 kB
+Building: dist/assets/scan-DyIhCEpF.js                           0.28 kB │ gzip:   0.20 kB
+Building: dist/assets/folder-open-DTVnbBdD.js                    0.29 kB │ gzip:   0.22 kB
+Building: dist/assets/list-DATsYqRx.js                           0.30 kB │ gzip:   0.18 kB
+Building: dist/assets/user-x-2JaAaV02.js                         0.30 kB │ gzip:   0.23 kB
+Building: dist/assets/user-plus-CV_X_3F4.js                      0.31 kB │ gzip:   0.23 kB
+Building: dist/assets/refresh-cw-rnnuxl8v.js                     0.32 kB │ gzip:   0.22 kB
+Building: dist/assets/tag-CjF0QBqy.js                            0.32 kB │ gzip:   0.24 kB
+Building: dist/assets/save-DS6uA_7c.js                           0.32 kB │ gzip:   0.22 kB
+Building: dist/assets/trash-2-BGk391ai.js                        0.32 kB │ gzip:   0.21 kB
+Building: dist/assets/info-CgLAnQjZ.js                           0.34 kB │ gzip:   0.25 kB
+Building: dist/assets/crown-D-CMewly.js                          0.36 kB │ gzip:   0.25 kB
+Building: dist/assets/dateUtils-YFGhn18R.js                      0.39 kB │ gzip:   0.25 kB
+Building: dist/assets/file-spreadsheet-DrjX-YZQ.js               0.42 kB │ gzip:   0.26 kB
+Building: dist/assets/star-XBInH80d.js                           0.47 kB │ gzip:   0.29 kB
+Building: dist/assets/smartphone-FHjQzsdj.js                     0.48 kB │ gzip:   0.27 kB
+Building: dist/assets/SafeNotificationMessage-CeH6FViP.js        0.48 kB │ gzip:   0.31 kB
+Building: dist/assets/sparkles-DkwNvubW.js                       0.49 kB │ gzip:   0.28 kB
+Building: dist/assets/bug-BgD15JX4.js                            0.62 kB │ gzip:   0.32 kB
+Building: dist/assets/eye-C5SS97gA.js                            0.63 kB │ gzip:   0.34 kB
+Building: dist/assets/statusRules-gn_JuBwX.js                    0.93 kB │ gzip:   0.42 kB
+Building: dist/assets/geminiService-qMsAebST.js                  1.41 kB │ gzip:   0.76 kB
+Building: dist/assets/usePlanLimits-CZqEQgqk.js                  2.28 kB │ gzip:   1.12 kB
+Building: dist/assets/AdminTopbar-DBTSRenM.js                    3.62 kB │ gzip:   1.47 kB
+Building: dist/assets/mailService-C95JPehA.js                    3.93 kB │ gzip:   1.72 kB
+Building: dist/assets/NotificationsPage-ClndaxO3.js              3.94 kB │ gzip:   1.66 kB
+Building: dist/assets/Topbar-C56_KlyT.js                         3.95 kB │ gzip:   1.60 kB
+Building: dist/assets/paymentService-By1-oXpJ.js                 5.79 kB │ gzip:   2.33 kB
+Building: dist/assets/teamService-B1PFEwyY.js                    6.43 kB │ gzip:   1.82 kB
+Building: dist/assets/AdminDashboardPage-CVYSfBf9.js             6.90 kB │ gzip:   2.38 kB
+Building: dist/assets/OrgAuditLogsPage-Bf47umS9.js               7.72 kB │ gzip:   2.72 kB
+Building: dist/assets/orgService-CWcChihN.js                     7.81 kB │ gzip:   2.36 kB
+Building: dist/assets/PaymentIncompletePage-DFqg7k1d.js          8.29 kB │ gzip:   2.90 kB
+Building: dist/assets/PublicProjectPage-9WWl7_fI.js              8.75 kB │ gzip:   2.87 kB
+Building: dist/assets/OrgSettingsPage-C0MtAOJC.js                8.92 kB │ gzip:   2.84 kB
+Building: dist/assets/OrgProjectsPage-BN_tcSru.js                8.97 kB │ gzip:   2.91 kB
+Building: dist/assets/TestResultPage-D-BCevgY.js                 8.99 kB │ gzip:   2.70 kB
+Building: dist/assets/SystemHealthPage-B39uDy_S.js               9.01 kB │ gzip:   3.33 kB
+Building: dist/assets/ReportsPage-D5lvRPmy.js                    9.05 kB │ gzip:   2.80 kB
+Building: dist/assets/AgentDashboardPage-Ce9166Qk.js             9.14 kB │ gzip:   2.93 kB
+Building: dist/assets/LoginPage-CdVnhzOA.js                      9.39 kB │ gzip:   2.82 kB
+Building: dist/assets/SettingsPage-1-76OR4F.js                   9.43 kB │ gzip:   2.88 kB
+Building: dist/assets/AIGeneratorPage-Cmfe0xJe.js                9.57 kB │ gzip:   3.09 kB
+Building: dist/assets/formatDistanceToNow-Cot2uRlu.js            9.67 kB │ gzip:   3.35 kB
+Building: dist/assets/createLucideIcon-C-fmWJup.js               9.72 kB │ gzip:   3.85 kB
+Building: dist/assets/TeamVisibilityPage-05eOibFH.js             9.84 kB │ gzip:   2.94 kB
+Building: dist/assets/OrgDashboardPage-Z5D64pSD.js              10.06 kB │ gzip:   3.07 kB
+Building: dist/assets/SubscriptionsManagementPage-BwDXS-bh.js   10.95 kB │ gzip:   3.16 kB
+Building: dist/assets/RunDetailPage-CscvZqT5.js                 11.25 kB │ gzip:   3.05 kB
+Building: dist/assets/ProjectTeamPage-DphLqn3m.js               11.27 kB │ gzip:   3.35 kB
+Building: dist/assets/InvitePage-DDR2Fzb4.js                    11.88 kB │ gzip:   3.56 kB
+Building: dist/assets/GlobalSettingsPage-D3DkZxoP.js            12.00 kB │ gzip:   2.55 kB
+Building: dist/assets/format-C7SPl6BV.js                        12.39 kB │ gzip:   3.53 kB
+Building: dist/assets/TestCasesPage-BVku44Ow.js                 12.96 kB │ gzip:   4.43 kB
+Building: dist/assets/AdminManagementPage-DQRJmEAm.js           13.45 kB │ gzip:   3.88 kB
+Building: dist/assets/AIAnalyticsPage-Z7C-Dilg.js               14.26 kB │ gzip:   4.01 kB
+Building: dist/assets/DevDashboardPage-ClUIVSKN.js              14.53 kB │ gzip:   3.45 kB
+Building: dist/assets/PaymentPage-nMX-deFu.js                   14.91 kB │ gzip:   4.80 kB
+Building: dist/assets/SignupPage-DmnOMDiO.js                    16.74 kB │ gzip:   4.89 kB
+Building: dist/assets/ProjectsPage-BUAE1SjL.js                  17.07 kB │ gzip:   4.63 kB
+Building: dist/assets/OrgBillingPage-CXzfNrN6.js                17.09 kB │ gzip:   4.88 kB
+Building: dist/assets/TeamManagementPage-axy84hN1.js            17.26 kB │ gzip:   5.23 kB
+Building: dist/assets/SuperAdminDashboardPage-DnYblO_D.js       17.86 kB │ gzip:   5.09 kB
+Building: dist/assets/BillingPage-DMaJYm-_.js                   17.91 kB │ gzip:   4.88 kB
+Building: dist/assets/PrivacyPolicyPage-BuxP0GwG.js             20.49 kB │ gzip:   6.87 kB
+Building: dist/assets/UserManagementPage-DmUqpGtQ.js            22.41 kB │ gzip:   5.94 kB
+Building: dist/assets/OrganizationsManagementPage-COvZPyHI.js   22.71 kB │ gzip:   6.16 kB
+Building: dist/assets/BugsListPage-B1wx_NF_.js                  24.39 kB │ gzip:   5.82 kB
+Building: dist/assets/TermsPage-BVShlwTK.js                     24.58 kB │ gzip:   8.61 kB
+Building: dist/assets/DevBugsBoardPage-Cn-WwaG6.js              26.18 kB │ gzip:   6.20 kB
+Building: dist/assets/DashboardPage-DxSY6WpX.js                 26.50 kB │ gzip:   5.60 kB
+Building: dist/assets/DevBugDetailPage-Duj4cCF1.js              26.65 kB │ gzip:   6.56 kB
+Building: dist/assets/BugFormPage-CvDrjKnH.js                   28.51 kB │ gzip:   8.11 kB
+Building: dist/assets/ProjectOverviewPage-W1ceotGd.js           30.57 kB │ gzip:   6.94 kB
+Building: dist/assets/BugDetailPage-Cq5N_sOu.js                 34.19 kB │ gzip:   7.24 kB
+Building: dist/assets/LandingPage-CQo6uRaV.js                   40.71 kB │ gzip:   9.32 kB
+Building: dist/assets/dist-BVDN7aBK.js                          45.42 kB │ gzip:  13.12 kB
+Building: dist/assets/dnd.esm-CwphY2FI.js                       98.91 kB │ gzip:  30.97 kB
+Building: dist/assets/index-DckhL-5u.js                        331.48 kB │ gzip: 100.78 kB
+Building: dist/assets/config-pz19iF8F.js                       372.01 kB │ gzip: 113.26 kB
+Building: ✓ built in 1.76s
+Building: Build Completed in /vercel/output [7s]
+Building: Deploying outputs...
+Error: No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan. Create a team (Pro plan) to deploy more.

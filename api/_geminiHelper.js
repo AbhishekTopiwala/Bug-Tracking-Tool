@@ -99,7 +99,7 @@ async function checkAndIncrementQuota(orgId, idToken) {
     `?updateMask.fieldPaths=subscription.aiUsed` +
     `&updateMask.fieldPaths=aiUsage.currentUsage`;
 
-  await fetch(patchUrl, {
+  const res = await fetch(patchUrl, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -124,6 +124,12 @@ async function checkAndIncrementQuota(orgId, idToken) {
       },
     }),
   });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Firestore Quota Update Failed:", res.status, errText);
+    throw new Error(`QUOTA_UPDATE_FAILED: ${res.status}`);
+  }
 }
 
 // ── Gemini retry helper ────────────────────────────────────────────────────────
