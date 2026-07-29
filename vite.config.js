@@ -38,10 +38,10 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        // Proxy /api/* to local Vercel dev server (run: npx vercel dev --listen 3000)
+        // Proxy /api/* to local Vercel dev server (run: npx vercel dev --listen 3005)
         // ⚠️  NEVER point this to production (qualia-hq.vercel.app)
         '/api': {
-          target: 'http://localhost:3000',
+          target: 'http://localhost:3005',
           changeOrigin: true,
         }
       }
