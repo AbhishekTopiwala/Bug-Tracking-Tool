@@ -5,7 +5,7 @@ import {
   checkAndIncrementQuota, 
   generateGeminiContentWithRetry, 
   GoogleGenerativeAI 
-} from '../../_geminiHelper.js';
+} from '../_geminiHelper.js';
 
 const FIREBASE_PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
@@ -38,7 +38,18 @@ export default async function handler(req, res) {
   setCorsHeaders(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { route, ...query } = req.query;
+  // Parse route and query from req.url
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const pathname = parsedUrl.pathname;
+  const routeSegments = pathname.split('/').filter(Boolean);
+  const route = routeSegments.slice(2);
+
+  const query = {};
+  for (const [k, v] of parsedUrl.searchParams.entries()) {
+    query[k] = v;
+  }
+
+  console.log(`[Agent Route] ${req.method} ${pathname}`);
 
   if (!route || route.length === 0) {
     return sendError(res, 400, 'Invalid agent route');
