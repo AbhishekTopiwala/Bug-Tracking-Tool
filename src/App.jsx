@@ -9,9 +9,9 @@ import './styles/developer.css';
 import './styles/admin.css';
 import './styles/super-admin.css';
 import './styles/org-portal.css';
-import './styles/agent.css';
 import './styles/landing.css';
 import './styles/payment.css';
+import './styles/agent.css';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AgentProvider } from './contexts/AgentContext';
@@ -46,12 +46,12 @@ const AIGeneratorPage = lazy(() => import('./pages/AIGeneratorPage'));
 const TestCasesPage = lazy(() => import('./pages/TestCasesPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 
-// Lazy-loaded AI QA Agent pages
+// Lazy-loaded Agent Portal pages
 const AgentDashboardPage = lazy(() => import('./pages/agent/AgentDashboardPage'));
 const RunDetailPage = lazy(() => import('./pages/agent/RunDetailPage'));
 const TestResultPage = lazy(() => import('./pages/agent/TestResultPage'));
-const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 
 // Lazy-loaded Developer Portal pages
 const DevDashboardPage = lazy(() => import('./pages/dev/DevDashboardPage'));
@@ -153,10 +153,10 @@ function QAPortal() {
             <Route path="bugs/:id" element={<BugDetailPage />} />
             <Route path="bugs/:id/edit" element={<BugFormPage />} />
             <Route path="ai-generator" element={<AIGeneratorPage />} />
-            <Route path="test-cases" element={<TestCasesPage />} />
             <Route path="agent" element={<AgentDashboardPage />} />
             <Route path="agent/runs/:runId" element={<RunDetailPage />} />
             <Route path="agent/runs/:runId/tests/:testId" element={<TestResultPage />} />
+            <Route path="test-cases" element={<TestCasesPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/qa" replace />} />

@@ -30,3 +30,4 @@ functions/.env
 *.sln
 *.sw?
 .vercel
+.env*.local

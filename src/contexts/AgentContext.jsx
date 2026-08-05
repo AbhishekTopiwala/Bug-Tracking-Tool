@@ -1,13 +1,12 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import {
-  startAgentRun,
-  getRunStatus,
-  listAgentRuns,
-  getRunDetail,
-  generateTests,
-  executeTests,
-  analyzeFailures,
+  createAgentRun,
+  getAgentRuns,
+  getAgentRunDetail,
+  fileBugFromTestFailure,
+  deleteAgentRun,
+  clearAllAgentRuns,
 } from '../services/agentService';
 
 const AgentContext = createContext(null);
@@ -18,123 +17,60 @@ export function useAgent() {
   return ctx;
 }
 
-const POLL_INTERVAL = 5000; // 5 seconds
-
-const ACTIVE_STATUSES = [
-  'queued',
-  'crawling',
-  'analyzing',
-  'generating',
-  'executing',
-  'analyzing_failures',
-];
-
 export function AgentProvider({ children }) {
-  const { currentUser } = useAuth();
-
-  // ── State ───────────────────────────────────────────────────────────────────
+  const { userProfile, currentUser } = useAuth();
   const [runs, setRuns] = useState([]);
   const [activeRun, setActiveRun] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const pollRef = useRef(null);
 
-  // ── Polling ─────────────────────────────────────────────────────────────────
+  const orgId = userProfile?.organizationId || 'default-org';
 
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
-
-  const startPolling = useCallback(
-    (runId) => {
-      stopPolling();
-      pollRef.current = setInterval(async () => {
-        try {
-          const status = await getRunStatus(runId);
-          setActiveRun((prev) => (prev ? { ...prev, ...status } : status));
-
-          // Update the run in the list as well
-          setRuns((prev) =>
-            prev.map((r) => (r.scanId === runId || r.runId === runId ? { ...r, ...status } : r))
-          );
-
-          // Stop polling if run is no longer active
-          if (!ACTIVE_STATUSES.includes(status.status)) {
-            stopPolling();
-          }
-        } catch (err) {
-          console.error('[AgentContext] Poll error:', err);
-        }
-      }, POLL_INTERVAL);
-    },
-    [stopPolling]
-  );
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => stopPolling();
-  }, [stopPolling]);
-
-  // ── Actions ─────────────────────────────────────────────────────────────────
-
+  // Refresh historical runs list
   const refreshRuns = useCallback(async () => {
-    if (!currentUser) return;
+    if (!orgId) return;
     try {
-      const data = await listAgentRuns(20);
-      setRuns(data.runs || []);
+      const data = await getAgentRuns(orgId);
+      setRuns(data);
     } catch (err) {
-      console.error('[AgentContext] Failed to load runs:', err);
+      console.error('Failed to load agent runs:', err);
     }
-  }, [currentUser]);
+  }, [orgId]);
 
-  const createRun = useCallback(
-    async (url, config = {}, projectId = null) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await startAgentRun(url, config, projectId);
-        const newRun = {
-          scanId: result.scanId,
-          runId: result.scanId, // Fallback for components that still expect runId
-          baseUrl: url,
-          status: result.status || 'created',
-          progressPercent: 0,
-          createdAt: new Date().toISOString(),
-        };
-        setActiveRun(newRun);
-        setRuns((prev) => [newRun, ...prev]);
-        
-        // After creating the scan, we actually want to start it!
-        // The scans API requires a separate `/start` call to actually begin.
-        // For now, if the crawler isn't triggered automatically, we could trigger it.
-        // Wait, startAgentRun POSTs to /api/agent/scans, which returns status: 'created'.
-        
-        startPolling(result.scanId);
-        return result;
-      } catch (err) {
-        setError(err.message);
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [startPolling]
-  );
-
-  const loadRunDetail = useCallback(async (runId) => {
-    setLoading(true);
+  // Delete single test run
+  const deleteRun = async (scanId) => {
     try {
-      const detail = await getRunDetail(runId);
+      await deleteAgentRun(scanId);
+      setRuns(prev => prev.filter(r => (r.scanId || r.id) !== scanId));
+    } catch (err) {
+      console.error('Failed to delete run:', err);
+      throw err;
+    }
+  };
+
+  // Delete all test runs
+  const deleteAllRuns = async () => {
+    try {
+      await clearAllAgentRuns(orgId);
+      setRuns([]);
+    } catch (err) {
+      console.error('Failed to clear all runs:', err);
+      throw err;
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    refreshRuns();
+  }, [refreshRuns]);
+
+  // Load active run detail
+  const loadRunDetail = useCallback(async (scanId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const detail = await getAgentRunDetail(scanId);
       setActiveRun(detail);
-
-      // Start polling if the run is still active
-      if (ACTIVE_STATUSES.includes(detail.status)) {
-        startPolling(runId);
-      }
-
       return detail;
     } catch (err) {
       setError(err.message);
@@ -142,52 +78,65 @@ export function AgentProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [startPolling]);
-
-  const triggerGenerateTests = useCallback(async (runId) => {
-    return generateTests(runId);
   }, []);
 
-  const triggerExecuteTests = useCallback(
-    async (runId, testIds = null) => {
-      const result = await executeTests(runId, testIds);
-      startPolling(runId);
+  // Submit a new instruction run
+  const triggerRun = async ({ targetUrl, instructions, moduleCategory, projectId }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await createAgentRun({
+        targetUrl,
+        instructions,
+        moduleCategory,
+        organizationId: orgId,
+        userId: currentUser?.uid,
+        projectId,
+      });
+
+      await refreshRuns();
       return result;
-    },
-    [startPolling]
-  );
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const triggerAnalyzeFailures = useCallback(async (runId) => {
-    return analyzeFailures(runId);
-  }, []);
+  // Poll active run if running
+  useEffect(() => {
+    if (!activeRun?.scanId) return;
+    if (activeRun.status === 'completed' || activeRun.status === 'failed') return;
 
-  const clearActiveRun = useCallback(() => {
-    stopPolling();
-    setActiveRun(null);
-  }, [stopPolling]);
+    const interval = setInterval(async () => {
+      try {
+        const updated = await getAgentRunDetail(activeRun.scanId);
+        setActiveRun(updated);
+        if (updated.status === 'completed' || updated.status === 'failed') {
+          refreshRuns();
+          clearInterval(interval);
+        }
+      } catch (err) {
+        console.error('Error polling run:', err);
+      }
+    }, 1200);
 
-  // ── Context value ───────────────────────────────────────────────────────────
+    return () => clearInterval(interval);
+  }, [activeRun?.scanId, activeRun?.status, refreshRuns]);
 
   const value = {
-    // State
     runs,
     activeRun,
     loading,
     error,
-
-    // Actions
-    createRun,
-    refreshRuns,
+    triggerRun,
     loadRunDetail,
-    clearActiveRun,
-    triggerGenerateTests,
-    triggerExecuteTests,
-    triggerAnalyzeFailures,
+    refreshRuns,
+    deleteRun,
+    deleteAllRuns,
+    fileBugFromTestFailure,
   };
 
-  return (
-    <AgentContext.Provider value={value}>
-      {children}
-    </AgentContext.Provider>
-  );
+  return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>;
 }
