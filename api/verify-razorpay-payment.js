@@ -2,9 +2,19 @@ import crypto from 'crypto';
 import { verifyFirebaseToken, sendError, setCorsHeaders } from './_geminiHelper.js';
 
 function getRazorpayConfig() {
-  return {
-    secret: process.env.RAZORPAY_SECRET || process.env.RAZORPAY_TEST_SECRET || process.env.RAZORPAY_LIVE_SECRET,
-  };
+  const secrets = [
+    process.env.RAZORPAY_SECRET,
+    process.env.RAZORPAY_TEST_SECRET,
+    process.env.RAZORPAY_LIVE_SECRET,
+    process.env.RAZORPAY_KEY_SECRET,
+    process.env.RAZORPAY_TEST_KEY_SECRET,
+    process.env.VITE_RAZORPAY_SECRET,
+    process.env.VITE_RAZORPAY_TEST_SECRET,
+    process.env.VITE_RAZORPAY_KEY_SECRET,
+  ];
+
+  const secret = secrets.find((s) => typeof s === 'string' && s.trim().length > 0)?.trim();
+  return { secret };
 }
 
 export default async function handler(req, res) {
@@ -19,7 +29,8 @@ export default async function handler(req, res) {
       return sendError(res, 401, 'Unauthorized');
     }
     const idToken = authHeader.split('Bearer ')[1];
-    await verifyFirebaseToken(idToken);
+    const { uid, email } = await verifyFirebaseToken(idToken);
+    console.log(`[verifyPayment] Authenticated user: ${email} (${uid})`);
 
     // 2. Parse payload
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -32,7 +43,7 @@ export default async function handler(req, res) {
     const { secret } = getRazorpayConfig();
     if (!secret) {
       console.error("Razorpay secret missing in environment variables.");
-      return sendError(res, 500, 'Razorpay not configured');
+      return sendError(res, 500, 'Razorpay not configured on server (secret missing)');
     }
 
     const expectedSig = crypto
@@ -41,9 +52,11 @@ export default async function handler(req, res) {
       .digest("hex");
 
     if (expectedSig !== razorpay_signature) {
-      console.error(`[verifyPayment] Signature mismatch for order ${razorpay_order_id}`);
+      console.error(`[verifyPayment] Signature mismatch for order ${razorpay_order_id}: expected ${expectedSig.slice(0, 8)}... received ${razorpay_signature.slice(0, 8)}...`);
       return sendError(res, 403, 'Payment signature verification failed.');
     }
+
+    console.log(`[verifyPayment] Payment successfully verified for order ${razorpay_order_id}`);
 
     // Since we verified the signature successfully, return success.
     // The frontend is responsible for updating the Firestore documents

@@ -38,7 +38,17 @@ service cloud.firestore {
     match /organizations/{orgId} {
       allow read: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId);
       allow create: if isSignedIn();
-      allow update: if isSuperAdmin() || (isUserActive() && hasUserData() && getUserData().organizationId == orgId && (isOrgAdmin() || resource.data.ownerId == request.auth.uid));
+      allow update: if isSuperAdmin() || (
+        isUserActive() && hasUserData() && getUserData().organizationId == orgId && (
+          isOrgAdmin() || 
+          resource.data.ownerId == request.auth.uid ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subscription', 'aiUsage']) &&
+            request.resource.data.get('subscription', {}).diff(resource.data.get('subscription', {})).affectedKeys().hasOnly(['aiUsed']) &&
+            request.resource.data.get('aiUsage', {}).diff(resource.data.get('aiUsage', {})).affectedKeys().hasOnly(['currentUsage'])
+          )
+        )
+      );
       allow delete: if isSuperAdmin();
     }
 
@@ -176,6 +186,72 @@ service cloud.firestore {
       allow create: if isSuperAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
       allow update: if isSuperAdmin();
       allow delete: if false;
+    }
+
+    // ── AI QA Agent Collections ──────────────────────────────────────────────
+
+    // agent_runs: open for all CRUD — managed entirely by the app layer
+    match /agent_runs/{runId} {
+      allow read, create, update, delete: if true;
+
+      match /tests/{testId} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+
+    match /applications/{appId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow update, delete: if isSuperAdmin() || (isSameOrg(resource.data.organizationId) && isOrgAdmin());
+    }
+    
+    match /website_scans/{scanId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create, update: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow delete: if isSuperAdmin();
+    }
+    
+    match /generated_test_cases/{testId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create, update: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow delete: if isSuperAdmin() || (isSameOrg(resource.data.organizationId) && isOrgAdmin());
+    }
+
+    match /executions/{executionId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow update: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow delete: if isSuperAdmin() || (isSameOrg(resource.data.organizationId) && isOrgAdmin());
+
+      match /execution_logs/{logId} {
+        allow read: if isSuperAdmin() || isSameOrg(get(/databases/$(database)/documents/executions/$(executionId)).data.organizationId);
+        allow write: if false;
+      }
+    }
+
+    match /screenshots/{mediaId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow delete: if isSuperAdmin();
+      allow update: if false;
+    }
+
+    match /videos/{mediaId} {
+      allow read: if isSuperAdmin() || isSameOrg(resource.data.organizationId);
+      allow create: if isSignedIn() && isSameOrg(request.resource.data.organizationId);
+      allow delete: if isSuperAdmin();
+      allow update: if false;
+    }
+
+    match /ai_conversations/{conversationId} {
+      allow read, update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      
+      match /messages/{messageId} {
+        allow read, create: if isSignedIn() && get(/databases/$(database)/documents/ai_conversations/$(conversationId)).data.uid == request.auth.uid;
+        allow update, delete: if false;
+      }
     }
   }
 }

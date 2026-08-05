@@ -1,5 +1,12 @@
 {
+  "git": {
+    "deploymentEnabled": true
+  },
   "rewrites": [
+    {
+      "source": "/api/agent/(.*)",
+      "destination": "/api/agent/index.js"
+    },
     {
       "source": "/((?!api/.*).*)",
       "destination": "/index.html"

@@ -10,7 +10,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // ── Firebase REST helpers (no Admin SDK — avoids billing requirement) ──────────
 
-const FIREBASE_PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+const FIREBASE_PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || 'qua-ai-bug-agent';
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
 /**
@@ -18,8 +18,14 @@ const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_
  * Returns { uid, email } on success, throws on failure.
  */
 async function verifyFirebaseToken(idToken) {
+  const apiKey =
+    process.env.VITE_FIREBASE_API_KEY ||
+    process.env.FIREBASE_API_KEY ||
+    process.env.FIREBASE_KEY ||
+    process.env.VITE_FIREBASE_KEY;
+  console.log(`[verifyFirebaseToken] Verifying token with apiKey: ${apiKey ? apiKey.substring(0, 10) + '...' : 'undefined'}`);
   const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY}`,
+    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -28,7 +34,13 @@ async function verifyFirebaseToken(idToken) {
   );
   const data = await res.json();
   if (!res.ok || !data.users || data.users.length === 0) {
-    throw new Error('Invalid or expired Firebase token');
+    console.error('[verifyFirebaseToken] Failed to verify token:', {
+      ok: res.ok,
+      status: res.status,
+      error: data.error,
+      usersLength: data.users?.length
+    });
+    throw new Error(`Invalid or expired Firebase token: ${data.error?.message || 'Unknown error'}`);
   }
   const user = data.users[0];
   return { uid: user.localId, email: user.email };
@@ -99,7 +111,7 @@ async function checkAndIncrementQuota(orgId, idToken) {
     `?updateMask.fieldPaths=subscription.aiUsed` +
     `&updateMask.fieldPaths=aiUsage.currentUsage`;
 
-  await fetch(patchUrl, {
+  const res = await fetch(patchUrl, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -124,13 +136,19 @@ async function checkAndIncrementQuota(orgId, idToken) {
       },
     }),
   });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("Firestore Quota Update Failed:", res.status, errText);
+    throw new Error(`QUOTA_UPDATE_FAILED: ${res.status}`);
+  }
 }
 
 // ── Gemini retry helper ────────────────────────────────────────────────────────
 
 /**
- * Call Gemini with exponential back-off and model fallback.
- * Alternates between gemini-2.5-flash-lite and gemini-2.5-flash on transient errors.
+ * Call Gemini with exponential back-off and 3-tier model fallback.
+ * Pro → Flash → Flash-Lite on transient errors (503 / 429 / rate limit).
  */
 async function generateGeminiContentWithRetry(
   genAI,
@@ -139,7 +157,15 @@ async function generateGeminiContentWithRetry(
   contents,
   maxRetries = 3
 ) {
-  let currentModel = defaultModel;
+  // Define fallback chain per starting model
+  const fallbackChain = {
+    'gemini-2.5-pro':        ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+    'gemini-2.5-flash':      ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+    'gemini-2.5-flash-lite': ['gemini-2.5-flash-lite', 'gemini-2.5-flash'],
+  };
+  const chain = fallbackChain[defaultModel] || [defaultModel, 'gemini-2.5-flash'];
+  let chainIdx = 0;
+  let currentModel = chain[0];
   let delay = 1000;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -159,8 +185,9 @@ async function generateGeminiContentWithRetry(
         error.message?.includes('high demand');
 
       if (isTransient && attempt < maxRetries) {
-        currentModel =
-          currentModel === 'gemini-2.5-flash-lite' ? 'gemini-2.5-flash' : 'gemini-2.5-flash-lite';
+        // Move to next model in fallback chain
+        chainIdx = Math.min(chainIdx + 1, chain.length - 1);
+        currentModel = chain[chainIdx];
         console.warn(`[Gemini retry] Retrying in ${delay}ms with model: ${currentModel}`);
         await new Promise((r) => setTimeout(r, delay));
         delay = Math.round(delay * 1.5);

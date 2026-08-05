@@ -251,21 +251,37 @@ If no existing bugs are similar, return: []`;
 
 // ── RAZORPAY & BILLING ──────────────────────────────────────────────────────
 function getRazorpayConfig() {
-  const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+  const keys = [
+    process.env.RAZORPAY_TEST_KEY_ID,
+    process.env.RAZORPAY_KEY_ID,
+    process.env.RAZORPAY_LIVE_KEY_ID,
+    process.env.VITE_RAZORPAY_KEY_ID,
+    process.env.VITE_RAZORPAY_TEST_KEY_ID,
+    process.env.VITE_RAZORPAY_LIVE_KEY_ID,
+  ];
 
-  if (isEmulator) {
-    return {
-      keyId: process.env.RAZORPAY_TEST_KEY_ID || process.env.RAZORPAY_KEY_ID,
-      secret: process.env.RAZORPAY_TEST_SECRET || process.env.RAZORPAY_SECRET,
-      webhookSecret: process.env.RAZORPAY_TEST_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET,
-    };
-  }
+  const secrets = [
+    process.env.RAZORPAY_TEST_SECRET,
+    process.env.RAZORPAY_SECRET,
+    process.env.RAZORPAY_LIVE_SECRET,
+    process.env.RAZORPAY_KEY_SECRET,
+    process.env.RAZORPAY_TEST_KEY_SECRET,
+    process.env.VITE_RAZORPAY_SECRET,
+    process.env.VITE_RAZORPAY_TEST_SECRET,
+    process.env.VITE_RAZORPAY_KEY_SECRET,
+  ];
 
-  return {
-    keyId: process.env.RAZORPAY_LIVE_KEY_ID || process.env.RAZORPAY_KEY_ID,
-    secret: process.env.RAZORPAY_LIVE_SECRET || process.env.RAZORPAY_SECRET,
-    webhookSecret: process.env.RAZORPAY_LIVE_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET,
-  };
+  const webhookSecrets = [
+    process.env.RAZORPAY_TEST_WEBHOOK_SECRET,
+    process.env.RAZORPAY_WEBHOOK_SECRET,
+    process.env.RAZORPAY_LIVE_WEBHOOK_SECRET,
+  ];
+
+  const keyId = keys.find((k) => typeof k === 'string' && k.trim().length > 0)?.trim();
+  const secret = secrets.find((s) => typeof s === 'string' && s.trim().length > 0)?.trim();
+  const webhookSecret = webhookSecrets.find((w) => typeof w === 'string' && w.trim().length > 0)?.trim();
+
+  return { keyId, secret, webhookSecret };
 }
 
 // ── Create Razorpay Order (idempotent & secure) ──────────────────────────────
@@ -281,8 +297,29 @@ exports.createRazorpayOrder = onCall(async (request) => {
   if (!planId || !billingCycle) {
     throw new HttpsError("invalid-argument", "Plan ID and billing cycle are required.");
   }
-  if (planId !== "pro" && planId !== "business" && planId !== "free") {
-    throw new HttpsError("invalid-argument", "Invalid plan ID.");
+  let str = typeof planId === 'object' ? (planId.id || planId.planId || '') : String(planId);
+  str = str.toLowerCase().trim().replace(/[-_](monthly|yearly|plan|pack)$/g, '').trim();
+
+  const aliasMap = {
+    starter: "free",
+    "starter-plan": "free",
+    "starter_plan": "free",
+    "1rs": "free",
+    "1-rs": "free",
+    "1_rs": "free",
+    "1rstestplan": "free",
+    "1-rs-test-plan": "free",
+    "free-plan": "free",
+    "free_plan": "free",
+    "pro-plan": "pro",
+    "pro_plan": "pro",
+    "business-plan": "business",
+    "business_plan": "business",
+  };
+  const effectivePlanId = aliasMap[str] || str;
+
+  if (effectivePlanId !== "pro" && effectivePlanId !== "business" && effectivePlanId !== "free" && effectivePlanId !== "starter") {
+    throw new HttpsError("invalid-argument", `Invalid plan ID: "${planId}".`);
   }
   if (billingCycle !== "monthly" && billingCycle !== "yearly") {
     throw new HttpsError("invalid-argument", "Invalid billing cycle.");
@@ -293,10 +330,11 @@ exports.createRazorpayOrder = onCall(async (request) => {
   // Calculate pricing on the server side
   const PLAN_PRICES = {
     free: { monthly: 1, yearly: 1 },
+    starter: { monthly: 1, yearly: 1 },
     pro: { monthly: 99, yearly: 79 },
     business: { monthly: 199, yearly: 159 }
   };
-  const pricePerUser = PLAN_PRICES[planId][billingCycle];
+  const pricePerUser = PLAN_PRICES[effectivePlanId][billingCycle];
   const months = billingCycle === "yearly" ? 12 : 1;
   const basePrice = pricePerUser * usersCount * months;
 

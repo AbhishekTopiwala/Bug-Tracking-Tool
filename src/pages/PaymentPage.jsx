@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  PLANS, PAYMENT_STATUS, SUBSCRIPTION_STATUS,
+  PLANS, getPlanById, PAYMENT_STATUS, SUBSCRIPTION_STATUS,
   calculateTaxBreakdown, applyCoupon, formatPrice,
   getSelectedPlan, clearSelectedPlan, savePendingPaymentSession,
   getPendingPaymentSession, clearPendingPaymentSession,
@@ -61,8 +61,10 @@ export default function PaymentPage() {
     const sessionData = getSelectedPlan();
     const source = stateData || sessionData;
 
-    if (source?.planId && PLANS[source.planId]) {
-      setSelectedPlan(PLANS[source.planId]);
+    const resolvedPlan = getPlanById(source?.planId);
+
+    if (resolvedPlan) {
+      setSelectedPlan(resolvedPlan);
       setBillingCycle(source.billingCycle || 'monthly');
       if (source.couponCode) setCouponCode(source.couponCode);
     } else {
@@ -357,7 +359,14 @@ export default function PaymentPage() {
       });
 
       // 5. Open Razorpay checkout
-      const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+      const rzpKey =
+        import.meta.env.VITE_RAZORPAY_KEY_ID ||
+        import.meta.env.VITE_RAZORPAY_TEST_KEY_ID ||
+        import.meta.env.VITE_RAZORPAY_LIVE_KEY_ID;
+
+      if (!rzpKey) {
+        throw new Error('Razorpay Key ID is missing in environment variables (VITE_RAZORPAY_KEY_ID).');
+      }
 
       const options = {
         key: rzpKey,
@@ -367,7 +376,7 @@ export default function PaymentPage() {
         description: `${selectedPlan.name} - ${billingCycle === 'yearly' ? 'Annual' : 'Monthly'} Subscription`,
         order_id: order.id,
         prefill: {
-          name: userProfile.displayName,
+          name: userProfile?.displayName || currentUser.displayName || currentUser.email || 'User',
           email: currentUser.email,
         },
         theme: { color: '#5B6CFF' },
@@ -388,6 +397,7 @@ export default function PaymentPage() {
           // 6. Verify payment on backend via Vercel API
           setPaymentLoading(true);
           try {
+            console.log('[Payment] Razorpay response received, verifying signature...', response);
             const verifyResult = await verifyRazorpayPaymentApi({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -395,18 +405,19 @@ export default function PaymentPage() {
             });
 
             if (verifyResult.data?.success || verifyResult.success) {
+              console.log('[Payment] Verification successful, updating Firestore state...');
               // Now that signature is verified, update Firestore securely
               const batch = writeBatch(db);
 
-              let orgId = userProfile.organizationId;
+              let orgId = userProfile?.organizationId;
               const isUpgrade = !!orgId;
               const orgRef = isUpgrade ? doc(db, "organizations", orgId) : doc(collection(db, "organizations"));
               if (!orgId) orgId = orgRef.id;
 
               const now = new Date();
               const periodEnd = billingCycle === "yearly"
-                ? new Date(now.setFullYear(now.getFullYear() + 1))
-                : new Date(now.setMonth(now.getMonth() + 1));
+                ? new Date(new Date().setFullYear(now.getFullYear() + 1))
+                : new Date(new Date().setMonth(now.getMonth() + 1));
 
               const subscriptionDetails = {
                 plan: selectedPlan.id,
@@ -427,17 +438,17 @@ export default function PaymentPage() {
               if (isUpgrade) {
                 batch.update(orgRef, {
                   subscription: subscriptionDetails,
-                  gstNumber: userProfile.gstNumber || null,
+                  gstNumber: userProfile?.gstNumber || null,
                 });
               } else {
                 batch.set(orgRef, {
-                  name: userProfile.workspaceName || (userProfile.displayName + "'s Workspace"),
+                  name: userProfile?.workspaceName || (userProfile?.displayName ? `${userProfile.displayName}'s Workspace` : 'My Workspace'),
                   ownerId: currentUser.uid,
                   status: "ACTIVE",
                   createdAt: new Date().toISOString(),
                   subscription: subscriptionDetails,
-                  gstNumber: userProfile.gstNumber || null,
-                  country: userProfile.country || "India",
+                  gstNumber: userProfile?.gstNumber || null,
+                  country: userProfile?.country || "India",
                 });
               }
 
@@ -476,7 +487,7 @@ export default function PaymentPage() {
                 billingCycle,
                 amount: taxData.totalAmount,
                 currency: "INR",
-                gstNumber: userProfile.gstNumber || null,
+                gstNumber: userProfile?.gstNumber || null,
                 status: "ISSUED",
                 issuedAt: new Date().toISOString(),
                 periodStart: new Date().toISOString(),
@@ -517,7 +528,7 @@ export default function PaymentPage() {
             await logAuditEvent(currentUser.uid, 'PAYMENT_VERIFICATION_FAILED', {
               error: verifyErr.message, orderId: order.id,
             });
-            setError('Payment completed but verification failed. Please contact support — you will not be charged twice.');
+            setError(`Payment verification failed: ${verifyErr.message || 'Please contact support.'}`);
             toast.error('Verification error. Contact support@qualia.app');
           } finally {
             paymentInProgress.current = false;
