@@ -1,44 +1,71 @@
 import Razorpay from 'razorpay';
-import { execSync } from 'child_process';
 import { verifyFirebaseToken, sendError, setCorsHeaders } from './_geminiHelper.js';
 
 // Configuration
 function getRazorpayConfig() {
-  // Use the exact environment variable names from .env
-  return {
-    keyId: process.env.VITE_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_TEST_KEY_ID || process.env.VITE_RAZORPAY_LIVE_KEY_ID,
-    secret: process.env.RAZORPAY_SECRET || process.env.RAZORPAY_TEST_SECRET || process.env.RAZORPAY_LIVE_SECRET,
-  };
+  const keys = [
+    process.env.VITE_RAZORPAY_KEY_ID,
+    process.env.RAZORPAY_KEY_ID,
+    process.env.VITE_RAZORPAY_TEST_KEY_ID,
+    process.env.RAZORPAY_TEST_KEY_ID,
+    process.env.VITE_RAZORPAY_LIVE_KEY_ID,
+    process.env.RAZORPAY_LIVE_KEY_ID,
+  ];
+  const secrets = [
+    process.env.RAZORPAY_SECRET,
+    process.env.RAZORPAY_TEST_SECRET,
+    process.env.RAZORPAY_LIVE_SECRET,
+    process.env.RAZORPAY_KEY_SECRET,
+    process.env.RAZORPAY_TEST_KEY_SECRET,
+    process.env.VITE_RAZORPAY_SECRET,
+    process.env.VITE_RAZORPAY_TEST_SECRET,
+    process.env.VITE_RAZORPAY_KEY_SECRET,
+  ];
+
+  const keyId = keys.find((k) => typeof k === 'string' && k.trim().length > 0)?.trim();
+  const secret = secrets.find((s) => typeof s === 'string' && s.trim().length > 0)?.trim();
+
+  return { keyId, secret };
 }
 
 // Environment-aware pricing — mirrors frontend paymentService.js logic
-// Priority: APP_ENV env var → VITE_APP_ENV env var → auto-detect from git branch
+// Priority: APP_ENV env var → VITE_APP_ENV env var → VERCEL_ENV → 'production'
+function normalizePlanId(rawPlanId) {
+  if (!rawPlanId) return '';
+  let str = typeof rawPlanId === 'object' ? (rawPlanId.id || rawPlanId.planId || '') : String(rawPlanId);
+  str = str.toLowerCase().trim();
+  str = str.replace(/[-_](monthly|yearly|plan|pack)$/g, '').trim();
 
-function detectAppEnv() {
-  // 1. Explicit env var (set in Vercel dashboard or .env)
-  if (process.env.APP_ENV) return process.env.APP_ENV;
-  if (process.env.VITE_APP_ENV) return process.env.VITE_APP_ENV;
+  const aliasMap = {
+    starter: 'free',
+    'starter-plan': 'free',
+    'starter_plan': 'free',
+    '1rs': 'free',
+    '1-rs': 'free',
+    '1_rs': 'free',
+    '1rstestplan': 'free',
+    '1-rs-test-plan': 'free',
+    'free-plan': 'free',
+    'free_plan': 'free',
+    'pro-plan': 'pro',
+    'pro_plan': 'pro',
+    'business-plan': 'business',
+    'business_plan': 'business',
+  };
 
-  // 2. Auto-detect from git branch (local dev only)
-  try {
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
-    const map = { 'stage': 'stage', 'pre-prod': 'pre-prod', 'main': 'production' };
-    return map[branch] || 'production';
-  } catch {
-    return 'production';
-  }
+  return aliasMap[str] || str;
 }
 
-const APP_ENV = detectAppEnv();
-
 function getPlanPrices() {
-  // Starter plan price varies by environment
+  const env = detectAppEnv();
   let starterPrice;
-  switch (APP_ENV) {
+  switch (env) {
     case 'pre-prod':
       starterPrice = 10;  // ₹10 — real money testing
       break;
     case 'stage':
+      starterPrice = 1;   // ₹1 — 1 Rs Test Plan for stage environment testing
+      break;
     default: // 'production'
       starterPrice = 0;   // Free
       break;
@@ -46,12 +73,11 @@ function getPlanPrices() {
 
   return {
     free: { monthly: starterPrice, yearly: starterPrice },
+    starter: { monthly: starterPrice, yearly: starterPrice },
     pro: { monthly: 99, yearly: 79 },
     business: { monthly: 199, yearly: 159 },
   };
 }
-
-const PLAN_PRICES = getPlanPrices();
 
 export default async function handler(req, res) {
   setCorsHeaders(res);
@@ -73,12 +99,21 @@ export default async function handler(req, res) {
     if (!planId || !billingCycle) {
       return sendError(res, 400, 'Plan ID and billing cycle are required.');
     }
-    if (!PLAN_PRICES[planId]) {
-      return sendError(res, 400, 'Invalid plan ID.');
+
+    const effectivePlanId = normalizePlanId(planId);
+    const planPrices = getPlanPrices();
+    console.log(`[create-razorpay-order] Received planId: ${JSON.stringify(planId)} (effective: "${effectivePlanId}"), billingCycle: "${billingCycle}", env: "${detectAppEnv()}"`);
+
+    if (!planPrices[effectivePlanId]) {
+      console.error(`[create-razorpay-order] Invalid plan ID received: ${JSON.stringify(planId)} (effective: "${effectivePlanId}"). Available keys: ${Object.keys(planPrices).join(', ')}`);
+      return sendError(res, 400, `Invalid plan ID: "${planId}". Supported plans are: free, starter, pro, business.`);
     }
 
     // 3. Calculate Pricing (Server-side source of truth)
-    const pricePerUser = PLAN_PRICES[planId][billingCycle];
+    const pricePerUser = planPrices[effectivePlanId][billingCycle];
+    if (pricePerUser === undefined) {
+      return sendError(res, 400, `Invalid billing cycle "${billingCycle}" for plan "${planId}".`);
+    }
     const months = billingCycle === 'yearly' ? 12 : 1;
     const basePrice = pricePerUser * usersCount * months;
 

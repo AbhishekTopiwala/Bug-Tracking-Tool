@@ -54,7 +54,7 @@ async function fetchFromApi(endpoint, payload) {
 }
 
 export async function createRazorpayOrderApi(payload) {
-  if (import.meta.env.MODE === 'development') {
+  if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
     const fn = httpsCallable(functions, 'createRazorpayOrder');
     const result = await fn(payload);
     // Wrap in { data: ... } to match the Vercel API response structure expected by the frontend
@@ -64,7 +64,7 @@ export async function createRazorpayOrderApi(payload) {
 }
 
 export async function verifyRazorpayPaymentApi(payload) {
-  if (import.meta.env.MODE === 'development') {
+  if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
     const fn = httpsCallable(functions, 'verifyRazorpayPayment');
     const result = await fn(payload);
     // Wrap in { data: ... } to match the Vercel API response structure expected by the frontend
@@ -224,6 +224,45 @@ export const PLANS = {
     ctaSecondary: true,
   },
 };
+
+// Map plan aliases
+PLANS.starter = PLANS.free;
+PLANS['starter-plan'] = PLANS.free;
+PLANS['starter_plan'] = PLANS.free;
+PLANS['1rs'] = PLANS.free;
+PLANS['1-rs'] = PLANS.free;
+PLANS['1_rs'] = PLANS.free;
+PLANS['free-plan'] = PLANS.free;
+PLANS['free_plan'] = PLANS.free;
+PLANS['pro-plan'] = PLANS.pro;
+PLANS['pro_plan'] = PLANS.pro;
+PLANS['business-plan'] = PLANS.business;
+PLANS['business_plan'] = PLANS.business;
+
+export function getPlanById(planId) {
+  if (!planId) return null;
+  let str = typeof planId === 'object' ? (planId.id || planId.planId || '') : String(planId);
+  str = str.toLowerCase().trim().replace(/[-_](monthly|yearly|plan|pack)$/g, '').trim();
+
+  const aliasMap = {
+    starter: 'free',
+    'starter-plan': 'free',
+    'starter_plan': 'free',
+    '1rs': 'free',
+    '1-rs': 'free',
+    '1_rs': 'free',
+    '1rstestplan': 'free',
+    '1-rs-test-plan': 'free',
+    'free-plan': 'free',
+    'free_plan': 'free',
+    'pro-plan': 'pro',
+    'pro_plan': 'pro',
+    'business-plan': 'business',
+    'business_plan': 'business',
+  };
+  const effectiveId = aliasMap[str] || str;
+  return PLANS[effectiveId] || null;
+}
 
 // ── AI CREDIT ADD-ONS ─────────────────────────────────────────────────────────
 export const AI_CREDIT_PACKS = [
